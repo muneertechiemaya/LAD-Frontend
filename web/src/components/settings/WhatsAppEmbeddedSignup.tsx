@@ -5,7 +5,7 @@
  * ========================
  * The self-serve way to connect WhatsApp: the tenant clicks one button,
  * completes Meta's own hosted dialog, and lands with a working, webhook-
- * subscribed number — no credentials to find, paste, or get wrong.
+ * subscribed number - no credentials to find, paste, or get wrong.
  *
  * This sits ABOVE the legacy TenantOnboarding form, which stays as the
  * "bring your own Meta app" fallback for the tenants already provisioned that
@@ -24,6 +24,7 @@ import {
   useWhatsAppEmbeddedSignup,
 } from '@lad/frontend-features/meta-onboarding';
 import type { WhatsAppAccount } from '@lad/frontend-features/meta-onboarding';
+import { CoexistenceHistoryNotice } from './CoexistenceHistoryNotice';
 
 function MethodBadge({ method }: { method: WhatsAppAccount['connection_method'] }) {
   const isEmbedded = method === 'embedded_signup';
@@ -64,16 +65,29 @@ export function WhatsAppEmbeddedSignup() {
 
   const handleDisconnect = async (account: WhatsAppAccount) => {
     const label = account.display_phone_number || account.display_name;
+
+    // The old copy described the effect on messages but omitted the two facts
+    // that actually catch people out: this is WORKSPACE-WIDE, and it destroys
+    // the stored credentials so reconnecting means going back through Meta.
+    //
+    // Both matter more now that a number can be assigned to a person. The
+    // settings screen shows it as theirs, so removing it reads like a personal
+    // action — and that is exactly how a shared number gets taken away from
+    // everyone by someone who thought they were tidying up their own.
     const ok = window.confirm(
-      `Disconnect ${label}?\n\nIncoming WhatsApp messages to this number will stop ` +
-      'reaching Mr LAD, and any running campaigns on this channel will stop sending.'
+      `Disconnect ${label}?\n\n` +
+      'This removes the number for EVERYONE in this workspace, not just you. ' +
+      'Incoming WhatsApp messages stop reaching Mr LAD and any running ' +
+      'campaigns on this channel stop sending.\n\n' +
+      'Reconnecting means signing in with Meta again — the saved credentials ' +
+      'are deleted and cannot be restored from a backup.'
     );
     if (!ok) return;
     await disconnect(account.id);
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+    <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-blue-950/40 mx-3 shadow-sm">
       {/* Header */}
       <div className="p-6 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-start justify-between gap-4">
@@ -86,7 +100,7 @@ export function WhatsAppEmbeddedSignup() {
             </div>
             <p className="text-sm text-gray-500 dark:text-slate-300">
               Sign in with Meta to connect your WhatsApp Business number. We handle
-              the webhook setup and message registration for you — no access tokens
+              the webhook setup and message registration for you - no access tokens
               to copy.
             </p>
           </div>
@@ -119,7 +133,7 @@ export function WhatsAppEmbeddedSignup() {
         </div>
       </div>
 
-      {/* Environment not configured — explain rather than silently disable */}
+      {/* Environment not configured - explain rather than silently disable */}
       {!configLoading && !isConfigured && (
         <div className="mx-6 mt-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -189,37 +203,43 @@ export function WhatsAppEmbeddedSignup() {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {account.display_name}
-                    </span>
-                    <MethodBadge method={account.connection_method} />
-                    {account.status !== 'active' && (
-                      <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-slate-300">
-                        {account.status}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {account.display_name}
                       </span>
-                    )}
+                      <MethodBadge method={account.connection_method} />
+                      {account.status !== 'active' && (
+                        <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-slate-300">
+                          {account.status}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-slate-300 truncate">
+                      {account.display_phone_number || 'Number pending verification'}
+                      {account.business_account_id && (
+                        <span className="text-gray-400 dark:text-slate-400">
+                          {' · '}WABA {account.business_account_id}
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-300 truncate">
-                    {account.display_phone_number || 'Number pending verification'}
-                    {account.business_account_id && (
-                      <span className="text-gray-400 dark:text-slate-400">
-                        {' · '}WABA {account.business_account_id}
-                      </span>
-                    )}
-                  </p>
+                  <button
+                    onClick={() => handleDisconnect(account)}
+                    disabled={isDisconnecting}
+                    className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <Unplug className="h-4 w-4" />
+                    Disconnect
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleDisconnect(account)}
-                  disabled={isDisconnecting}
-                  className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Unplug className="h-4 w-4" />
-                  Disconnect
-                </button>
+
+                {/* Meta refused the one-time history import - the only place the
+                    tenant can be told, since it happens after the handshake. */}
+                <CoexistenceHistoryNotice account={account} />
               </div>
             ))}
           </div>

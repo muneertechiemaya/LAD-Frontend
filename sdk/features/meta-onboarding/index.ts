@@ -1,7 +1,7 @@
 /**
  * Meta Onboarding Feature SDK
  *
- * Meta Embedded Signup through TechieMaya's Tech Provider app — one platform
+ * Meta Embedded Signup through TechieMaya's Tech Provider app - one platform
  * Meta app, per-tenant encrypted tokens. WhatsApp today; Instagram next,
  * reusing the same backend plumbing under /api/social-integration/meta/*.
  *
@@ -17,6 +17,7 @@ export type {
   ConnectionMethod,
   WhatsAppSignupConfig,
   WhatsAppAccount,
+  CoexistenceHistoryState,
   EmbeddedSignupResult,
   ExchangeSignupRequest,
   ExchangeSignupResponse,

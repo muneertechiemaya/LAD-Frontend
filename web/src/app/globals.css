@@ -235,7 +235,7 @@
     @apply bg-[hsl(var(--gmail))]/10 text-[hsl(var(--gmail))] border-[hsl(var(--gmail))]/20;
   }
 
-  /* Message bubbles — WhatsApp styling */
+  /* Message bubbles - WhatsApp styling */
   .message-bubble-incoming {
     background: #ffffff;
     color: #111b21;
@@ -351,7 +351,7 @@
     scrollbar-color: #e5e7eb transparent;
   }
   
-  /* Global dark mode scrollbar — applies to ALL scrollable elements */
+  /* Global dark mode scrollbar - applies to ALL scrollable elements */
   .dark *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -650,9 +650,9 @@
   --secondary: #1A2A43;
   --secondary-foreground: #E0E0E0;
 
-  /* Accent - Neon Mint (Highlight) */
-  --accent: #2EE6A6;
-  --accent-foreground: #000724;
+  /* Accent - Light Blue (Highlight) */
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
 
   /* Neutral */
   --neutral: #1a2f6b;
@@ -705,8 +705,8 @@
   --sidebar-foreground: #E0E0E0;
   --sidebar-primary: #2B7CFF;
   --sidebar-primary-foreground: #000724;
-  --sidebar-accent: #2EE6A6;
-  --sidebar-accent-foreground: #000724;
+  --sidebar-accent: #2563eb;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1a2a43;
   --sidebar-ring: #2B7CFF;
 }

@@ -31,7 +31,7 @@ import CreatePersonalWaTemplateModal, {
 type TabType = 'email' | 'whatsapp' | 'linkedin' | 'instagram';
 type WaMode = 'business' | 'personal'; // business = WABA, personal = WAPA
 
-// WhatsApp Templates sub-tabs. Personal (WAPA) is TEMPORARILY HIDDEN — re-add the
+// WhatsApp Templates sub-tabs. Personal (WAPA) is TEMPORARILY HIDDEN - re-add the
 // commented entry below to restore it (the toggle auto-reappears with 2+ modes).
 const WA_MODES: { key: WaMode; label: string; hint: string }[] = [
   { key: 'business', label: 'Business (WABA)', hint: 'Meta-approved templates' },
@@ -489,7 +489,7 @@ export default function TemplatesPage() {
         {/* ── WhatsApp Tab (Business / Personal) ────────────────── */}
         {activeTab === 'whatsapp' && (
           <div>
-            {/* Business / Personal segmented toggle — hidden while only one mode is available */}
+            {/* Business / Personal segmented toggle - hidden while only one mode is available */}
             {WA_MODES.length > 1 && (
               <div className="inline-flex p-1 mb-6 bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-blue-950/40 rounded-xl">
                 {WA_MODES.map(m => (
@@ -582,7 +582,7 @@ export default function TemplatesPage() {
                   <EmptyState
                     icon={<MessageSquare className="w-8 h-8 text-[#0b1957]/40 dark:text-white" />}
                     title="No personal WhatsApp templates yet"
-                    subtitle="Save a reusable personal WhatsApp message — no Meta approval required"
+                    subtitle="Save a reusable personal WhatsApp message - no Meta approval required"
                     ctaLabel="New Personal Template"
                     onCta={() => { setWapaEditing(null); setWapaModalOpen(true); }}
                   />
@@ -673,7 +673,7 @@ export default function TemplatesPage() {
               <EmptyState
                 icon={<Instagram className="w-8 h-8 text-[#0b1957]/40 dark:text-white" />}
                 title="No Instagram templates yet"
-                subtitle="Save reusable Instagram DMs — no Meta approval required"
+                subtitle="Save reusable Instagram DMs - no Meta approval required"
                 ctaLabel="New Instagram Template"
                 onCta={() => { setIgEditing(null); setIgModalOpen(true); }}
               />

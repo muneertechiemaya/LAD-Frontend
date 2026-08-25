@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LinkedIn Context Panel — right-rail companion to the LinkedIn chat view.
+ * LinkedIn Context Panel - right-rail companion to the LinkedIn chat view.
  *
  * Mirrors the WhatsApp ConversationContextPanel but is scoped to what the
  * LinkedIn backend currently supports:
@@ -17,7 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Linkedin, ExternalLink, Tag, Plus, Trash2, Check, Loader2,
-  StickyNote, UserCheck, Sparkles, AlertCircle, ChevronLeft,
+  StickyNote, UserCheck, Sparkles, AlertCircle, ChevronLeft, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,6 +104,8 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
   const [labelLoading, setLabelLoading] = useState(false);
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
+  /** Set when a label edit was rejected, so the UI stops implying it applied. */
+  const [labelError, setLabelError] = useState<string | null>(null);
 
   const loadLabels = useCallback(async () => {
     try {
@@ -121,30 +123,51 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
 
   useEffect(() => { loadLabels(); }, [loadLabels]);
 
-  const addLabel = async (labelId: string) => {
+  // These three mutated LOCAL state whether or not the server accepted the
+  // change, and none checked `resp.ok` — which `fetch` never signals by
+  // throwing. So a failed label edit looked exactly like a successful one until
+  // the panel was reopened and the change had silently reverted.
+  const addLabel = async (labelId: string): Promise<boolean> => {
+    setLabelError(null);
     try {
-      await fetch(`${API_BASE}/conversations/${conversation.id}/labels`, {
+      const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/labels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label_id: labelId }),
       });
+      if (!resp.ok) {
+        setLabelError(`Couldn't apply that label (${resp.status}).`);
+        return false;
+      }
       const matched = allLabels.find(l => l.id === labelId);
       if (matched) setLabels(prev => [...prev, matched]);
-    } catch { /* non-fatal */ }
+      return true;
+    } catch {
+      setLabelError("Couldn't apply that label — check your connection.");
+      return false;
+    }
   };
 
   const removeLabel = async (labelId: string) => {
+    setLabelError(null);
     try {
-      await fetch(`${API_BASE}/conversations/${conversation.id}/labels/${labelId}`, {
+      const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/labels/${labelId}`, {
         method: 'DELETE',
       });
+      if (!resp.ok) {
+        setLabelError(`Couldn't remove that label (${resp.status}).`);
+        return;
+      }
       setLabels(prev => prev.filter(l => l.id !== labelId));
-    } catch { /* non-fatal */ }
+    } catch {
+      setLabelError("Couldn't remove that label — check your connection.");
+    }
   };
 
   const createLabel = async () => {
     const name = newLabelName.trim();
     if (!name) return;
+    setLabelError(null);
     try {
       const resp = await fetch(`${API_BASE}/labels`, {
         method: 'POST',
@@ -152,11 +175,18 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
         body: JSON.stringify({ name }),
       });
       const data = await resp.json().catch(() => ({}));
-      if (data?.success && data?.data) {
-        setAllLabels(prev => [...prev, data.data]);
-        addLabel(data.data.id);
+      if (!resp.ok || !data?.success || !data?.data) {
+        // Keep the typed name and the open input: clearing them on failure
+        // discarded what the user wrote and looked like the label was created.
+        setLabelError(data?.error || `Couldn't create that label (${resp.status}).`);
+        return;
       }
-    } catch { /* non-fatal */ }
+      setAllLabels(prev => [...prev, data.data]);
+      await addLabel(data.data.id);
+    } catch {
+      setLabelError("Couldn't create that label — check your connection.");
+      return;
+    }
     setNewLabelName('');
     setShowLabelInput(false);
   };
@@ -165,6 +195,8 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
   const [notes, setNotes] = useState<LinkedInNote[]>([]);
   const [noteText, setNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  /** Set when a save failed, so the note is kept in the box rather than dropped. */
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -180,6 +212,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
     const content = noteText.trim();
     if (!content) return;
     setSavingNote(true);
+    setNoteError(null);
     try {
       const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/notes`, {
         method: 'POST',
@@ -187,11 +220,20 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
         body: JSON.stringify({ content }),
       });
       const data = await resp.json().catch(() => ({}));
-      if (data?.success && data?.data) {
-        setNotes(prev => [data.data, ...prev]);
+      // `fetch` does not throw on 4xx/5xx, so a server error landed here rather
+      // than in the catch — and `setNoteText('')` used to run REGARDLESS of the
+      // outcome. The note was never saved, never added to the list, and the box
+      // emptied anyway, which reads as success. The user's typed note was gone
+      // with nothing to retype from. Only clear on a CONFIRMED save.
+      if (!resp.ok || !data?.success || !data?.data) {
+        setNoteError(data?.error || `Couldn't save the note (${resp.status}).`);
+        return;
       }
+      setNotes(prev => [data.data, ...prev]);
       setNoteText('');
-    } catch { /* non-fatal */ } finally { setSavingNote(false); }
+    } catch {
+      setNoteError("Couldn't save the note — check your connection.");
+    } finally { setSavingNote(false); }
   };
 
   // ── AI Chat Agent toggle (tenant-wide automation flag) ──────────────────
@@ -211,7 +253,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
     setAgentSaving(true);
     setAgentEnabled(next);   // optimistic
     try {
-      // Read CURRENT values then PUT — backend expects every field we want to
+      // Read CURRENT values then PUT - backend expects every field we want to
       // keep. If we omit a field here, the backend's clamp logic resets it
       // (e.g. ai_agent_reply_delay_seconds would silently flip back to 0
       // every time the user toggles the agent on/off from this panel).
@@ -264,6 +306,57 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
       })
       .catch(() => setFollowupPaused(false));
   }, [conversation.id, conversation.campaign_id, conversation.lead_id, followupSupported]);
+
+  // ── Per-lead post-monitoring toggle ─────────────────────────────────────
+  // Reads/writes campaign_leads.lead_data.post_monitoring_paused. The tenant-wide
+  // setting (Settings → Chat → LinkedIn → Monitor Prospect Posts) is the master
+  // switch; `pmTenantEnabled` reflects it so the row can say why it is inert.
+  const [pmPaused, setPmPaused] = useState<boolean | null>(null);
+  const [pmTenantEnabled, setPmTenantEnabled] = useState(false);
+  const [pmSaving, setPmSaving] = useState(false);
+
+  useEffect(() => {
+    if (!followupSupported) { setPmPaused(false); return; }
+    const q = new URLSearchParams({
+      campaign_id: String(conversation.campaign_id),
+      lead_id:     String(conversation.lead_id),
+    });
+    fetch(`${API_BASE}/conversations/${encodeURIComponent(conversation.id)}/post-monitoring?${q.toString()}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.success) {
+          setPmPaused(d.data?.paused === true);
+          setPmTenantEnabled(d.data?.tenantEnabled === true);
+        } else {
+          setPmPaused(false);
+        }
+      })
+      .catch(() => setPmPaused(false));
+  }, [conversation.id, conversation.campaign_id, conversation.lead_id, followupSupported]);
+
+  const togglePostMonitoring = async () => {
+    if (pmPaused === null || !followupSupported) return;
+    const next = !pmPaused;
+    setPmSaving(true);
+    setPmPaused(next); // optimistic
+    try {
+      const r = await fetch(`${API_BASE}/conversations/${encodeURIComponent(conversation.id)}/post-monitoring`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paused:      next,
+          campaign_id: conversation.campaign_id,
+          lead_id:     conversation.lead_id,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!d?.success) setPmPaused(!next); // revert on backend error
+    } catch {
+      setPmPaused(!next);
+    } finally {
+      setPmSaving(false);
+    }
+  };
 
   const toggleFollowupPause = async () => {
     if (followupPaused === null || !followupSupported) return;
@@ -413,6 +506,13 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             ))}
           </div>
 
+          {labelError && (
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
+              <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+              <span>{labelError}</span>
+            </p>
+          )}
+
           {showLabelInput && (
             <div className="mt-3 space-y-2">
               {/* Existing labels not yet assigned */}
@@ -531,7 +631,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                       ? 'Paused for this lead'
                       : followupPendingCount > 0
                         ? `${followupPendingCount} queued · sends via agent prompt`
-                        : 'On — sends via agent prompt'}
+                        : 'On - sends via agent prompt'}
                   </p>
                 </div>
               </div>
@@ -561,32 +661,89 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
           </div>
         )}
 
+          {/* Per-lead post-monitoring toggle */}
+        {followupSupported && (
+          <div className="px-4 py-4 border-b border-border dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Monitor Their Posts</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {!pmTenantEnabled
+                      ? 'Off tenant-wide - enable in Settings → Chat → LinkedIn'
+                      : pmPaused
+                        ? 'Paused for this lead'
+                        : 'On - engages new posts'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!pmPaused}
+                onClick={togglePostMonitoring}
+                disabled={pmPaused === null || pmSaving}
+                className={cn(
+                  'relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors',
+                  !pmPaused ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-700',
+                  pmSaving && 'opacity-60'
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 mt-0.5 ml-0.5 rounded-full bg-white transition-transform',
+                    !pmPaused && 'translate-x-4'
+                  )}
+                />
+              </button>
+            </div>
+            <p className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+              Pause to stop auto like/comment on this lead&apos;s new posts. Follow-ups and replies are unaffected.
+            </p>
+          </div>
+        )}
+
         {/* Tabs: Assignment | Notes | Internal */}
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-4 py-4">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="assignment" className="text-xs">
-              <UserCheck className="w-3 h-3 mr-1" />
-              Assignment
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-2 py-3">
+          <TabsList className="flex items-center justify-between w-full h-11 p-1 rounded-full bg-slate-100 dark:bg-[#162238] border border-slate-200/80 dark:border-slate-800/80 gap-1">
+            <TabsTrigger
+              value="assignment"
+              className="h-full rounded-full text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-[#24344d] dark:data-[state=active]:text-white transition-all border border-transparent px-3 py-1 flex items-center justify-center gap-1.5 flex-auto"
+            >
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Assignment</span>
             </TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs">
-              <StickyNote className="w-3 h-3 mr-1" />
-              Notes
+            <TabsTrigger
+              value="notes"
+              className="h-full rounded-full text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-[#24344d] dark:data-[state=active]:text-white transition-all border border-transparent px-3 py-1 flex items-center justify-center gap-1.5 flex-auto"
+            >
+              <Tag className="w-3.5 h-3.5 shrink-0" />
+              <span>Notes</span>
             </TabsTrigger>
-            <TabsTrigger value="internal" className="text-xs">
-              Internal
+            <TabsTrigger
+              value="internal"
+              className="h-full rounded-full text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-[#24344d] dark:data-[state=active]:text-white transition-all border border-transparent px-3 py-1 flex items-center justify-center gap-1.5 flex-auto"
+            >
+              <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+              <span>Internal</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Assignment */}
           <TabsContent value="assignment" className="pt-3">
-            <div className="rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-500/10 px-3 py-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-[11px] text-amber-800 dark:text-amber-200">
-                  <p className="font-semibold mb-0.5">Assignment for LinkedIn — coming soon</p>
-                  <p className="text-amber-700 dark:text-amber-300/80">
+            <div className="rounded-xl border border-amber-500/20 dark:border-amber-500/20 bg-amber-500/[0.06] dark:bg-amber-500/10 p-3.5 backdrop-blur-sm transition-colors">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-500/90 dark:text-amber-400/90 flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                    Assignment for LinkedIn - coming soon
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-400">
                     Per-conversation assignment for LinkedIn requires the
-                    <code className="mx-1 px-1 rounded bg-amber-100 dark:bg-amber-900/50">/api/threads/…?channel=linkedin</code>
+                    <code className="mx-1 px-1.5 py-0.5 rounded bg-amber-300/[0.08] dark:bg-amber-950/[0.12] text-amber-800/80 dark:text-amber-300/80 font-mono text-[10px]">
+                      /api/threads/…?channel=linkedin
+                    </code>
                     endpoint. Available now for WhatsApp; LinkedIn parity is queued.
                   </p>
                 </div>
@@ -604,6 +761,12 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                 rows={3}
                 className="text-xs resize-none"
               />
+              {noteError && (
+                <p className="flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
+                  <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                  <span>{noteError} Your note is still here — try again.</span>
+                </p>
+              )}
               <div className="flex justify-end">
                 <Button
                   size="sm"
@@ -632,7 +795,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             </div>
           </TabsContent>
 
-          {/* Internal comments — placeholder */}
+          {/* Internal comments - placeholder */}
           <TabsContent value="internal" className="pt-3">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center py-3">
               Internal comments coming soon.

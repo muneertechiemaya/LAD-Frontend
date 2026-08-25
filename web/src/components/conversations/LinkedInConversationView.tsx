@@ -13,18 +13,23 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone, Sparkles, Paperclip, UserPlus, PanelRightOpen, PanelRightClose, AlertCircle, Plus, ChevronRight } from 'lucide-react';
 import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { MessageFeedback } from './MessageFeedback';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
@@ -37,6 +42,25 @@ import { isSameDay } from 'date-fns';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ConnectionStatus = 'pending' | 'accepted' | 'active';
+
+interface LinkedInTemplate {
+  id: string;
+  name: string;
+  content: string | null;
+  category?: string | null;
+  metadata?: {
+    media_url?: string | null;
+    media_type?: string | null;
+    media_filename?: string | null;
+  } | null;
+}
+
+export interface InsertTemplatePayload {
+  text: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  mediaFilename?: string | null;
+}
 
 interface LinkedInContact {
   id: string;
@@ -140,14 +164,14 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     icon:       <Clock className="w-3 h-3" />,
     dotClass:   'bg-slate-300 dark:bg-slate-500',
     badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800/80 dark:text-slate-300',
-    bannerText: 'Connection request sent — chat will be available once they accept.',
+    bannerText: 'Connection request sent - chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
     icon:       <CheckCircle className="w-3 h-3" />,
     dotClass:   'bg-amber-400',
     badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-500',
-    // Empty — chat is now unlocked immediately on acceptance. Sending any
+    // Empty - chat is now unlocked immediately on acceptance. Sending any
     // message records CONTACTED on the backend, which cancels the workflow
     // scheduler's automated follow-up so there's no duplicate. The
     // FollowupComposer above the chat still offers AI/template shortcuts.
@@ -181,7 +205,7 @@ function toProxiedAvatarUrl(raw?: string | null): string | null {
   try {
     const u = new URL(raw);
     // LinkedIn CDN, Unipile, and any non-public host that needs server-side
-    // fetch — proxy through Next.js. Allowlist enforced server-side.
+    // fetch - proxy through Next.js. Allowlist enforced server-side.
     if (
       /\.licdn\.com$/.test(u.hostname) ||
       u.hostname === 'static.licdn.com' ||
@@ -191,7 +215,7 @@ function toProxiedAvatarUrl(raw?: string | null): string | null {
     ) {
       return `/api/proxy-image?url=${encodeURIComponent(raw)}`;
     }
-    // Other public CDNs (e.g. Gravatar) — load directly
+    // Other public CDNs (e.g. Gravatar) - load directly
     return raw;
   } catch {
     return null;
@@ -357,7 +381,7 @@ function ConvListItem({
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: LinkedInMessage }) {
+function MessageBubble({ msg, conversationId }: { msg: LinkedInMessage; conversationId?: string }) {
   const isOut = msg.is_sender || msg.role === 'assistant';
 
   // Label virtual messages differently
@@ -387,6 +411,17 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
           {formatBubbleTime(msg.created_at)}
         </p>
       </div>
+      {/* Only the agent's own replies are rateable — correcting the lead teaches
+          nothing, and virtual rows are campaign-analytics echoes rather than real
+          stored messages the agent could learn from. */}
+      {msg.role === 'assistant' && !msg.is_virtual && conversationId && (
+        <MessageFeedback
+          channel="linkedin"
+          conversationId={conversationId}
+          messageId={String(msg.id)}
+          content={msg.content || ''}
+        />
+      )}
     </div>
   );
 }
@@ -431,10 +466,10 @@ export function LinkedInConversationView({
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
   const [broadcastOpen, setBroadcastOpen] = useState(false);
-  // Sidebar status filter — null shows everything, otherwise narrows to that status.
+  // Sidebar status filter - null shows everything, otherwise narrows to that status.
   // Toggled by the chips at the top of the conversation list.
   const [statusFilter, setStatusFilter]   = useState<ConnectionStatus | null>(null);
-  // Right-side Contact Details panel — open by default on wide desktops.
+  // Right-side Contact Details panel - open by default on wide desktops.
   const [contextPanelOpen, setContextPanelOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth >= 1280;
@@ -453,6 +488,88 @@ export function LinkedInConversationView({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // ── AI Chat Agent toggle ────────────────────────────────────────────────
+  const [agentEnabled, setAgentEnabled] = useState<boolean | null>(null);
+  const [agentSaving, setAgentSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/social-integration/linkedin/automation-settings')
+      .then(r => r.json())
+      .then(d => setAgentEnabled(d?.success ? !!d.data?.ai_agent_enabled : false))
+      .catch(() => setAgentEnabled(false));
+  }, []);
+
+  const toggleAgent = async () => {
+    if (agentEnabled === null) return;
+    const next = !agentEnabled;
+    setAgentSaving(true);
+    setAgentEnabled(next);
+    try {
+      const cur = await fetch('/api/social-integration/linkedin/automation-settings').then(r => r.json()).catch(() => ({}));
+      const data = cur?.data || {};
+      await fetch('/api/social-integration/linkedin/automation-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          auto_like_posts:    !!data.auto_like_posts,
+          auto_comment_posts: !!data.auto_comment_posts,
+          ai_agent_enabled:   next,
+        }),
+      });
+    } catch {
+      setAgentEnabled(!next);
+    } finally {
+      setAgentSaving(false);
+    }
+  };
+
+  // ── Templates ───────────────────────────────────────────────────────────
+  const [templates, setTemplates] = useState<LinkedInTemplate[]>([]);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [tplLoaded, setTplLoaded] = useState(false);
+  const [tplSearchQuery, setTplSearchQuery] = useState('');
+
+  const loadTemplates = useCallback(async () => {
+    if (tplLoaded) return;
+    setTplLoading(true);
+    try {
+      const resp = await fetch('/api/campaigns/linkedin-message-templates');
+      const data = await resp.json().catch(() => ({}));
+      const list = data?.data || data?.templates || [];
+      setTemplates(Array.isArray(list) ? list : []);
+    } catch { /* non-fatal */ } finally {
+      setTplLoaded(true);
+      setTplLoading(false);
+    }
+  }, [tplLoaded]);
+
+  const filteredTemplates = useMemo(() => {
+    return templates.filter(t => {
+      if (!tplSearchQuery.trim()) return true;
+      const q = tplSearchQuery.toLowerCase().trim();
+      const nameMatch = t.name?.toLowerCase().includes(q);
+      const contentMatch = t.content?.toLowerCase().includes(q);
+      const mediaMatch = t.metadata?.media_filename?.toLowerCase().includes(q);
+      const categoryMatch = t.category?.toLowerCase().includes(q);
+      return nameMatch || contentMatch || mediaMatch || categoryMatch;
+    });
+  }, [templates, tplSearchQuery]);
+
+  // ── Attach media ─────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachInfo, setAttachInfo] = useState<string | null>(null);
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachInfo(`Selected "${file.name}" - media upload to LinkedIn DMs is queued for the next backend release.`);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setTimeout(() => setAttachInfo(null), 6000);
+  };
   // Group messages by date and interleave DateSeparator items
   const messagesWithDateSeparators = useMemo(() => {
     const items: Array<
@@ -483,6 +600,20 @@ export function LinkedInConversationView({
     return items;
   }, [messages]);
 
+  const [isSmallMobile, setIsSmallMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 640;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobileView = propIsMobile ?? isSmallMobile;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   // ── Load conversations ─────────────────────────────────────────────────────
@@ -614,7 +745,7 @@ export function LinkedInConversationView({
       // cancels the workflow scheduler's automated follow-up so the lead
       // never gets a duplicate auto-message after the user has already
       // engaged in chat manually. Media (from a template) rides along as
-      // media_url/type/filename — the backend re-downloads the bytes and
+      // media_url/type/filename - the backend re-downloads the bytes and
       // sends a real LinkedIn attachment.
       const res  = await fetchWithTenant(li(`${API_BASE}/conversations/${selectedId}/messages`), {
         method: 'POST',
@@ -640,7 +771,7 @@ export function LinkedInConversationView({
           )
         );
       } else {
-        // Non-success response — drop the optimistic bubble and restore the draft.
+        // Non-success response - drop the optimistic bubble and restore the draft.
         setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
         setMessageText(text);
         if (media) setPendingMedia(media);
@@ -737,7 +868,7 @@ export function LinkedInConversationView({
 
         {broadcastOpen && <LinkedInBroadcastModal onClose={() => setBroadcastOpen(false)} />}
 
-        {/* Status summary pills — clickable: tap to filter the list to that status,
+        {/* Status summary pills - clickable: tap to filter the list to that status,
             tap the same chip again (or "All") to clear the filter. */}
         {conversations.length > 0 && (
           <div className="flex gap-1.5 px-3 py-2 border-b border-border dark:border-slate-800 overflow-x-auto">
@@ -930,6 +1061,18 @@ export function LinkedInConversationView({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
+                    onClick={() => setContextPanelOpen(o => !o)}
+                    className="cursor-pointer"
+                  >
+                    {contextPanelOpen ? (
+                      <PanelRightClose className="h-4 w-4 mr-2" />
+                    ) : (
+                      <PanelRightOpen className="h-4 w-4 mr-2" />
+                    )}
+                    {contextPanelOpen ? 'Hide contact details' : 'Show contact details'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
                     onClick={() => setDeleteTarget(selectedConv)}
                     className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
                   >
@@ -943,7 +1086,7 @@ export function LinkedInConversationView({
             {/* Disabled banner (shown for pending/accepted) */}
             {!chatEnabled && <ChatDisabledBanner conv={selectedConv} />}
 
-            {/* Manual follow-up composer — only when the connection is accepted
+            {/* Manual follow-up composer - only when the connection is accepted
                 and the conversation maps to a real campaign lead. Lets the user
                 send the follow-up themselves (AI or template) instead of waiting
                 for the automated cycle. Once sent, the chat unlocks. */}
@@ -988,7 +1131,7 @@ export function LinkedInConversationView({
                       </p>
                     </>
                   ) : (
-                    <p>No messages yet — start the conversation!</p>
+                    <p>No messages yet - start the conversation!</p>
                   )}
                 </div>
               ) : (
@@ -996,113 +1139,300 @@ export function LinkedInConversationView({
                   item.type === 'date' ? (
                     <DateSeparator key={item.key} date={item.date} variant="linkedin" />
                   ) : (
-                    <MessageBubble key={item.key} msg={item.msg} />
+                    <MessageBubble key={item.key} msg={item.msg} conversationId={selectedConv?.id} />
                   )
                 )
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Chat toolbar — AI toggle, attach, templates, assign, context-panel toggle */}
-            <LinkedInChatToolbar
-              contextPanelOpen={contextPanelOpen}
-              onToggleContextPanel={() => setContextPanelOpen(o => !o)}
-              onInsertTemplate={(payload: InsertTemplatePayload) => {
-                // Substitute {{first_name}} / {{company}} / {{title}} with the
-                // open lead's data so the composer shows the FINAL text (the
-                // literal-placeholder bug). Unresolved vars stay for the backend
-                // backstop. Coerce to string so the input value is never
-                // undefined (would crash the next `messageText.trim()` render).
-                const resolved = substituteLeadVars(payload.text ?? '', selectedConv?.contact);
-                if (resolved) {
-                  setMessageText(prev => prev ? `${prev}\n${resolved}` : resolved);
-                }
-                // Stage the template's attachment as a removable composer chip.
-                if (payload.mediaUrl) {
-                  setPendingMedia({
-                    url: payload.mediaUrl,
-                    type: payload.mediaType ?? null,
-                    filename: payload.mediaFilename ?? null,
-                  });
-                }
-              }}
-              chatEnabled={chatEnabled}
-            />
-
             {/* Message input */}
-            <div className={cn(
-              'px-4 py-3 border-t border-border dark:border-slate-800 bg-card dark:bg-[#101C36]',
-              !chatEnabled && 'opacity-60',
-            )}>
-              {!chatEnabled && (
-                <div className="flex items-center gap-1.5 mb-2 text-xs text-slate-400">
-                  <Lock className="w-3 h-3" />
-                  <span>
-                    {selectedConv.connection_status === 'pending'
-                      ? 'Chat unlocks after connection is accepted and follow-up is sent'
-                      : 'Chat unlocks after the automated follow-up is sent'}
-                  </span>
-                </div>
-              )}
-              {/* Staged attachment from a template — removable before send */}
-              {pendingMedia && (
-                <div className="mb-2 inline-flex items-center gap-2 max-w-full rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5">
-                  <MediaChipIcon type={pendingMedia.type} url={pendingMedia.url} filename={pendingMedia.filename} />
-                  <span className="text-xs text-slate-700 truncate max-w-[220px]">
-                    {pendingMedia.filename || 'Attachment'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPendingMedia(null)}
-                    className="flex-shrink-0 text-slate-400 hover:text-slate-700"
-                    title="Remove attachment"
-                    aria-label="Remove attachment"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-              <div className="flex items-end gap-2">
-                <textarea
-                  className={cn(
-                    'flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm leading-snug placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 min-h-[40px] max-h-[120px]',
-                    !chatEnabled && 'cursor-not-allowed',
-                  )}
-                  placeholder={
-                    chatEnabled
-                      ? 'Type a message… (Enter to send, Shift+Enter for newline)'
-                      : 'Chat unavailable — waiting for connection acceptance'
-                  }
-                  rows={1}
-                  value={messageText}
-                  onChange={e => { if (chatEnabled) setMessageText(e.target.value); }}
-                  onKeyDown={chatEnabled ? handleKeyDown : undefined}
-                  disabled={!chatEnabled || sending}
-                  readOnly={!chatEnabled}
+            <TooltipProvider>
+              <div className={cn(
+                'px-4 py-3 border-t border-border dark:border-slate-800 bg-card dark:bg-[#101C36]',
+                !chatEnabled && 'opacity-60',
+              )}>
+                {/* Hidden file input for Attach media */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*,application/pdf"
+                  onChange={handleFileChosen}
                 />
-                <Button
-                  className={cn(
-                    'flex-shrink-0 h-10 w-10 p-0 rounded-xl',
-                    chatEnabled
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed',
-                  )}
-                  onClick={chatEnabled ? handleSend : undefined}
-                  disabled={!chatEnabled || (!messageText.trim() && !pendingMedia) || sending}
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
+
+                {!chatEnabled && (
+                  <div className="flex items-center gap-1.5 mb-2 text-xs text-slate-400">
+                    <Lock className="w-3 h-3" />
+                    <span>
+                      {selectedConv.connection_status === 'pending'
+                        ? 'Chat unlocks after connection is accepted and follow-up is sent'
+                        : 'Chat unlocks after the automated follow-up is sent'}
+                    </span>
+                  </div>
+                )}
+                {/* Staged attachment from a template - removable before send */}
+                {pendingMedia && (
+                  <div className="mb-2 inline-flex items-center gap-2 max-w-full rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 dark:bg-blue-950/40 dark:border-blue-800">
+                    <MediaChipIcon type={pendingMedia.type} url={pendingMedia.url} filename={pendingMedia.filename} />
+                    <span className="text-xs text-slate-700 dark:text-slate-200 truncate max-w-[220px]">
+                      {pendingMedia.filename || 'Attachment'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPendingMedia(null)}
+                      className="flex-shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                      title="Remove attachment"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-end gap-2">
+                  {/* Plus button dropdown menu (Attach, Templates, Assign) */}
+                  <DropdownMenu onOpenChange={(open) => {
+                    if (open) {
+                      loadTemplates();
+                      setTplSearchQuery('');
+                    }
+                  }}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="flex-shrink-0 h-10 w-10 p-0 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-800"
+                            disabled={!chatEnabled}
+                          >
+                            <Plus className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Actions (Attach, Templates, Assign)</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="start" side="top" className="w-56 p-1.5 bg-white dark:bg-[#091122] border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl text-slate-900 dark:text-slate-100">
+                      {/* Attach Media */}
+                      <DropdownMenuItem
+                        onClick={handleAttachClick}
+                        disabled={!chatEnabled}
+                        className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg cursor-pointer font-medium"
+                      >
+                        <Paperclip className="w-4 h-4 text-slate-500" />
+                        <span>Attach media (image / PDF)</span>
+                      </DropdownMenuItem>
+
+                      {/* Templates Submenu */}
+                      <DropdownMenuSub onOpenChange={(open) => {
+                        if (open) {
+                          loadTemplates();
+                          setTplSearchQuery('');
+                        }
+                      }}>
+                        <DropdownMenuSubTrigger
+                          disabled={!chatEnabled}
+                          className="flex items-center justify-between gap-2 px-2.5 py-2 text-xs rounded-lg cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <FileText className="w-4 h-4 text-slate-500" />
+                            <span>Templates</span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                        </DropdownMenuSubTrigger>
+
+                        <DropdownMenuSubContent className="w-72 p-2 bg-white dark:bg-[#091122] border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl text-slate-900 dark:text-slate-100">
+                          {/* Header */}
+                          <div className="px-2 py-1 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 font-semibold text-xs text-slate-800 dark:text-slate-100">
+                              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>LinkedIn templates</span>
+                            </div>
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60">
+                              {templates.length}
+                            </span>
+                          </div>
+
+                          {/* Search Bar */}
+                          <div className="relative my-1 px-0.5" onClick={(e) => e.stopPropagation()}>
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                            <input
+                              type="text"
+                              placeholder="Search templates..."
+                              value={tplSearchQuery}
+                              onChange={(e) => setTplSearchQuery(e.target.value)}
+                              onKeyDown={(e) => {
+                                e.stopPropagation();
+                                if (e.key === 'Escape') e.currentTarget.blur();
+                              }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              className="w-full pl-8 pr-7 py-1 text-xs rounded-lg bg-slate-50 dark:bg-[#0D1527] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            {tplSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTplSearchQuery('');
+                                }}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Template List */}
+                          <div className="max-h-[200px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 mt-1">
+                            {tplLoading && (
+                              <div className="flex items-center justify-center py-4 text-xs text-slate-500">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Loading…
+                              </div>
+                            )}
+                            {!tplLoading && templates.length === 0 && (
+                              <div className="py-4 text-center text-xs text-slate-500">
+                                No templates configured
+                              </div>
+                            )}
+                            {!tplLoading && templates.length > 0 && filteredTemplates.length === 0 && (
+                              <div className="py-4 text-center text-xs text-slate-500">
+                                No templates match your search
+                              </div>
+                            )}
+                            {filteredTemplates.map(t => {
+                              const media = t.metadata || {};
+                              const hasMedia = !!media.media_url;
+                              return (
+                                <DropdownMenuItem
+                                  key={t.id}
+                                  className="flex items-center justify-between gap-2 px-2 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-md outline-none"
+                                  onClick={() => {
+                                    const resolved = substituteLeadVars(t.content || '', selectedConv?.contact);
+                                    if (resolved) {
+                                      setMessageText(prev => prev ? `${prev}\n${resolved}` : resolved);
+                                    }
+                                    if (media.media_url) {
+                                      setPendingMedia({
+                                        url: media.media_url,
+                                        type: media.media_type ?? null,
+                                        filename: media.media_filename ?? null,
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-slate-800 dark:text-slate-100 truncate text-[11px]">
+                                      {t.name}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                      {t.content || (hasMedia ? (media.media_filename || 'Attachment') : '')}
+                                    </div>
+                                  </div>
+                                  {hasMedia && <Paperclip className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </div>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      {/* Assign to team member */}
+                      <DropdownMenuItem
+                        onClick={() => alert('Assignment for LinkedIn is queued for the next backend release.')}
+                        disabled={!chatEnabled}
+                        className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg cursor-pointer font-medium"
+                      >
+                        <UserPlus className="w-4 h-4 text-slate-500" />
+                        <span>Assign to team member</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Textarea */}
+                  <textarea
+                    className={cn(
+                      'flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm leading-snug placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 min-h-[40px] max-h-[120px]',
+                      !chatEnabled && 'cursor-not-allowed',
+                    )}
+                    placeholder={
+                      chatEnabled
+                        ? (isMobileView ? 'Type a message…' : 'Type a message… (Enter to send, Shift+Enter for newline)')
+                        : (isMobileView ? 'Chat unavailable' : 'Chat unavailable - waiting for connection acceptance')
+                    }
+                    rows={1}
+                    value={messageText}
+                    onChange={e => { if (chatEnabled) setMessageText(e.target.value); }}
+                    onKeyDown={chatEnabled ? handleKeyDown : undefined}
+                    disabled={!chatEnabled || sending}
+                    readOnly={!chatEnabled}
+                  />
+
+                  {/* AI Agent toggle button */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={toggleAgent}
+                        disabled={agentEnabled === null || agentSaving || !chatEnabled}
+                        className={cn(
+                          'flex-shrink-0 h-10 inline-flex items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition-colors shadow-2xs border',
+                          isMobileView ? 'w-10 p-0' : 'px-3',
+                          agentEnabled
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700',
+                          (agentSaving || !chatEnabled) && 'opacity-60 cursor-not-allowed'
+                        )}
+                      >
+                        {agentSaving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                        {!isMobileView && (
+                          <span>AI {agentEnabled ? 'on' : 'off'}</span>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {agentEnabled
+                        ? 'AI auto-replies are ON - click to turn off'
+                        : 'AI auto-replies are OFF - click to turn on'}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Send button */}
+                  <Button
+                    className={cn(
+                      'flex-shrink-0 h-10 w-10 p-0 rounded-xl',
+                      chatEnabled
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed',
+                    )}
+                    onClick={chatEnabled ? handleSend : undefined}
+                    disabled={!chatEnabled || (!messageText.trim() && !pendingMedia) || sending}
+                  >
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Inline status info (e.g. attach feedback) */}
+                {attachInfo && (
+                  <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800/40">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{attachInfo}</span>
+                  </div>
+                )}
               </div>
-            </div>
+            </TooltipProvider>
           </>
         )}
         </div>
 
-        {/* Right-side Contact Details panel — only when a conversation is open */}
+        {/* Right-side Contact Details panel - only when a conversation is open */}
         {selectedConv && contextPanelOpen && (
           <LinkedInContextPanel
             conversation={{
