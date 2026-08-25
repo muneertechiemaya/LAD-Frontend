@@ -88,6 +88,12 @@ export const TeamManagement: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCapabilitiesDropdown, setShowCapabilitiesDropdown] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Private workspaces. One tenant_features flag, read by the backend and by the
+  // conversation service; this is just a second door onto it for the people who
+  // actually run the workspace.
+  const [privacy, setPrivacy] = useState<{ enabled: boolean; canEdit: boolean } | null>(null);
+  const [privacySaving, setPrivacySaving] = useState(false);
+  const [privacyNote, setPrivacyNote] = useState<string>('');
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -100,7 +106,48 @@ export const TeamManagement: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    void fetchPrivacy();
   }, []);
+
+  const fetchPrivacy = async () => {
+    try {
+      const token = safeStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${getApiBaseUrl()}/api/users/team-privacy`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data?.success) setPrivacy({ enabled: !!data.enabled, canEdit: !!data.canEdit });
+    } catch {
+      // Leave it null — the card simply does not render rather than showing a
+      // switch whose position we cannot vouch for. A toggle that displays "off"
+      // when we failed to read it is a lie about who can see what.
+    }
+  };
+
+  const setPrivacyEnabled = async (enabled: boolean) => {
+    setPrivacySaving(true);
+    setPrivacyNote('');
+    const previous = privacy;
+    setPrivacy((p) => (p ? { ...p, enabled } : p));   // optimistic
+    try {
+      const token = safeStorage.getItem('token');
+      const res = await fetch(`${getApiBaseUrl()}/api/users/team-privacy`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Could not save');
+      setPrivacy((p) => (p ? { ...p, enabled: !!data.enabled } : p));
+      setPrivacyNote(data.note || '');
+    } catch (err) {
+      setPrivacy(previous);   // put the switch back where it was
+      setError(err instanceof Error ? err.message : 'Could not change this setting');
+    } finally {
+      setPrivacySaving(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -295,6 +342,57 @@ export const TeamManagement: React.FC = () => {
           Add Team Member
         </Button>
       </div>
+
+      {/* Private workspaces */}
+      {privacy && (
+        <div className="mx-6 sm:mx-8 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6">
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100">Private workspaces</h3>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Each team member sees only their own campaigns, their own connected
+                WhatsApp and LinkedIn accounts, and their own conversations. Company
+                details and credits stay shared across the workspace. Owners and
+                admins continue to see everything.
+              </p>
+              {privacy.enabled && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 leading-relaxed">
+                  A member with no connected account of their own will see an empty
+                  inbox until they connect one.
+                </p>
+              )}
+              {privacyNote && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{privacyNote}</p>
+              )}
+              {!privacy.canEdit && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  Only a workspace owner or admin can change this.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={privacy.enabled}
+              aria-label="Private workspaces"
+              disabled={!privacy.canEdit || privacySaving}
+              onClick={() => setPrivacyEnabled(!privacy.enabled)}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                privacy.enabled ? 'bg-[#0B1957] dark:bg-blue-600' : 'bg-gray-300 dark:bg-zinc-700',
+                (!privacy.canEdit || privacySaving) && 'opacity-50 cursor-not-allowed',
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  privacy.enabled ? 'translate-x-6' : 'translate-x-1',
+                )}
+              />
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30 rounded-2xl p-6 flex items-center gap-4">
