@@ -39,8 +39,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     if (!data.length) return 'No data available';
     return `From ${data[0].date} to ${data[data.length - 1].date}`;
   }, [data]);
-
-  const isDark = document.documentElement.classList.contains("dark");
   return (
     <WidgetWrapper
       id={id}
@@ -67,21 +65,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         </div>
       }
     >
-      <style>
-        <style>{`
-  :root {
-    --tooltip-bg: #ffffff;
-    --tooltip-border: #e5e7eb;
-    --tooltip-text: #111827;
-  }
-
-  .dark {
-    --tooltip-bg: #24364F;
-    --tooltip-border: #3B4B63;
-    --tooltip-text: #ffffff;
-  }
-`}</style>
-      </style>
       <div className="h-full flex flex-col border rounded-lg p-4 bg-card">
         <p className="text-xs text-muted-foreground mb-4">{chartRangeLabel}</p>
         <div className="flex-1 min-h-[200px]">
@@ -113,12 +96,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "var(--tooltip-bg)",
-                  border: "1px solid var(--tooltip-border)",
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 }}
-                labelStyle={{ color: "var(--tooltip-text)" }}
+                labelStyle={{ color: '#111827' }}
               />
               <Area
                 type="monotone"

@@ -94,7 +94,7 @@ export const WidgetLibrary: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium text-sm">{widget.title}</h4>
                         {isActive && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 text-black">
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                             Added
                           </Badge>
                         )}

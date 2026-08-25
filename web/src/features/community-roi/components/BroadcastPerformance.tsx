@@ -60,21 +60,22 @@ export type BroadcastPerformanceProps = {
 // blends in with neighbouring cards / badges. Color meaning is immutable:
 // Read=emerald, Delivered=amber, Pending=slate, Failed=rose.
 const C = {
-  // Neutrals — now dynamic!
-  ink:      'var(--lad-ink, #0f172a)',
-  ink2:     'var(--lad-ink2, #334155)',
-  muted:    'var(--lad-muted, #64748b)',
-  hair:     'var(--lad-hair, #e2e8f0)',
-  hair2:    'var(--lad-hair2, #2b7cff)',
-  surface:  'var(--lad-surface, #ffffff)',
-  surface2: 'var(--lad-surface2, #f8fafc)',
+  // Neutrals (slate)
+  ink:       '#0f172a',   // slate-900   — primary text
+  ink2:      '#334155',   // slate-700   — secondary text
+  muted:     '#64748b',   // slate-500   — captions, headers
+  hair:      '#e2e8f0',   // slate-200   — borders, bar track
+  surface:   '#ffffff',
+  surface2:  '#f8fafc',   // slate-50    — header / subtle hover
 
-  // Semantic Colors
-  read:        '#059669', readSoft:      'var(--lad-read-soft, #d1fae5)',
-  delivered:   '#d97706', deliveredSoft: 'var(--lad-delivered-soft, #fef3c7)',
-  pending:     '#94a3b8', pendingSoft:   'var(--lad-pending-soft, #e2e8f0)',
-  failed:      '#e11d48', failedSoft:    'var(--lad-failed-soft, #ffe4e6)',
-  okay:        '#b45309', okaySoft:      'var(--lad-okay-soft, #fef3c7)',
+  // Semantic (matches existing badges across the app)
+  read:        '#059669', readSoft:      '#d1fae5',  // emerald-600 / emerald-100
+  delivered:   '#d97706', deliveredSoft: '#fef3c7',  // amber-600   / amber-100
+  pending:     '#94a3b8', pendingSoft:   '#e2e8f0',  // slate-400   / slate-200
+  failed:      '#e11d48', failedSoft:    '#ffe4e6',  // rose-600    / rose-100
+  // "Okay" band (25–35%): a warmer amber that still reads as caution, not a
+  // celebratory green and not an alarming red.
+  okay:        '#b45309', okaySoft:      '#fef3c7',  // amber-700   / amber-100
 } as const;
 
 const FONT_UI   = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -117,8 +118,6 @@ const SCOPED_CSS = `
   padding: 12px 16px;
   white-space: nowrap;
   border-bottom: 1px solid ${C.hair};
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 /* Extra bottom padding leaves room for the absolutely-positioned subtitle
    under the template dropdown without affecting the row's centerline — that
@@ -141,30 +140,29 @@ const SCOPED_CSS = `
 /* Template-cell dropdown — pill-shaped with prefix label, matches app's
    "Next 2 weeks ▾" filter buttons elsewhere in the product. */
 .lad-bp-select-pill {
-  --pill-bg: ${C.surface};
   position: relative;
   display: inline-flex;
   align-items: center;
   width: 100%;
   max-width: 100%;
   padding: 8px 36px 8px 14px;
-  border: 1px solid ${C.hair};
+  border: 1px solid ${C.ink};
   border-radius: 14px;
-  background: var(--pill-bg);
+  background: ${C.surface};
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
   cursor: pointer;
   transition: border-color 150ms, box-shadow 150ms, background 150ms;
   min-width: 0;
 }
-.lad-bp-select-pill:hover { --pill-bg: ${C.surface2}; }
+.lad-bp-select-pill:hover { background: ${C.surface2}; }
 .lad-bp-select-pill:focus-within {
-  border-color: ${C.hair2};
+  border-color: ${C.ink};
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
-  background: var(--pill-bg);
 }
 .lad-bp-select-pill > select {
   appearance: none; -webkit-appearance: none; -moz-appearance: none;
   border: 0; outline: 0; padding: 0;
+  background: transparent;
   font-family: ${FONT_MONO};
   font-variant-numeric: tabular-nums;
   font-size: 14px;
@@ -173,12 +171,6 @@ const SCOPED_CSS = `
   cursor: pointer;
   width: 100%;
   text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
-  background-color: var(--pill-bg);
-  color: ${C.ink};
-}
-.lad-bp-select-pill > select option {
-  background-color: ${C.surface};
-  color: ${C.ink};
 }
 .lad-bp-select-pill > .chev {
   position: absolute;
@@ -186,7 +178,6 @@ const SCOPED_CSS = `
   display: flex; align-items: center;
   color: ${C.muted};
   pointer-events: none;
-  background: transparent;
 }
 
 /* Subtitle: floats below the dropdown without contributing to the row's
@@ -229,7 +220,7 @@ const SCOPED_CSS = `
   .lad-bp-table th.lad-bp-col-index,
   .lad-bp-table td.lad-bp-col-index { display: none; }
 }
-@media (max-width: 830px) {
+@media (max-width: 720px) {
   .lad-bp-table th.lad-bp-col-bar,
   .lad-bp-table td.lad-bp-col-bar { display: none; }
 }
@@ -243,40 +234,6 @@ const SCOPED_CSS = `
   color: ${C.muted}; font-size: 13px; font-weight: 500;
   font-family: ${FONT_UI};
   background: ${C.surface}; border: 1px solid ${C.hair}; border-radius: 16px;
-}
-
-.lad-bp-wrap {
-  --lad-ink: #0f172a;
-  --lad-ink2: #334155;
-  --lad-muted: #64748b;
-  --lad-hair: #e2e8f0;
-  --lad-surface: #ffffff;
-  --lad-surface2: #f8fafc;
-  
-  --lad-read-soft: #d1fae5;
-  --lad-delivered-soft: #fef3c7;
-  --lad-pending-soft: #e2e8f0;
-  --lad-failed-soft: #ffe4e6;
-  --lad-okay-soft: #fef3c7;
-}
-
-/* Dark Mode Overrides (matches parent background #1A2A43 / #0d1625) */
-:root.dark .lad-bp-wrap,
-.dark .lad-bp-wrap {
-  --lad-ink: #f8fafc;        /* slate-50 — bright white/slate text */
-  --lad-ink2: #cbd5e1;       /* slate-300 — readable secondary text */
-  --lad-muted: #94a3b8;      /* slate-400 — muted text & icons */
-  --lad-hair: rgba(43, 124, 255, 0.2); /* Matches parent border #2B7CFF/20 */
-  --lad-hair2: #2b7cff;
-  --lad-surface: #132035;    /* Matches container dark background mid-tone */
-  --lad-surface2: #1e2f4a;   /* Header & dropdown hover state */
-
-  /* Soft badge backgrounds with reduced opacity for dark mode */
-  --lad-read-soft: rgba(5, 150, 105, 0.2);
-  --lad-delivered-soft: rgba(217, 119, 6, 0.2);
-  --lad-pending-soft: rgba(148, 163, 184, 0.2);
-  --lad-failed-soft: rgba(225, 29, 72, 0.2);
-  --lad-okay-soft: rgba(180, 83, 9, 0.2);
 }
 `;
 
