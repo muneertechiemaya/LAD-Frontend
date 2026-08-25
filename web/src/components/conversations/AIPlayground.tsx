@@ -321,6 +321,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
   const [selectedPromptId, setSelectedPromptId]   = useState<string>("");
   const [knowledgeBase, setKnowledgeBase]     = useState<string>("");
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
+  const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [showStageDropdown, setShowStageDropdown]   = useState(false);
   // Conversation-stage selector (WABA) - previews stage-scoped prompts.
   const [selectedStage, setSelectedStage] = useState<string>("greeting");
