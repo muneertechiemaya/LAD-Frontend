@@ -106,16 +106,16 @@ const EMAIL_API = '/api/email-conversations';
 /**
  * Validate a single lead's optional fields.
  * Returns a map of field → error message. Empty object means valid.
- * All fields are optional — only validated when non-empty.
+ * All fields are optional - only validated when non-empty.
  */
 function validateLead(lead: LeadEntry): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  // Phone: if provided, must contain 7–15 digits (no + requirement)
+  // Phone: if provided, must contain 7-15 digits (no + requirement)
   if (lead.phone.trim()) {
     const digits = lead.phone.trim().replace(/\D/g, '');
     if (digits.length < 7 || digits.length > 15) {
-      errors.phone = 'Must be 7–15 digits (e.g. 501234567 or +971501234567)';
+      errors.phone = 'Must be 7-15 digits (e.g. 501234567 or +971501234567)';
     }
   }
 
@@ -207,7 +207,7 @@ function autoFixPhone(phone: string, countryCode: string): string {
 }
 
 // Turn an API error body into a readable string. FastAPI validation errors
-// come back as `detail: [{ type, loc, msg, input, ctx }]` — rendering that
+// come back as `detail: [{ type, loc, msg, input, ctx }]` - rendering that
 // array/object directly as a React child throws "Objects are not valid as a
 // React child" (#31) and crashes the page. Flatten it to "field: message".
 function formatApiError(data: unknown): string {
@@ -513,7 +513,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         // Normalise any cell value to a trimmed string. Excel auto-converts
         // emails/URLs to hyperlinks, so exceljs returns objects like
-        // { text, hyperlink } (also richText / formula { result }) — a plain
+        // { text, hyperlink } (also richText / formula { result }) - a plain
         // String() on those yields "[object Object]", which is why email
         // uploads were silently dropped. Unwrap them here.
         const cellText = (v: unknown): string => {
@@ -576,7 +576,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           setExcelError('No rows with a name were found.');
           return;
         }
-        // Email groups need an email per contact — surface it early rather
+        // Email groups need an email per contact - surface it early rather
         // than silently importing 0.
         if (isEmailMode && !parsedLeads.some((l) => l.email.trim())) {
           setExcelError('None of the rows have an email address - email groups need an "email" column.');
@@ -651,7 +651,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
     }
   }, []);
 
-  // URL Scrape — pull contacts from a webpage and pre-fill the lead list
+  // URL Scrape - pull contacts from a webpage and pre-fill the lead list
   const handleScrapeUrl = useCallback(async () => {
     const url = scrapeUrl.trim();
     if (!url) {
@@ -711,7 +711,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
     }
   }, [scrapeUrl]);
 
-  // Import — blocked when there are validation errors
+  // Import - blocked when there are validation errors
   const handleImport = useCallback(async () => {
     const validLeads = isEmailMode
       ? leads.filter((l) => l.name.trim() && l.email.trim())
@@ -784,7 +784,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         if (ok) {
           // For legacy provider, still need to add contacts to the group
-          // after import — LAD-Email-Comms already did it atomically.
+          // after import - LAD-Email-Comms already did it atomically.
           if (!isHosted && emailGroupId && inner?.contact_ids?.length > 0) {
             try {
               await fetch(`${EMAIL_API}/groups/${emailGroupId}/contacts`, {
@@ -1147,7 +1147,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
               {scraping && (
                 <div className="text-xs text-muted-foreground italic">
-                  Fetching the page and extracting contacts - this can take 20–45 seconds for
+                  Fetching the page and extracting contacts - this can take 20-45 seconds for
                   JavaScript-heavy pages.
                 </div>
               )}
@@ -1639,7 +1639,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         )}>
           {!importResult?.success ? (
             <div className="flex flex-col w-full space-y-4">
-              {/* Run in background toggle — only shown when importing more than 1 lead */}
+              {/* Run in background toggle - only shown when importing more than 1 lead */}
               {validCount > 1 && !hasValidationErrors && (
                 <button
                   type="button"
@@ -1937,7 +1937,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
         </div>
       )}
 
-      {/* Row 3: LinkedIn + Instagram — hidden in email mode */}
+      {/* Row 3: LinkedIn + Instagram - hidden in email mode */}
       {!isEmailMode && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="space-y-1">

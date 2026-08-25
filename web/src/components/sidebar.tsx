@@ -42,7 +42,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import LAD3DShowcase from "@/app/page";
 
-// Internal observability console is super-admin only — gated by email, matching
+// Internal observability console is super-admin only - gated by email, matching
 // the backend `requireSuperAdmin` gate on /api/admin/monitor.
 const SUPER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@techiemaya.com').toLowerCase();
 
@@ -124,7 +124,7 @@ export function Sidebar() {
   // Hover-expand state. Suppressed when `isPinned` is true (then we stay
   // expanded regardless of cursor position).
   const [isHovered,   setIsHovered]   = useState(false);
-  // Persisted user preference — when true, the sidebar stays expanded
+  // Persisted user preference - when true, the sidebar stays expanded
   // permanently and the hover behaviour is disabled.
   const [isPinned,    setIsPinned]    = useState(false);
   // Effective expanded flag the rest of the file already consumes.
@@ -215,7 +215,7 @@ export function Sidebar() {
       requiredFeature: "overview",
     },
     // Curated workspaces only. Sits high because for a snapshot tenant this IS
-    // the home screen — it replaces the workflow builder as the place they go
+    // the home screen - it replaces the workflow builder as the place they go
     // to decide what Mr LAD is doing.
     {
       href: "/pipelines",
@@ -314,20 +314,20 @@ export function Sidebar() {
   ];
 
   // Helper: does the user have access to this nav item?
-  // Tenant feature flag is the hard gate — if the tenant doesn't have the
+  // Tenant feature flag is the hard gate - if the tenant doesn't have the
   // feature enabled, NO user of that tenant sees it (including owner/admin).
   // Within an enabled feature, owner/admin see it automatically; other roles
   // additionally need the matching capability.
   // Items without any required* field are public (always shown).
   const hasNavAccess = (item: NavItem): boolean => {
-    // Snapshot gate — checked before the early return below, because an item
+    // Snapshot gate - checked before the early return below, because an item
     // scoped to a curated workspace may carry no capability or feature key of
     // its own and would otherwise read as public.
     if (item.requiresCuratedWorkspace && !isCuratedWorkspace) return false;
 
     if (!item.requiredCapability && !item.requiredFeature) return true;
 
-    // Tenant feature gate — applies to every role, no bypass.
+    // Tenant feature gate - applies to every role, no bypass.
     if (item.requiredFeature && !hasFeature(item.requiredFeature)) return false;
 
     const isAdminOrOwner = user?.role === 'admin' || user?.role === 'owner';
@@ -339,7 +339,7 @@ export function Sidebar() {
   // Filter navigation strictly. Previously we showed every item when the
   // user had no capabilities, which leaked admin-only features (Overview,
   // Pipeline, Make a Call, …) to fresh accounts on first login. Now an
-  // unassigned user sees an empty sidebar — the right signal to assign
+  // unassigned user sees an empty sidebar - the right signal to assign
   // them features in Settings → Team.
   const baseNav = isHydrated
     ? allNavItems.filter(hasNavAccess).map(item => ({
@@ -353,7 +353,7 @@ export function Sidebar() {
   // tenant users. The backend independently enforces the same gate.
   const isSuperAdmin =
     isHydrated && (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
-  const nav = isSuperAdmin
+  const nav: NavItem[] = isSuperAdmin
     ? [
         ...baseNav,
         {
@@ -481,7 +481,7 @@ export function Sidebar() {
                   <Icon
                     className={cn(
                       "h-5 w-5",
-                      // Only the fully-active parent gets the white icon —
+                      // Only the fully-active parent gets the white icon  - 
                       // section-active keeps dark icon for legibility on
                       // light-background sidebars.
                       selfActive ? "text-white" : "text-sidebar-foreground",
@@ -492,7 +492,7 @@ export function Sidebar() {
 
                 {hasChildren && (
                   <div className="pl-10 space-y-0.5 mt-1 border-l-2 border-white/10 ml-4">
-                    {n.children.map((child) => {
+                    {n.children!.map((child) => {
                       const ChildIcon = child.icon;
                       const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
                       return (
@@ -639,7 +639,7 @@ export function Sidebar() {
           />
         </div>
 
-        {/* Pin toggle — keeps the sidebar permanently expanded.
+        {/* Pin toggle - keeps the sidebar permanently expanded.
             Only shown when the sidebar is expanded (otherwise it would
             overflow the 16px-wide rail) and only on md+ (mobile uses the
             burger menu and doesn't need a pin). */}
@@ -665,7 +665,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 flex flex-col px-2 space-y-1 py-2">
           {(() => {
-            // Set of every URL claimed as a child anywhere in the nav tree —
+            // Set of every URL claimed as a child anywhere in the nav tree  - 
             // prevents a top-level item from greedily lighting up when the
             // current pathname belongs to another section's sub-item.
             const ownedChildHrefs = new Set<string>(
@@ -719,7 +719,7 @@ export function Sidebar() {
                       selfActive
                         ? "bg-primary/95"
                         : childOnPath
-                          ? "bg-primary/10 backdrop-blur-sm"  // soft tint — works on light & dark
+                          ? "bg-primary/10 backdrop-blur-sm"  // soft tint - works on light & dark
                           : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
                     )}
                   />
@@ -858,7 +858,7 @@ export function Sidebar() {
         </nav>
         {/* User Profile Inline Section */}
         <div className={cn("border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
-          {/* Avatar / profile row — click to toggle inline panel */}
+          {/* Avatar / profile row - click to toggle inline panel */}
           <div
             onClick={() => setIsUserPanelOpen((v) => !v)}
             className={cn(
@@ -899,7 +899,7 @@ export function Sidebar() {
             )}
           </div>
 
-          {/* Inline user panel — shown when isUserPanelOpen */}
+          {/* Inline user panel - shown when isUserPanelOpen */}
           <div
             className={cn(
               "overflow-hidden transition-all duration-300 ease-in-out",
@@ -907,7 +907,7 @@ export function Sidebar() {
             )}
           >
             <div className="px-2 pb-2 space-y-1">
-              {/* Tenant section — only if multiple tenants.
+              {/* Tenant section - only if multiple tenants.
                   A dropdown rather than an inline list: this panel is capped at
                   max-h-96, so one row per tenant pushes Settings, Pricing and
                   Logout past the clip and out of reach for anyone in enough

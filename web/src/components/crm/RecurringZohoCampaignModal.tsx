@@ -31,6 +31,8 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
+  /** The server could not determine the connection state — not the same as "off". */
+  const [statusUnavailable, setStatusUnavailable] = useState(false);
 
   // Keyboard users have no other way to dismiss this modal: the overlay
   // click-to-close only reaches mouse users, and nothing was listening for
@@ -52,7 +54,11 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
     let cancelled = false;
     fetchWithTenant('/api/social-integration/zoho/status')
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setConnected(!!d?.data?.connected); })
+      .then((d) => {
+        if (cancelled) return;
+        setConnected(!!d?.data?.connected);
+        setStatusUnavailable(!!d?.data?.status_unavailable);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [open]);
@@ -163,7 +169,13 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
         </div>
 
         <div className="p-4 space-y-4 overflow-y-auto flex-1">
-          {!connected && (
+          {!connected && statusUnavailable && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              Couldn&apos;t check your Zoho connection, so creating is paused. This isn&apos;t
+              &quot;not connected&quot; — close and reopen this dialog to try again.
+            </div>
+          )}
+          {!connected && !statusUnavailable && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
               Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations first — this campaign
               would otherwise import zero contacts.
@@ -251,7 +263,17 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
         <div className="flex items-center justify-end gap-2 p-4 border-t border-border dark:border-blue-950/40 flex-shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={creating}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={creating || !connected} title={connected ? undefined : 'Connect Zoho CRM first'}>
+          <Button
+            onClick={handleCreate}
+            disabled={creating || !connected}
+            title={
+              connected
+                ? undefined
+                : statusUnavailable
+                  ? "Couldn't check your Zoho connection — try again shortly"
+                  : 'Connect Zoho CRM first'
+            }
+          >
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Repeat className="h-4 w-4 mr-2" />}
             Create recurring campaign
           </Button>

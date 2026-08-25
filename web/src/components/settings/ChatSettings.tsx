@@ -259,7 +259,7 @@ async function updateFollowupConfig(
     });
     const data = await res.json().catch(() => ({}));
     if (data.success) return { ok: true };
-    // Surface the backend's reason — FastAPI validation errors arrive as
+    // Surface the backend's reason - FastAPI validation errors arrive as
     // `detail` (e.g. the H16 guard: an enabled stage past the 24h window
     // with no template). A bare "Failed to save" hides the actionable part.
     return {
@@ -336,7 +336,7 @@ async function fetchChatSettings(): Promise<ChatSettingsConfig> {
     } catch { /* ignore */ }
   }
 
-  // WABA — Python service returns the row directly (not wrapped in { success, data })
+  // WABA - Python service returns the row directly (not wrapped in { success, data })
   let wabaRaw: Record<string, any> = {};
   if (wabaRes.status === 'fulfilled' && wabaRes.value.ok) {
     try {
@@ -430,7 +430,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 // ── Human takeover ──────────────────────────────────────────────────────────
 // When a human agent replies in a chat the AI is muted so it cannot talk over
 // them. This controls whether that mute ever lifts. Note it governs REAL
-// takeovers only — a mute the escalation logic set on its own always expires,
+// takeovers only - a mute the escalation logic set on its own always expires,
 // so this cannot re-create the "nobody ever replied" bug.
 function HumanMuteCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
   const [policy, setPolicy] = useState<'permanent' | 'expire'>('permanent');
@@ -703,7 +703,7 @@ export function ChatSettings() {
     campaign_frequency: { enabled: true, interval_hours: 24, max_daily_messages: 50 },
   });
   const [followupConfig, setFollowupConfig] = useState<FollowupTimingConfig>(DEFAULT_FOLLOWUP_CONFIG);
-  // Approved WhatsApp templates fetched from Meta — used to populate the
+  // Approved WhatsApp templates fetched from Meta - used to populate the
   // template-picker dropdown for each follow-up stage + booking reminder.
   const [approvedTemplates, setApprovedTemplates] = useState<WhatsAppApprovedTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -716,7 +716,7 @@ export function ChatSettings() {
   // ── Connection-aware visibility ─────────────────────────────────────────
   // Only connected channels get their settings shown; a channel that is
   // positively NOT connected is hidden (tabs, typing rows, LinkedIn cards).
-  // Nothing is deleted — reconnecting brings the settings back with their
+  // Nothing is deleted - reconnecting brings the settings back with their
   // saved values, because visibility is derived from live status per mount.
   // Fail-open: while probing (or if a probe errors) the channel stays visible.
   const router = useRouter();
@@ -737,7 +737,7 @@ export function ChatSettings() {
   const [savingKb, setSavingKb] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Shareable assets — files (price list, brochure…) the AI can auto-attach
+  // Shareable assets - files (price list, brochure…) the AI can auto-attach
   const [shareableAssets, setShareableAssets] = useState<ShareableAsset[]>([]);
   const [savingAssets, setSavingAssets] = useState(false);
   const [loadingAssets, setLoadingAssets] = useState(true);
@@ -749,7 +749,7 @@ export function ChatSettings() {
   // jumped backwards as soon as the user typed a comma + space.
   const [triggerInputDrafts, setTriggerInputDrafts] = useState<Record<number, string>>({});
 
-  // AI Playground panel — testers can validate prompt + KB + assets without leaving the page
+  // AI Playground panel - testers can validate prompt + KB + assets without leaving the page
   const [playgroundOpen, setPlaygroundOpen] = useState(false);
 
   // New prompt form
@@ -784,7 +784,7 @@ export function ChatSettings() {
     }>
   >([]);
 
-  // Web scraping test chat state — Claude-powered preview against scraped content
+  // Web scraping test chat state - Claude-powered preview against scraped content
   const [showWebTestChat, setShowWebTestChat] = useState(false);
   const [webChatInput, setWebChatInput] = useState('');
   const [webChatBusy, setWebChatBusy] = useState(false);
@@ -822,7 +822,7 @@ export function ChatSettings() {
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
   // LinkedIn follow-up sequence settings (TENANT-level cadence for the
-  // post-acceptance sequence — see LinkedInAutoFollowupService). A campaign can
+  // post-acceptance sequence - see LinkedInAutoFollowupService). A campaign can
   // override this from the Scheduled Follow-ups modal; the touch model and the
   // editor UI are shared (./FollowupTouchesEditor).
   const [linkedinFollowup, setLinkedinFollowup] = useState<{
@@ -884,7 +884,7 @@ export function ChatSettings() {
 
   // Normalize legacy/ambiguous prompt channels to the canonical tab id so prompts
   // aren't hidden. Older WABA-agent prompts are tagged 'whatsapp'/'business_whatsapp'
-  // (there is no such tab) — treat them as 'waba'. Personal WA stays 'personal_whatsapp'.
+  // (there is no such tab) - treat them as 'waba'. Personal WA stays 'personal_whatsapp'.
   const normalizePromptChannel = (c?: string | null): string =>
     !c || c === 'whatsapp' || c === 'business_whatsapp' ? 'waba' : c;
   const filteredPrompts = prompts.filter((p) => normalizePromptChannel(p.channel) === activeChannel);
@@ -993,7 +993,7 @@ export function ChatSettings() {
         }
         const requiredMissing = (out?.missing_fields || []).filter((f) => f.severity !== 'optional');
         if (out?.success && !out.prompt_text && requiredMissing.length) {
-          // Need a few facts that aren't on file yet — open the collect-info form.
+          // Need a few facts that aren't on file yet - open the collect-info form.
           setMissingFieldsModal({ promptName, fields: out.missing_fields || [], values: providedFields });
           return;
         }
@@ -1093,7 +1093,7 @@ export function ChatSettings() {
     setSavingAssets(false);
   }, [shareableAssets, showToast]);
 
-  // ── Chat Behaviour save (typing indicator — separate per channel) ──
+  // ── Chat Behaviour save (typing indicator - separate per channel) ──
 
   const [savingBehaviour, setSavingBehaviour] = useState(false);
 
@@ -1179,7 +1179,7 @@ export function ChatSettings() {
   }, [linkedinAutomation, showToast]);
 
   const handleSaveLinkedinFollowup = useCallback(async () => {
-    // Clamp + validate cadence before sending — backend re-validates but a
+    // Clamp + validate cadence before sending - backend re-validates but a
     // fast frontend check gives the user immediate, touch-numbered feedback.
     const prepared = prepareTouchesForSave(linkedinFollowup.touches);
     if (!prepared.ok) {
@@ -1361,7 +1361,7 @@ export function ChatSettings() {
           </p>
         </div>
 
-        {/* Channel tabs — only connected channels; hidden ones collapse into
+        {/* Channel tabs - only connected channels; hidden ones collapse into
             a "+N more" chip that jumps to the Integrations tab. */}
         <div className="border-b border-gray-100 dark:border-blue-950/40 overflow-x-auto hide-scrollbar">
           <div className="flex items-center gap-1 -mb-px px-6 min-w-max flex-nowrap">
@@ -1392,7 +1392,7 @@ export function ChatSettings() {
           </div>
         </div>
 
-        {/* No channels connected at all — invite to connect instead of blank tabs */}
+        {/* No channels connected at all - invite to connect instead of blank tabs */}
         {channelsLoaded && visibleChannels.length === 0 && (
           <div className="px-6 py-12 text-center text-gray-400 dark:text-slate-300">
             <EyeOff className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -1407,7 +1407,7 @@ export function ChatSettings() {
           </div>
         )}
 
-        {/* Prompts list — hidden entirely when no channel is connected */}
+        {/* Prompts list - hidden entirely when no channel is connected */}
         {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="divide-y dark:bg-black/20 divide-gray-100 dark:divide-blue-950/40">
           {filteredPrompts.length === 0 ? (
@@ -1533,7 +1533,7 @@ export function ChatSettings() {
         </div>
         )}
 
-        {/* Add new prompt — needs at least one connected channel */}
+        {/* Add new prompt - needs at least one connected channel */}
         {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="px-6 py-3 border-t border-gray-100 dark:border-blue-950/40">
           {!showNewPrompt ? (
@@ -1554,7 +1554,7 @@ export function ChatSettings() {
                 className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
                 autoFocus
               />
-              {/* Channel selector — pre-fills from active tab but user can override */}
+              {/* Channel selector - pre-fills from active tab but user can override */}
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500 dark:text-slate-300 whitespace-nowrap">Channel:</label>
                 <Select
@@ -1647,7 +1647,7 @@ export function ChatSettings() {
               {shareableAssets.map((asset, idx) => {
                 const isExpanded = expandedAssetIdx === idx;
 
-                // ── Compact (collapsed) row — like a Knowledge Base folder ──
+                // ── Compact (collapsed) row - like a Knowledge Base folder ──
                 if (!isExpanded) {
                   const triggers = (asset.trigger_keywords || []).join(', ');
                   return (
@@ -1817,7 +1817,7 @@ export function ChatSettings() {
                             : (asset.trigger_keywords || []).join(', ')
                         }
                         onChange={(e) =>
-                          // Hold the raw text in a per-row draft state — do NOT
+                          // Hold the raw text in a per-row draft state - do NOT
                           // split/filter on each keystroke (was the bug).
                           setTriggerInputDrafts((prev) => ({
                             ...prev,
@@ -2000,7 +2000,7 @@ export function ChatSettings() {
             <p className="text-xs text-gray-400 dark:text-slate-300 mt-1.5">Press Enter or click Add. Must start with https://</p>
           </div>
 
-          {/* Per-URL scrape diagnostics — appears after Save & Scrape */}
+          {/* Per-URL scrape diagnostics - appears after Save & Scrape */}
           {webScrapingDiagnostics.length > 0 && (
             <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-hidden">
               <div className="px-3 py-2 bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40 text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-between">
@@ -2076,7 +2076,7 @@ export function ChatSettings() {
             </button>
           </div>
 
-          {/* Test Chat panel — Claude-powered preview against cached scraped content */}
+          {/* Test Chat panel - Claude-powered preview against cached scraped content */}
           {showWebTestChat && (
             <div className="mt-4 border border-blue-200 dark:border-blue-950/40 rounded-xl overflow-hidden bg-slate-50/40 dark:bg-[#061033]/20">
               <div className="px-4 py-2.5 bg-blue-50 dark:bg-[#051139] border-b border-blue-200 dark:border-blue-950/40 flex items-center justify-between">
@@ -2182,7 +2182,7 @@ export function ChatSettings() {
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
       {/* Channel-specific settings follow the ACTIVE System Prompts tab: the
           typing rows are WhatsApp settings, so this card only shows while a
-          WhatsApp tab is selected — and only the selected flavour's row. */}
+          WhatsApp tab is selected - and only the selected flavour's row. */}
       {(activeChannel === 'personal_whatsapp' || activeChannel === 'waba') && (
       <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
         <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
@@ -2195,7 +2195,7 @@ export function ChatSettings() {
           </p>
         </div>
         <div className="p-6 space-y-5">
-          {/* Typing indicator — per channel */}
+          {/* Typing indicator - per channel */}
           <div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Typing Indicator</p>
             <p className="text-xs text-gray-500 dark:text-slate-300 mb-3">
@@ -2674,7 +2674,7 @@ export function ChatSettings() {
                 onClick={() =>
                   setLinkedinAutomation((prev) => ({ ...prev, post_monitoring_enabled: !prev.post_monitoring_enabled }))
                 }
-                title={linkedinAutomation.post_monitoring_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                title={linkedinAutomation.post_monitoring_enabled ? 'On - click to disable' : 'Off - click to enable'}
               >
                 {linkedinAutomation.post_monitoring_enabled ? (
                   <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
@@ -2887,7 +2887,7 @@ export function ChatSettings() {
             </button>
           </div>
 
-          {/* Cadence editor — shared with the per-campaign override in the
+          {/* Cadence editor - shared with the per-campaign override in the
               Scheduled Follow-ups modal (components/settings/FollowupTouchesEditor). */}
           <FollowupTouchesEditor
             touches={linkedinFollowup.touches}
@@ -2918,7 +2918,7 @@ export function ChatSettings() {
       {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
 
       {/* ── Hidden channels hint ─────────────────────────────────── */}
-      {/* One quiet strip so hidden settings are discoverable — the settings
+      {/* One quiet strip so hidden settings are discoverable - the settings
           themselves are kept and reappear once the channel is reconnected. */}
       {channelsLoaded && hiddenChannels.length > 0 && (
         <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
@@ -2941,7 +2941,7 @@ export function ChatSettings() {
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Missing-fields modal — collects the few facts needed to generate the prompt */}
+      {/* Missing-fields modal - collects the few facts needed to generate the prompt */}
       {missingFieldsModal && (
         <>
           <div className="fixed inset-0 z-[100] bg-black/30" onClick={() => setMissingFieldsModal(null)} />
@@ -3001,7 +3001,7 @@ export function ChatSettings() {
         </>
       )}
 
-      {/* AI Playground side panel — opens over current page */}
+      {/* AI Playground side panel - opens over current page */}
       {playgroundOpen && typeof window !== 'undefined' && createPortal(
         <>
           <div

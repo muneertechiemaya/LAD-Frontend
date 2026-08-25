@@ -55,7 +55,7 @@ export async function DELETE(
     const wabaReq = new NextRequest(url, req);
 
     // Python DELETE endpoint requires tenant_id as a query param (Query(...)).
-    // Embed it directly in the path string — nextUrl.searchParams can cache the
+    // Embed it directly in the path string - nextUrl.searchParams can cache the
     // original URL when using new NextRequest(modifiedUrl, req), so setting it
     // on the cloned URL is not reliably forwarded by proxyToPythonService.
     // Resolve the AUTHORISED tenant: a client x-tenant-id naming another tenant

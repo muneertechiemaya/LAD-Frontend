@@ -17,6 +17,13 @@ type RecordType = 'contacts' | 'leads' | 'deals' | 'tasks';
 
 interface ZohoStatus {
   connected: boolean;
+  /**
+   * The server could not DETERMINE the connection state (its status lookup
+   * threw). `connected` is false only because we do not know — treating that as
+   * "not connected" told tenants with a working Zoho to go and connect it.
+   * Optional: older backends omit it, and `undefined` reads as "we do know".
+   */
+  status_unavailable?: boolean;
   last_synced?: string;
   counts?: { contacts?: number; leads?: number; deals?: number; tasks?: number } | null;
   syncing?: boolean;
@@ -209,6 +216,23 @@ export const ZohoRecordsBrowser: React.FC = () => {
     );
   }
 
+  // We could not read the status. Saying "isn't connected" here sent tenants
+  // whose Zoho works fine off to reconnect it, and hid the records they had
+  // already synced — see the backend fix that added this flag.
+  if (status?.status_unavailable) {
+    return (
+      <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-8 text-center space-y-2">
+        <div className="text-sm font-medium text-amber-800 dark:text-amber-300">
+          Couldn’t check your Zoho connection
+        </div>
+        <p className="text-sm text-amber-700 dark:text-amber-400/80">
+          This isn’t “not connected” — we couldn’t reach the connection status just now,
+          so your synced records aren’t shown. Please try again shortly.
+        </p>
+      </div>
+    );
+  }
+
   if (!status?.connected) {
     return (
       <div className="rounded-xl border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] p-8 text-center space-y-2">
@@ -394,7 +418,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
         {total > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 mt-3 border-t border-slate-100 dark:border-[#132247] shrink-0">
             <div className="text-xs text-slate-500 dark:text-[#7a8ba3] font-medium">
-              Showing {Math.min((page - 1) * pageSize + 1, total).toLocaleString()}–{Math.min(page * pageSize, total).toLocaleString()} of {total.toLocaleString()} {recordType}
+              Showing {Math.min((page - 1) * pageSize + 1, total).toLocaleString()}-{Math.min(page * pageSize, total).toLocaleString()} of {total.toLocaleString()} {recordType}
               {totalPages > 1 && <span className="ml-1 opacity-80">(Page {page} of {totalPages})</span>}
             </div>
             <div className="flex items-center gap-3">

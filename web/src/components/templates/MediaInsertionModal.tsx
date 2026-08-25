@@ -45,7 +45,7 @@ export default function MediaInsertionModal({
       const seen = new Set<string>();
       const media: MediaFile[] = [];
 
-      // Source 1: localStorage — URLs saved immediately after each upload
+      // Source 1: localStorage - URLs saved immediately after each upload
       try {
         const stored: Array<{ url: string; name: string; uploadedAt: string }> =
           JSON.parse(localStorage.getItem('email_media_uploads') || '[]');

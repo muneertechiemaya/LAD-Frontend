@@ -15,7 +15,7 @@ interface SentState {
 }
 
 /**
- * LAD home — the conversational "ask anything" entry point.
+ * LAD home - the conversational "ask anything" entry point.
  * Self-contained full-screen experience: brand rail, workspace chrome,
  * personalized greeting, smart composer with combinable tools + model picker,
  * grouped starting-point chips, and a "pick up where you left off" row.

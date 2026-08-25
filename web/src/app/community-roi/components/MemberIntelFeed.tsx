@@ -93,18 +93,18 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const fetchedRef = useRef(false)
 
-  // Shared helper — reads token from cookie (safeStorage) or localStorage fallback
+  // Shared helper - reads token from cookie (safeStorage) or localStorage fallback
   const getToken = () =>
     typeof window !== 'undefined'
       ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] || localStorage.getItem('token'))
       : null
 
-  // ── GET: read prospect_companies cache — instant, no external API calls ──────
+  // ── GET: read prospect_companies cache - instant, no external API calls ──────
   const loadCached = useCallback(async () => {
     if (fetchedRef.current) return
     fetchedRef.current = true
     if (!member.company_name) {
-      // No company name — nothing to look up, show Research button immediately
+      // No company name - nothing to look up, show Research button immediately
       setIntel(prev => ({ ...prev, status: 'done' }))
       return
     }
@@ -171,7 +171,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
     }
   }, [member])
 
-  // Lazy-load via IntersectionObserver — read cache when card scrolls into view
+  // Lazy-load via IntersectionObserver - read cache when card scrolls into view
   useEffect(() => {
     const el = cardRef.current
     if (!el) return
@@ -234,7 +234,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
       {/* ── Intel Body ── */}
       <div className="px-5 pb-4 flex-1 space-y-3">
 
-        {/* Loading skeleton — reading cache */}
+        {/* Loading skeleton - reading cache */}
         {intel.status === 'loading' && (
           <div className="space-y-2 animate-pulse">
             <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
@@ -244,7 +244,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
           </div>
         )}
 
-        {/* Researching skeleton — running ABM */}
+        {/* Researching skeleton - running ABM */}
         {intel.status === 'researching' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[11px] text-violet-500 font-medium">
@@ -383,7 +383,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
           </>
         )}
 
-        {/* No cached data — prompt user to run research */}
+        {/* No cached data - prompt user to run research */}
         {intel.status === 'done' && !hasContent && (
           <div className="flex flex-col items-start gap-2 py-1">
             <p className="text-[11px] text-slate-400 italic">No research data yet.</p>
@@ -411,7 +411,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             <Loader2 className="w-3 h-3 animate-spin" /> Researching…
           </span>
         ) : intel.status === 'done' && hasContent ? (
-          /* Data exists — show Refresh to re-run ABM */
+          /* Data exists - show Refresh to re-run ABM */
           <button
             onClick={runResearch}
             className="text-[10px] text-slate-400 hover:text-violet-600 flex items-center gap-1 transition-colors"

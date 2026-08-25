@@ -1,13 +1,13 @@
 /**
- * master-agent-proxy — forward Next.js /api/prospects/* requests to LAD-Master-Agent.
+ * master-agent-proxy - forward Next.js /api/prospects/* requests to LAD-Master-Agent.
  *
  * Auth model:
  *   * The user's JWT cookie/header is read to extract `tenant_id`.
  *   * tenant_id is appended as a query parameter (the Master Agent API expects
- *     it that way — see LAD-Master-Agent/api/prospects.py).
+ *     it that way - see LAD-Master-Agent/api/prospects.py).
  *   * The shared service token `LAD_MASTER_AGENT_SERVICE_TOKEN` is added as the
  *     `X-Service-Token` header. The user's JWT is NEVER forwarded to the
- *     Master Agent — it doesn't understand it.
+ *     Master Agent - it doesn't understand it.
  *
  * If LAD_MASTER_AGENT_SERVICE_TOKEN is missing from the env, every request 503s
  * with a clear message rather than 401'ing against the upstream silently.
@@ -109,7 +109,7 @@ function resolveTenantId(req: NextRequest): string | null {
  *
  * @param req   The incoming Next.js request
  * @param path  The Master Agent path, e.g. "/prospects" or "/prospects/abc/events".
- *              Must NOT include the tenant_id query param — this helper adds it.
+ *              Must NOT include the tenant_id query param - this helper adds it.
  */
 export async function proxyToMasterAgent(
   req: NextRequest,

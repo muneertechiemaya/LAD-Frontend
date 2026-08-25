@@ -78,7 +78,7 @@ const Login: React.FC = () => {
     dispatch(loginStart());
     try {
       // The login response already carries the user (id/name/role/tenant/
-      // capabilities) — navigate on it immediately instead of blocking on a
+      // capabilities) - navigate on it immediately instead of blocking on a
       // second /api/auth/me round trip that re-fetches the same data.
       const loginResp = await authService.login(formData);
       const user = (loginResp?.user || {}) as any;
@@ -105,7 +105,7 @@ const Login: React.FC = () => {
 
   return (
       <div className="w-full max-w-[400px] sm:max-w-[420px] p-6 sm:p-7 rounded-2xl shadow-2xl border backdrop-blur-xl bg-gradient-to-b from-white to-gray-50 dark:from-[#071131] dark:to-[#071131] border-gray-200 dark:border-gray-700 mx-auto">
-        {/* Logo — driven by the app theme (.dark class), not OS prefers-color-scheme */}
+        {/* Logo - driven by the app theme (.dark class), not OS prefers-color-scheme */}
         <img
           src="/MrLAD-logo.svg"
           className="w-20 sm:w-24 mx-auto mb-2 opacity-100 drop-shadow-md block dark:hidden"

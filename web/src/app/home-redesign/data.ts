@@ -4,7 +4,7 @@ import { Icon, type IconComponent } from "./components/icons";
  * Static content for the LAD home redesign.
  * Ported from the Claude Design handoff (app.jsx) and made type-safe.
  *
- * NOTE: Capability labels are intentionally generic and tenant-facing —
+ * NOTE: Capability labels are intentionally generic and tenant-facing  - 
  * no internal data-provider / vendor names are surfaced here.
  */
 
@@ -70,12 +70,12 @@ export const SUGG: Record<"default" | ToolId, Suggestion[]> = {
   default: [
     { icon: Icon.building, t: "Founders in trading in UAE", tool: "find" },
     { icon: Icon.calendar, t: "Book meetings with HVAC managers", tool: "meet" },
-    { icon: Icon.users, t: "VP of Sales in UK SaaS, 50–200 staff", tool: "find" },
+    { icon: Icon.users, t: "VP of Sales in UK SaaS, 50-200 staff", tool: "find" },
     { icon: Icon.heart, t: "Strengthen client relationships", tool: "relationships" },
   ],
   find: [
     { icon: Icon.building, t: "Founders in trading in UAE", tool: "find" },
-    { icon: Icon.users, t: "VP of Sales in UK SaaS, 50–200 staff", tool: "find" },
+    { icon: Icon.users, t: "VP of Sales in UK SaaS, 50-200 staff", tool: "find" },
     { icon: Icon.target, t: "Get leads from my active ICP", tool: "find" },
   ],
   meet: [

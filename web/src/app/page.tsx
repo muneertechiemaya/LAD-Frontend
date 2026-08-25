@@ -1,6 +1,6 @@
 // src/app/page.tsx
 // Server component wrapper so the public home route ("/") can declare its own
-// SEO metadata (client components — like the landing page below — cannot export
+// SEO metadata (client components - like the landing page below - cannot export
 // `metadata`). It simply renders the client landing page as a child.
 import type { Metadata } from 'next';
 import Landing from './landing/page';

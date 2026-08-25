@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * InjuryReviewCard — staff control for the injury-screening booking gate.
+ * InjuryReviewCard - staff control for the injury-screening booking gate.
  *
  * Background: when a customer tells the WhatsApp agent they have an injury or
  * medical condition, the bot keeps chatting normally but will NOT show class
@@ -10,7 +10,7 @@
  *
  * The backend owns the decision. `gate_reason` comes straight from the same
  * function the bot enforces (WhatsAppService._compute_injury_gate_reason), so
- * this component never re-derives "is it cleared?" from the raw fields — that
+ * this component never re-derives "is it cleared?" from the raw fields - that
  * would be a second source of truth free to drift from what actually blocks
  * the bot.
  *
@@ -145,7 +145,7 @@ export function InjuryReviewCard({ conversationId, backendChannel = 'waba' }: In
 
   // Deliberately SILENT on gate_reason === 'unanswered'. That's the default
   // state for every customer who hasn't answered yet, so surfacing it would
-  // put a card on virtually every conversation — training staff to tune the
+  // put a card on virtually every conversation - training staff to tune the
   // card out, which would cost us the 'needs_review' case that actually needs
   // action. We render only when something is genuinely notable: an injury
   // awaiting review, or one already reviewed.

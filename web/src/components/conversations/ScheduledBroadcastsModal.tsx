@@ -51,7 +51,7 @@ export function ScheduledBroadcastsModal({ open, onClose, channel }: ScheduledBr
       );
       if (res.ok) setRows((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      /* ignore — leave the row; the user can retry */
+      /* ignore - leave the row; the user can retry */
     } finally {
       setCancelingId(null);
     }

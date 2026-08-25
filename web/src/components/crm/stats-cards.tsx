@@ -11,7 +11,10 @@ export type CrmView = 'board' | 'all' | 'prospects' | 'leads' | 'clients';
 interface StatCard {
   key: Exclude<CrmView, 'board'>;
   title: string;
-  value: number;
+  /** `null` = could not be loaded; renders "—". Matches `StatsCardsProps.counts`,
+   *  which has always been nullable — typing this `number` made every one of the
+   *  four assignments below a type error. */
+  value: number | null;
   Icon: LucideIcon;
   bg: string;
   ic: string;

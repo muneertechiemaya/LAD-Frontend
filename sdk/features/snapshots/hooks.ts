@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Vertical snapshot hooks. The web layer calls these — never the api module or
+ * Vertical snapshot hooks. The web layer calls these - never the api module or
  * fetch directly.
  */
 
@@ -24,7 +24,7 @@ export interface UsePipelinesState {
   toggle: (key: PipelineKey, active: boolean) => Promise<void>;
   /**
    * Save settings. Returns per-field error messages from the server, or an
-   * empty array on success — the caller shows them next to the form rather
+   * empty array on success - the caller shows them next to the form rather
    * than in the page-level banner.
    */
   saveKnobs: (key: PipelineKey, values: KnobValues) => Promise<string[]>;
@@ -96,7 +96,7 @@ export function usePipelines(): UsePipelinesState {
 
     try {
       const saved = await setPipelineKnobs(key, values);
-      // Take the server's resolved values rather than the submitted ones —
+      // Take the server's resolved values rather than the submitted ones  - 
       // it applies defaults and normalisation (trimming, de-duplication), so
       // echoing the form input back would drift from what is stored.
       setOverview((prev) => prev && {
@@ -149,7 +149,7 @@ export function useKnobProposals(key: PipelineKey): UseKnobProposalsState {
       const data = await requestKnobProposals(key, input);
       setResult(data);
       // A successful call that found nothing is not an error, but it does need
-      // saying — an empty panel with no explanation reads as a broken feature.
+      // saying - an empty panel with no explanation reads as a broken feature.
       if (!data.proposals.length) {
         setError(data.error || 'Nothing in your history matched these settings.');
       }
