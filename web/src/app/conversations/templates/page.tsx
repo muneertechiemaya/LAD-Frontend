@@ -50,6 +50,10 @@ interface WATemplate {
     text?: string;
     buttons?: Array<{ type: string; text: string }>;
   }>;
+  // Which connected number this template lives on. A template belongs to a WABA,
+  // not to a workspace, so the same name can exist on two of a tenant's numbers.
+  account_id?: string;
+  account_phone?: string;
 }
 
 function getBodyText(tpl: WATemplate): string {
@@ -544,7 +548,9 @@ export default function TemplatesPage() {
                         const buttonCount = tpl.components?.find(c => c.type === 'BUTTONS')?.buttons?.length;
                         return (
                           <MessageTemplateCard
-                            key={tpl.id || tpl.name}
+                            // Same-named templates can exist on two different
+                            // numbers; the name alone is no longer unique.
+                            key={tpl.id || `${tpl.account_id ?? ''}-${tpl.name}-${tpl.language ?? ''}`}
                             iconBadgeBg="bg-[#059669]"
                             icon={<HeaderFormatIcon format={headerInfo?.format || 'TEXT'} />}
                             name={tpl.name}
