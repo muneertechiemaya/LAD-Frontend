@@ -230,7 +230,21 @@ export const ZohoAutomationsPanel: React.FC = () => {
       {!loading && !connected && !statusUnavailable && (
         <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations to scan and sync tasks.
+          <span>
+            Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations to scan and sync tasks.
+            {/* Proposals are rows in this tenant's DB, so they survive a
+                disconnect. Showing them under a bare "isn't connected" banner
+                made them look like live, sendable work — and, because they came
+                from whichever Zoho account was connected at the time, like data
+                from somewhere else entirely. Name where they came from. */}
+            {proposals.length > 0 && (
+              <>
+                {' '}The {proposals.length} draft{proposals.length === 1 ? '' : 's'} below {proposals.length === 1 ? 'was' : 'were'} imported
+                by an earlier scan, from the Zoho account that was connected then. {proposals.length === 1 ? 'It' : 'They'} can&apos;t
+                be sent while Zoho is disconnected — reject {proposals.length === 1 ? 'it' : 'them'} if they&apos;re no longer wanted.
+              </>
+            )}
+          </span>
         </div>
       )}
       {!enabled && (
@@ -340,8 +354,18 @@ export const ZohoAutomationsPanel: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={busyId === a.id || !enabled}
+                  // Also gated on `connected`. Proposals OUTLIVE the Zoho
+                  // connection that produced them — they are rows in the
+                  // tenant DB, not live Zoho data — so after a disconnect this
+                  // list still renders them with a live-looking button. The
+                  // backend already refuses (it fetches the Zoho token before
+                  // sending, so nothing goes out), but an enabled button that
+                  // cannot succeed reads as "these are ready to send" for
+                  // messages drafted against an account we no longer have.
+                  // Scan and Search were already gated this way.
+                  disabled={busyId === a.id || !enabled || !connected}
                   onClick={() => handleApprove(a)}
+                  title={connected ? undefined : blockedReason}
                   className="h-8 px-3 rounded-lg text-xs font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {busyId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
