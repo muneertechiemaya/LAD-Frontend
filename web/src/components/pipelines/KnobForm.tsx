@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Knob form — the typed settings surface that replaces the workflow builder.
+ * Knob form - the typed settings surface that replaces the workflow builder.
  *
  * Renders whatever the snapshot manifest declares for a pipeline. It knows the
  * knob TYPES but not the knobs themselves, so a new setting ships by editing
  * the manifest, not this file.
  *
  * Validation is server-side. This form does light input shaping (number inputs,
- * option lists) but never decides what is acceptable — that lives in
+ * option lists) but never decides what is acceptable - that lives in
  * core/entitlements/knobSchema.js, which is also what a direct API call hits.
  */
 
@@ -191,7 +191,7 @@ export function KnobForm({
   const [errors, setErrors] = useState<string[]>([]);
 
   // Only the fields that actually changed are sent. The server merges rather
-  // than replaces, so a narrow patch is both cheaper and safer — it cannot
+  // than replaces, so a narrow patch is both cheaper and safer - it cannot
   // clobber a value this version's form does not know about.
   const changed = useMemo(() => {
     const out: KnobValues = {};

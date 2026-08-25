@@ -161,7 +161,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
           </div>
         )}
       </div>
-      {/* Quick Actions — two cards since the Add Credits tile was removed. */}
+      {/* Quick Actions - two cards since the Add Credits tile was removed. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link
           href="/pricing"
