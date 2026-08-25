@@ -6,10 +6,10 @@
  * 
  * USAGE:
  * ```typescript
- * import { 
- *   apolloLeadsService,
+ * import {
+ *   searchCompanies,
  *   useApolloLeads
- * } from '@/features/apollo-leads';
+ * } from '@lad/frontend-features/apollo-leads';
  * ```
  */
 // ============================================================================
