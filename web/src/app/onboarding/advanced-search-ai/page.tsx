@@ -7890,7 +7890,9 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                             </svg>
-                                            {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
+                                            <span className="adv-premium-label">
+                                                {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
+                                            </span>
                                         </button>
                                     )}
                                     {/* Right flank — a wrapper, not flex on the button itself:
@@ -11944,7 +11946,7 @@ function CheckpointFormInline({
     return (
         <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
             <div className="adv-ai-avatar adv-ai-avatar-viz"><AgentVisualizer state="idle" size={36} /></div>
-            <div style={{ flex: 1, maxWidth: '540px' }}>
+            <div className="adv-checkpoint-content" style={{ flex: 1, maxWidth: '540px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div className="adv-ai-name">LAD in Action</div>
                     <button onClick={() => setStep(-1)} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#9ca3af', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
@@ -11978,7 +11980,7 @@ function CheckpointFormInline({
                 >
                     {q.question}
                 </div>
-                <div style={baseBox}>
+                <div className="adv-checkpoint-box" style={baseBox}>
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
                         <div className="flex flex-col dark:bg-[#000724]" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -12931,7 +12933,7 @@ function CheckpointFormInline({
                             {/* Voice Agent Config (inline when voice_call selected) */}
                             {nextChannels.includes('voice_call') && (
                               <div
-                                className="bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
+                                className="adv-voice-settings bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
                                 style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
                               >
                                   <div
@@ -12958,7 +12960,7 @@ function CheckpointFormInline({
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
                                                       <SelectValue placeholder="Select an AI Agent" />
                                                   </SelectTrigger>
-                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                  <SelectContent align="start" className="adv-voice-select-content bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {voiceAgents.map((a: any) => (
                                                         <SelectItem
                                                           key={a.id}
@@ -12999,7 +13001,7 @@ function CheckpointFormInline({
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
                                                       <SelectValue placeholder="Select a number" />
                                                   </SelectTrigger>
-                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                  <SelectContent align="start" className="adv-voice-select-content bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {voiceNumbers.map((n: any) => {
                                                           const num = n.phone_number || n.number || n.phoneNumber || '';
                                                           const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
@@ -15546,10 +15548,12 @@ const css = `
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
                 .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
                 .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
-                /* Mobile keeps the tuned space-between layout — at this width equal
-                   flanks would squeeze the pill against its 95px min-width. */
+                /* Mobile keeps the tuned space-between layout and reduces Premium
+                   Search to its icon so the chatbox controls cannot overflow. */
                 .adv-foot-side { flex: 0 1 auto !important; }
-                .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
+                .adv-premium-btn { width: 30px !important; height: 30px !important; min-width: 30px !important; justify-content: center !important; padding: 0 !important; margin: 0 !important; }
+                .adv-premium-btn .adv-premium-label { display: none !important; }
+                .adv-premium-btn svg { width: 13px !important; height: 13px !important; }
                 .adv-chat-attach-btn, .adv-send-sm, .adv-mic-btn { width: 30px !important; height: 30px !important; flex-shrink: 0 !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg, .adv-mic-btn svg { width: 13px !important; height: 13px !important; }
                 .adv-roles-btn { padding: 5px 10px !important; font-size: 11px !important; max-width: 120px !important; flex-shrink: 0 !important; text-overflow: ellipsis !important; overflow: hidden !important; white-space: nowrap !important; }
@@ -15589,6 +15593,12 @@ const css = `
                 .adv-ai-name { justify-content: flex-start !important; }
                 .adv-ai-avatar { width: 32px !important; height: 32px !important; flex-shrink: 0 !important; }
                 .adv-bubble-ai { gap: 10px !important; width: 100% !important; max-width: 100% !important; align-items: flex-start !important; }
+                .adv-checkpoint-content { min-width: 0 !important; max-width: calc(100% - 42px) !important; }
+                .adv-checkpoint-box, .adv-voice-settings { width: 100% !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
+                .adv-voice-settings [data-slot="select-trigger"] { min-width: 0 !important; max-width: 100% !important; }
+                .adv-voice-select-content { width: var(--radix-select-trigger-width) !important; max-width: calc(100vw - 24px) !important; }
+                .adv-voice-select-content [data-slot="select-item"] { min-width: 0 !important; max-width: 100% !important; }
+                .adv-voice-select-content [data-slot="select-item"] > span:last-child { min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
                 .adv-ai-text { text-align: left !important; width: 100% !important; font-size: 13.5px !important; }
                 .adv-rc { padding: 10px 12px !important; border-radius: 10px !important; gap: 8px !important; overflow-x: hidden !important; }
                 .adv-rc-icon { width: 26px !important; height: 26px !important; border-radius: 6px !important; font-size: 14px !important; }
