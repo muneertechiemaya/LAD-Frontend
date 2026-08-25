@@ -1158,12 +1158,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                   ? 'Retrying…'
                                   : 'Retry sending the connection request'
                               }
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border transition-colors ${
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border transition-colors ${
                                 isSuccess
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 cursor-default'
                                   : isPending
-                                  ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-wait'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 cursor-wait'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60 dark:hover:bg-blue-900/60 dark:hover:text-blue-200'
                               }`}
                             >
                               {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -1221,12 +1221,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                   ? 'Withdrawing…'
                                   : 'Withdraw this pending connection request'
                               }
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border transition-colors ${
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border transition-colors ${
                                 isSuccess
-                                  ? 'bg-slate-100 text-slate-600 border-slate-200 cursor-default'
+                                  ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 cursor-default'
                                   : isPending
-                                  ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-wait'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 cursor-wait'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60 dark:hover:bg-amber-900/60 dark:hover:text-amber-200'
                               }`}
                             >
                               {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
