@@ -212,7 +212,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0] dark:border-[#262831] mt-auto">
                 <span className="text-xs text-muted-foreground">
-                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
                   {Math.min(currentPage * ITEMS_PER_PAGE, agents.length)} of {agents.length}
                 </span>
                 <div className="flex gap-2">

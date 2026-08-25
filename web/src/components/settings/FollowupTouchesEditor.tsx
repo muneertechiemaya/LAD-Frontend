@@ -7,8 +7,8 @@
  * One entry = one follow-up ("touch"): when it fires, and what it sends.
  *
  * Used at two scopes, with the SAME touch model on the wire:
- *   • tenant   — Settings → Chat → LinkedIn ("Follow-up Cadence")
- *   • campaign — Scheduled Follow-ups modal, per campaign (overrides the tenant)
+ *   • tenant   - Settings → Chat → LinkedIn ("Follow-up Cadence")
+ *   • campaign - Scheduled Follow-ups modal, per campaign (overrides the tenant)
  *
  * Controlled component: the parent owns `touches` and persists them. All state
  * here is transient UI (which row opened the create-template modal).
@@ -29,7 +29,7 @@ export type FollowupTouch = {
   hours: number;
   template_id: string | null;
   touch_type?: 'industry_trend' | 'company_page_post' | null;
-  /** Only set for touch_type 'company_page_post' — the page posts are shared from. */
+  /** Only set for touch_type 'company_page_post' - the page posts are shared from. */
   company_page_url?: string | null;
 };
 
@@ -258,7 +258,7 @@ export default function FollowupTouchesEditor({
                   </select>
                 </div>
 
-                {/* Company page URL — only for the company-page-post mode.
+                {/* Company page URL - only for the company-page-post mode.
                     Asked for explicitly: LinkedIn's API exposes admined pages
                     by URN with no slug, so the page can't be auto-resolved. */}
                 {touch.touch_type === 'company_page_post' && (
@@ -277,7 +277,7 @@ export default function FollowupTouchesEditor({
                       />
                       <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 leading-snug">
                         We pick the post from this page that best fits the lead&apos;s industry. If nothing fits,
-                        the touch sends an industry-trend message and shares the page link instead — never a broken post link.
+                        the touch sends an industry-trend message and shares the page link instead - never a broken post link.
                       </p>
                     </div>
                   </div>

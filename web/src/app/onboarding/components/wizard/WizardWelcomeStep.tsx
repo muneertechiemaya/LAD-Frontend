@@ -1,5 +1,5 @@
 'use client';
-// R8 Phase 3 — Welcome step. Intentionally light — sets the tone for the
+// R8 Phase 3 - Welcome step. Intentionally light - sets the tone for the
 // wizard and primes the tenant for the ICP capture step that comes next.
 
 import * as React from 'react';
