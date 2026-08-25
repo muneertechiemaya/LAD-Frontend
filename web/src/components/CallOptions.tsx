@@ -1023,8 +1023,8 @@ export function CallOptions(props: CallOptionsProps) {
                           dropdownList.innerHTML = '';
                           filtered.forEach((country) => {
                             const item = document.createElement('button');
-                            item.className = 'w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left';
-                            item.innerHTML = `<img src="https://flagcdn.com/w40/${country.code.toLowerCase()}.png" alt="${country.name}" width="24" height="16"  /><span class="flex-1 text-sm text-gray-700">${country.name}</span><span class="text-sm font-medium text-gray-500">${country.dialCode}</span>`;
+                            item.className = 'w-full flex items-center gap-3 px-3 py-2 hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary dark:hover:text-primary-foreground transition-colors text-left group';
+                            item.innerHTML = `<img src="https://flagcdn.com/w40/${country.code.toLowerCase()}.png" alt="${country.name}" width="24" height="16"  /><span class="flex-1 text-sm text-gray-700 dark:text-white group-hover:text-primary-foreground">${country.name}</span><span class="text-sm font-medium text-slate-400 dark:text-slate-300 group-hover:text-primary-foreground/80">${country.dialCode}</span>`;
                             item.onclick = () => {
                               setSelectedCountry(country);
                               setShowCountryDropdown(false);
@@ -1036,29 +1036,37 @@ export function CallOptions(props: CallOptionsProps) {
                     />
                   </div>
                   <div id="country-dropdown-list" className="py-1">
-                    {COUNTRIES.map((country) => (
-                      <button
-                        key={country.code}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCountry(country);
-                          setShowCountryDropdown(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors text-left ${selectedCountry.code === country.code ? 'bg-gray-50 dark:bg-[#253456]' : ''
+                    {COUNTRIES.map((country) => {
+                      const isSelected = selectedCountry.code === country.code;
+                      return (
+                        <button
+                          key={country.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCountry(country);
+                            setShowCountryDropdown(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left group hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary dark:hover:text-primary-foreground ${
+                            isSelected ? 'bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground' : ''
                           }`}
-                      >
-                        <Image
-                          src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
-                          alt={country.name}
-                          width={20}
-                          height={20}
-                          className=""
-                          unoptimized
-                        />
-                        <span className="flex-1 text-sm text-gray-700 dark:text-white">{country.name}</span>
-                        <span className="text-sm font-medium text-gray-500 dark:text-[#7a8ba3]">{country.dialCode}</span>
-                      </button>
-                    ))}
+                        >
+                          <Image
+                            src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
+                            alt={country.name}
+                            width={20}
+                            height={20}
+                            className=""
+                            unoptimized
+                          />
+                          <span className={`flex-1 text-sm ${isSelected ? 'text-primary-foreground' : 'text-gray-700 dark:text-white group-hover:text-primary-foreground'}`}>
+                            {country.name}
+                          </span>
+                          <span className={`text-sm font-medium ${isSelected ? 'text-primary-foreground/80' : 'text-slate-400 dark:text-slate-300 group-hover:text-primary-foreground/80'}`}>
+                            {country.dialCode}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
