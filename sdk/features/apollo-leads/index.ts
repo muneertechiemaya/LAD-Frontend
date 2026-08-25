@@ -56,18 +56,12 @@ export type {
   // API Response Types
   ApolloApiResponse,
   ApolloHealthResponse,
-  // Feature Access
-  ApolloFeatureAccess,
   // Hook Return Types
   UseApolloLeadsReturn,
   UseApolloSearchReturn,
   UseApolloCreditsReturn,
   // Service Interface
   ApolloLeadsServiceInterface,
-  // Component Props
-  ApolloLeadsSearchProps,
-  ApolloCompanyCardProps,
-  ApolloEmployeeListProps,
   // Phone Service Types
   PhoneRevealRequest,
   PhoneRevealResponse
