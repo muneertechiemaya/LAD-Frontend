@@ -76,9 +76,10 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import' | 'web_extract';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import' | 'web_extract' | 'own_contacts';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
+  { key: 'own_contacts', label: 'Your own contacts', sub: 'People who already gave you their details', icon: <Users className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30', recurring: true },
   { key: 'zoho_recurring', label: 'Zoho CRM (Recurring)', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
   { key: 'zoho_once', label: 'Zoho CRM (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
   { key: 'ghl_once', label: 'GoHighLevel (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
@@ -215,6 +216,7 @@ const CONDITIONS = [
 // independent lookup so it can't break their exhaustiveness.
 const STEP_INSTRUCTIONS: Record<string, string> = {
   // Sources
+  own_contacts: 'Works through the contacts already in your account - people who messaged you or were imported from your booking system. Email only: they have no open WhatsApp window, so a WhatsApp step would need an approved template. Anyone without a usable email address is skipped.',
   zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required - the tag filter is optional.',
   zoho_once: 'Imports contacts already synced from Zoho CRM, once. Nothing is required.',
   ghl_once: 'Imports contacts already synced from GoHighLevel, once. Nothing is required.',
@@ -3213,6 +3215,19 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             leadGenerationLimit: perDayN,
           },
         });
+      } else if (source === 'own_contacts') {
+        // Walks the tenant's OWN contact list a page a day. The segment splits
+        // on when we last HEARD from someone - not when they last visited,
+        // which the conversation database does not know.
+        steps.push({
+          type: 'lead_generation', title: 'Your own contacts', channel: 'email', order_index: order++,
+          config: {
+            source: 'own_contacts',
+            segment: srcCfg.segment || 'all',
+            window_days: Number(srcCfg.window_days) > 0 ? Number(srcCfg.window_days) : 180,
+            leadGenerationLimit: perDayN,
+          },
+        });
       } else if (source === 'ghl_recurring') {
         // NOTE the two keys: the tile/SourceKey is `ghl_recurring`, the emitted
         // config.source is `ghl_contacts` - the value LeadGenerationService
@@ -3634,7 +3649,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         campaign_start_date: start.toISOString(),
         campaign_end_date: end.toISOString(),
         config: {
-          data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'ghl_recurring' ? 'ghl_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
+          data_source: source === 'own_contacts' ? 'own_contacts' : source === 'zoho_recurring' ? 'zoho_contacts' : source === 'ghl_recurring' ? 'ghl_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
           // The builder's own state, stored so "Edit Accelerator" can reopen it
           // exactly as it was. Launch flattens these nodes into config.* and
@@ -4186,6 +4201,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </select></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">How many (max 500)</label>
               <Input type="number" value={cfg.import_count || '100'} onChange={(e) => setCfg(editingId, { import_count: e.target.value })} /></div>
+          </>)}
+          {isSource && source === 'own_contacts' && (<>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Who to include</label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={cfg.segment || 'all'}
+                onChange={(e) => setCfg(editingId, { segment: e.target.value })}
+              >
+                <option value="all">Everyone with an email address</option>
+                <option value="recent">Only people we&apos;ve heard from recently</option>
+                <option value="lapsed">Only people we haven&apos;t heard from</option>
+              </select>
+              {/* "Heard from", not "visited". The conversation database knows
+                  when someone last MESSAGED; it has no idea when they last
+                  came to a class, and a label saying otherwise would be read
+                  as attendance. */}
+              <p className="text-[11px] text-muted-foreground">
+                Based on when they last messaged you, not when they last came in.
+              </p></div>
+            {(cfg.segment === 'recent' || cfg.segment === 'lapsed') && (
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Over how many days</label>
+                <Input type="number" value={cfg.window_days || '180'} onChange={(e) => setCfg(editingId, { window_days: e.target.value })} /></div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Works through up to {perDay}/day, carrying on where it left off each day
+              until the list runs out. Email only &mdash; these contacts have no open
+              WhatsApp window, so a WhatsApp step would need an approved template.
+              Anyone without a usable email address is skipped.
+            </p>
           </>)}
           {isSource && source === 'ghl_once' && (
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">How many (max 500)</label>

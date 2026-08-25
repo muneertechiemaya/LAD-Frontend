@@ -70,9 +70,10 @@ export function PipelineCard({ pipeline, onToggleActive, onSaveKnobs }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold">{pipeline.name}</h2>
             {planned ? (
-              // Worth saying plainly: switching a planned pipeline on records
-              // the activation and changes no agent behaviour, because there
-              // is no prompt content behind it yet.
+              // Not decoration. The server REFUSES to activate a pipeline the
+              // manifest still calls `planned`, so this badge and the disabled
+              // switch below are the UI half of a rule that is enforced
+              // whether or not we render it.
               <Badge variant="secondary">Not built yet</Badge>
             ) : null}
             {!pipeline.entitled ? <Badge variant="outline">Not in your plan</Badge> : null}
@@ -80,18 +81,27 @@ export function PipelineCard({ pipeline, onToggleActive, onSaveKnobs }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">{pipeline.blurb}</p>
           {planned ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              You can fill these in now, but nothing will use them until this
-              pipeline ships.
+              You can fill these in now and they will be saved. This pipeline
+              can&apos;t be switched on until it ships.
             </p>
           ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {/*
+            Disabled while planned. The server returns 400 pipeline_not_built_yet
+            for that case, so an enabled switch offers a click that cannot
+            succeed — and the honest place to say so is here, not in an error
+            toast after the fact.
+
+            Still togglable when it is already ON: a tenant who activated one
+            before the server-side guard existed has to be able to turn it off.
+          */}
           <Switch
             checked={pipeline.active}
             onCheckedChange={toggle}
-            disabled={!pipeline.entitled || toggling}
+            disabled={!pipeline.entitled || toggling || (planned && !pipeline.active)}
             aria-label={`Turn ${pipeline.name} ${pipeline.active ? 'off' : 'on'}`}
           />
         </div>
