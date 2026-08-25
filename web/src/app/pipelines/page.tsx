@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Pipelines — the curated workspace's home screen.
+ * Pipelines - the curated workspace's home screen.
  *
  * This is the surface that REPLACES the workflow builder for a tenant on a
  * vertical snapshot. They do not compose nodes; they switch prebuilt pipelines
  * on and off. Every card is one of three states, which is the whole model:
  *
- *   locked     not entitled — shown, with what it would do, and no switch
+ *   locked     not entitled - shown, with what it would do, and no switch
  *   off        entitled, tenant has not switched it on
  *   on         entitled and running
  *
@@ -20,13 +20,13 @@
  * most misleading thing this page can do: the switch looks like it started
  * work, and the tenant waits for an agent that was never going to reply. So a
  * non-live pipeline is labelled, and switching it on says what that actually
- * means — the choice is recorded and takes effect when the pipeline ships.
+ * means - the choice is recorded and takes effect when the pipeline ships.
  *
- * Only `live` is treated as running. An unrecognised state — one added to a
- * later manifest and deployed ahead of this page — reads as not-live, so a
+ * Only `live` is treated as running. An unrecognised state - one added to a
+ * later manifest and deployed ahead of this page - reads as not-live, so a
  * frontend that has not caught up understates rather than overstates.
  *
- * The switch changes ACTIVATION only. It cannot grant an entitlement — the
+ * The switch changes ACTIVATION only. It cannot grant an entitlement - the
  * server refuses, and the optimistic update in usePipelines rolls back.
  */
 
@@ -41,7 +41,7 @@ import { TranscriptUpload } from '@/components/pipelines/TranscriptUpload';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** Only `live` means an engine is actually running this pipeline. Unknown
- *  states fail closed — see the header comment. */
+ *  states fail closed - see the header comment. */
 function isLive(pipeline: SnapshotPipeline) {
   return pipeline.state === 'live';
 }
@@ -122,7 +122,7 @@ function PipelineCard({
                 ? (active ? `Turn ${name} off` : `Turn ${name} on`)
                 : (active
                     ? `Turn ${name} off. Not running yet.`
-                    : `Turn ${name} on. Not running yet — starts when this pipeline ships.`)}
+                    : `Turn ${name} on. Not running yet - starts when this pipeline ships.`)}
             </span>
             <input
               id={toggleId}
@@ -147,7 +147,7 @@ function PipelineCard({
         {entitled && (
           <span className="text-xs text-gray-500 dark:text-slate-400 tabular-nums">
             {!live
-              ? (active ? 'On — starts when this ships' : 'Available when this ships')
+              ? (active ? 'On - starts when this ships' : 'Available when this ships')
               : campaignCount === 0
                 ? 'No campaigns yet'
                 : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
@@ -182,7 +182,7 @@ function PipelineCard({
                   saving={saving}
                   onApply={async (values) => {
                     const errs = await onSaveKnobs(values);
-                    // Keep the panel open when the server rejected something —
+                    // Keep the panel open when the server rejected something  - 
                     // dismissing would hide both the errors and the evidence
                     // needed to judge them.
                     if (!errs.length) proposals.dismiss();
@@ -249,7 +249,7 @@ export default function PipelinesPage() {
     );
   }
 
-  // A tenant outside a snapshot reaching this route is not an error — they
+  // A tenant outside a snapshot reaching this route is not an error - they
   // simply run the general-purpose product, where campaigns are built rather
   // than switched on.
   if (!isCuratedWorkspace || !overview?.vertical) {

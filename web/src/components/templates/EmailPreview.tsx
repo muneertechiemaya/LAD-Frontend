@@ -18,7 +18,7 @@ export default function EmailPreview({
 }: EmailPreviewProps) {
   const [device, setDevice] = useState<DeviceType>('desktop');
   const [error, setError] = useState('');
-  // Track parent app's dark mode via MutationObserver — drives iframe theme
+  // Track parent app's dark mode via MutationObserver - drives iframe theme
   const [isDark, setIsDark] = useState(() =>
     typeof document !== 'undefined' &&
     document.documentElement.classList.contains('dark')
@@ -161,7 +161,7 @@ export default function EmailPreview({
         }
 
 
-        /* No OS-level dark media query — theme is driven solely by parent app class */
+        /* No OS-level dark media query - theme is driven solely by parent app class */
       </style>
     </head>
     <body>

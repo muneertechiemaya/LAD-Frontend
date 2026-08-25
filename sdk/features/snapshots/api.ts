@@ -1,4 +1,4 @@
-// Vertical snapshots SDK — API layer. All HTTP for this feature lives here.
+// Vertical snapshots SDK - API layer. All HTTP for this feature lives here.
 //
 // Routes through the shared apiClient, which (in the browser) goes same-origin
 // via the Next.js [feature]/[...path] proxy. The proxy mirrors backend paths
@@ -15,7 +15,7 @@ const BASE = '/api/snapshot';
  * The Pipelines page payload: entitlement, the tenant's own on/off state, and
  * campaign counts for each of the four pipelines.
  *
- * Returns `vertical: null` with an empty list for a tenant outside a snapshot —
+ * Returns `vertical: null` with an empty list for a tenant outside a snapshot  - 
  * that is a valid response, not an error.
  */
 export async function getPipelineOverview(): Promise<PipelineOverview> {
@@ -27,7 +27,7 @@ export async function getPipelineOverview(): Promise<PipelineOverview> {
  * Flip the tenant's activation switch for one pipeline.
  *
  * This changes only whether the tenant has it switched ON. It cannot grant an
- * entitlement — the server refuses with 403 `not_entitled` if the workspace
+ * entitlement - the server refuses with 403 `not_entitled` if the workspace
  * does not already have the pipeline.
  */
 export async function setPipelineActive(
@@ -42,7 +42,7 @@ export async function setPipelineActive(
 }
 
 /**
- * Save settings for one pipeline. Send only the fields that changed — the
+ * Save settings for one pipeline. Send only the fields that changed - the
  * server merges over what is stored rather than replacing it, which is what
  * keeps a newer snapshot version's values intact across a rollback.
  *
@@ -69,7 +69,7 @@ export async function setPipelineKnobs(
  *
  * POST rather than GET because it costs LLM credits and is not safely
  * repeatable. `sampleConversationIds` narrows the read to specific
- * conversations — three that went the way the studio wants beat forty that
+ * conversations - three that went the way the studio wants beat forty that
  * did not.
  */
 export async function requestKnobProposals(
@@ -99,8 +99,8 @@ export async function requestKnobProposals(
 }
 
 /**
- * Parse an uploaded WhatsApp export and report who is in it. Free — no LLM
- * call — and nothing is stored: the server parses and discards. This runs
+ * Parse an uploaded WhatsApp export and report who is in it. Free - no LLM
+ * call - and nothing is stored: the server parses and discards. This runs
  * BEFORE a scan so the studio can say which participant is them.
  */
 export async function previewTranscript(
@@ -122,7 +122,7 @@ export async function previewTranscript(
  * `conversations.id` the extractor reads by, so a second endpoint would be a
  * second shape of the same data, free to drift.
  *
- * Sorted by recency by the server. Trivial threads are not filtered out here —
+ * Sorted by recency by the server. Trivial threads are not filtered out here  - 
  * message counts are shown instead, because "too short to be useful" is a
  * judgement for the person picking, not for this function.
  */

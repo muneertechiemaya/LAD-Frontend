@@ -148,7 +148,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
     setHeaderMediaHandle('');
     setMediaFileName(file.name);
     try {
-      // Read file as base64 and send as JSON — avoids multipart proxy issues
+      // Read file as base64 and send as JSON - avoids multipart proxy issues
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve((reader.result as string).split(',')[1]);
@@ -577,7 +577,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                 {bodyVars.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
-                      Example values <span className="text-red-500">*</span> — required by Meta for approval
+                      Example values <span className="text-red-500">*</span> - required by Meta for approval
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {bodyVars.map(v => (
@@ -738,10 +738,10 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
 
                 {/* Meta submission summary */}
                 <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1 text-xs">
-                  <p><span className="text-zinc-500 dark:text-zinc-400">Name:</span> <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-100">{safeName || '—'}</span></p>
+                  <p><span className="text-zinc-500 dark:text-zinc-400">Name:</span> <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-100">{safeName || '-'}</span></p>
                   <p><span className="text-zinc-500 dark:text-zinc-400">Language:</span> <span className="text-zinc-800 dark:text-zinc-100">{LANGUAGES.find(l => l.code === language)?.label}</span></p>
                   <p><span className="text-zinc-500 dark:text-zinc-400">Category:</span> <span className="text-zinc-800 dark:text-zinc-100">{category}</span></p>
-                  <p><span className="text-zinc-500 dark:text-zinc-400">Components:</span> <span className="text-zinc-800 dark:text-zinc-100">{buildComponents().map((c: any) => c.type).join(', ') || '—'}</span></p>
+                  <p><span className="text-zinc-500 dark:text-zinc-400">Components:</span> <span className="text-zinc-800 dark:text-zinc-100">{buildComponents().map((c: any) => c.type).join(', ') || '-'}</span></p>
                 </div>
               </div>
             </div>

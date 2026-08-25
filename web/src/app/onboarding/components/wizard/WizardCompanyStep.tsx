@@ -1,10 +1,10 @@
 'use client';
-// R8 Phase 3 — Company step.
+// R8 Phase 3 - Company step.
 //
 // Collects the "company half" of the 14-field business profile (6 fields).
 // The other 8 fields are gathered by the chat in the ICP step. All 14 are
 // persisted to ai_icp_profiles.icp_data via `useBusinessProfile()`
-// — same hook the ICP Discovery drawer and Settings → Business Profile use,
+// - same hook the ICP Discovery drawer and Settings → Business Profile use,
 // so the three surfaces always agree on what's saved.
 
 import * as React from 'react';
@@ -16,7 +16,7 @@ import {
   type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 
-// The six fields this step owns. Order matters — drives form layout.
+// The six fields this step owns. Order matters - drives form layout.
 type CompanyHalfKey = (typeof BUSINESS_PROFILE_COMPANY_HALF)[number];
 
 interface WizardCompanyStepProps {

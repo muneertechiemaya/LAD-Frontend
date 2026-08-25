@@ -3,7 +3,7 @@
  *
  * A Strategy stores the CustomWorkflowBuilder's own state rather than the
  * campaign payload `launch()` emits. That choice is what lets a saved strategy
- * be restored through the SAME `applyTemplate()` the built-in recipes use —
+ * be restored through the SAME `applyTemplate()` the built-in recipes use  - 
  * one apply path, no second implementation to keep in sync.
  *
  * These are pure functions on purpose: the round trip has a couple of
@@ -49,7 +49,7 @@ export const strategyIdFromKey = (key: string) =>
  *
  * Two cases: fixed macro ids (drawers + launch look configs up by them) and
  * router ids (a router is `type: 'condition'` identified ONLY by its `rt-`
- * prefix — regenerate it and the router silently becomes a wait-for-condition).
+ * prefix - regenerate it and the router silently becomes a wait-for-condition).
  * Ordinary outreach steps carry no meaning in their id and get fresh ones.
  */
 export const idIsLoadBearing = (id: string) =>
@@ -67,7 +67,7 @@ interface BuilderState {
  * Snapshot the builder's current state as a storable definition.
  *
  * Note what is NOT captured: `fileRows` / `fileMapping`. Uploaded contact rows
- * are data, not strategy — they'd bloat every row and are the last thing that
+ * are data, not strategy - they'd bloat every row and are the last thing that
  * should ride along if the strategy is later shared. A file-import strategy is
  * marked `requiresFile` and the importer supplies their own list.
  */
@@ -153,7 +153,7 @@ interface StrategyLike {
  * existing gallery card renderer, overview drawer and `applyTemplate()` with no
  * special-casing anywhere downstream.
  *
- * `inputs` is empty — the chat wizard's question flow only applies to built-in
+ * `inputs` is empty - the chat wizard's question flow only applies to built-in
  * recipes; a saved strategy is applied to the canvas and edited there.
  */
 export function definitionToTemplate(
@@ -167,7 +167,7 @@ export function definitionToTemplate(
     : null;
   // applyTemplate resolves the source against SOURCES with a non-null
   // assertion, so an unrecognised key would crash the builder. Skip the card
-  // instead — a strategy we cannot apply should not be offered.
+  // instead - a strategy we cannot apply should not be offered.
   if (!sourceKey) return null;
 
   const nodes = Array.isArray(definition.nodes) ? definition.nodes : [];

@@ -6,8 +6,8 @@
  * WHY THIS EXISTS WHEN "SCAN MY HISTORY" ALREADY WORKS
  * The automatic scan reads the most RECENT conversations, which is a proxy for
  * "representative" and often a bad one. A studio knows which three chats went
- * the way they want — the one where the customer asked about prices and got the
- * right answer, the one that ended in a booking — and three of those teach the
+ * the way they want - the one where the customer asked about prices and got the
+ * right answer, the one that ended in a booking - and three of those teach the
  * extractor more than forty that trail off after "Hi".
  *
  * So this shows what each conversation actually is: how many messages it has,
@@ -15,7 +15,7 @@
  * without anyone having to open it.
  *
  * Short threads are NOT filtered out. "Too short to be useful" is a judgement
- * for the person picking — a two-message exchange containing the studio's
+ * for the person picking - a two-message exchange containing the studio's
  * address is worth more than a twenty-message one that goes nowhere.
  */
 
@@ -27,7 +27,7 @@ import type { SampleConversation } from '@lad/frontend-features/snapshots';
 /** The server rejects more than this, so the UI must not let it be exceeded. */
 const MAX_SAMPLES = 10;
 
-/** Stages worth calling out — a completed booking is a good example to learn from. */
+/** Stages worth calling out - a completed booking is a good example to learn from. */
 const NOTABLE_STAGE: Record<string, string> = {
   booking_completed: 'Booked',
   rescheduled: 'Rescheduled',

@@ -1,5 +1,5 @@
 'use client';
-// /crm/zoho — Browse Zoho CRM records (Contacts / Leads / Deals / Tasks) synced
+// /crm/zoho - Browse Zoho CRM records (Contacts / Leads / Deals / Tasks) synced
 // into this tenant. Connection setup lives in Settings → Integrations.
 
 import * as React from 'react';
