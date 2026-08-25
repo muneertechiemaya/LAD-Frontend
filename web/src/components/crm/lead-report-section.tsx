@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * Lead Report — the research/audit for one lead, on the CRM lead page.
+ * Lead Report - the research/audit for one lead, on the CRM lead page.
  *
  * THE ORDERING THIS CARD EXISTS TO COMMUNICATE: the report is generated and
  * stored BEFORE anyone approves it, because there is nothing to review
- * otherwise. So a `public_url` exists while the status is still `pending` — and
+ * otherwise. So a `public_url` exists while the status is still `pending` - and
  * that URL is the APPROVER's copy, not something the prospect has received.
  * Every label here is written to keep those apart; "delivered" appears only
  * after approval.
@@ -110,7 +110,7 @@ export default function LeadReportSection({
                   View PDF
                 </a>
               )}
-              {/* The gate withholds DELIVERY, not creation — so say whose copy this is. */}
+              {/* The gate withholds DELIVERY, not creation - so say whose copy this is. */}
               {state === 'pending' && (
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
                   <Eye className="w-3.5 h-3.5" />
@@ -268,7 +268,7 @@ function StatusStrip({ state, report }: { state: ReportViewState; report: LeadRe
       </Strip>
     );
   }
-  // 'none' — generated with no approval gate configured.
+  // 'none' - generated with no approval gate configured.
   return (
     <Strip tone="neutral">
       Generated {when(report.created_at)} · no approval gate on this step
@@ -294,7 +294,7 @@ function Strip({ tone, children }: { tone: 'amber' | 'neutral' | 'red'; children
 // ── Document body ───────────────────────────────────────────────────────────
 
 /**
- * Renders `content` exactly as the PDF does. Every field is optional — the
+ * Renders `content` exactly as the PDF does. Every field is optional - the
  * generator omits what the sources could not support, and a missing section is
  * the scrubber working rather than a rendering bug, so nothing here fills a gap
  * with a placeholder.

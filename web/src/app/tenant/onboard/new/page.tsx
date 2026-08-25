@@ -15,24 +15,24 @@ const SUPER_ADMIN_EMAIL = 'admin@techiemaya.com';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface FormData {
-  // Step 1 — Company
+  // Step 1 - Company
   companyName: string;
   slug: string;
   email: string;
   planTier: string;
   environment: 'develop' | 'stage';
 
-  // Step 2 — Admin User
+  // Step 2 - Admin User
   adminFirstName: string;
   adminLastName: string;
   adminEmail: string;
   adminPassword: string;
 
-  // Step 3 — Database
+  // Step 3 - Database
   createDatabase: boolean;
   customDbUrl: string;
 
-  // Step 4 — WABA (optional)
+  // Step 4 - WABA (optional)
   enableWaba: boolean;
   wabaSlug: string;
   wabaPhoneNumberId: string;
@@ -43,7 +43,7 @@ interface FormData {
   wabaVerifyToken: string;
   wabaAppSecret: string;
 
-  // Step 5 — Features & Voice
+  // Step 5 - Features & Voice
   features: string[];
   featureFlags: string[];
   capabilities: string[];
@@ -77,7 +77,7 @@ interface StepLog {
 
 // These hardcoded lists are FALLBACKS used only if /api/tenant/manage/meta is
 // unreachable. The live source of truth is provision.js (surfaced via the
-// /meta endpoint) — keep these roughly in sync, but the meta fetch on mount
+// /meta endpoint) - keep these roughly in sync, but the meta fetch on mount
 // will override them with the canonical lists. Essentials (always-on,
 // non-deselectable) are also fetched from meta.
 const DEFAULT_FEATURES = [
@@ -108,14 +108,14 @@ const DEFAULT_CAPABILITIES = [
   'view_scraper', 'view_settings', 'view_pricing', 'voice-agent',
 ];
 
-// Hardcoded essentials — used until /meta loads, then replaced.
+// Hardcoded essentials - used until /meta loads, then replaced.
 // Keep these in sync with ESSENTIAL_OWNER_CAPABILITIES / ESSENTIAL_TENANT_FEATURES
 // in LAD_backend/features/admin/routes/provision.js (also surfaced via /meta).
 const FALLBACK_ESSENTIAL_FEATURES = [
   'conversations', 'campaigns', 'followups',
   // 'ai_assistant' = AI-template generation; 'ai-chat' = sidebar AI Assistant
-  // nav. Distinct feature keys — both required, otherwise new tenants hit
-  // "Feature Not Available — unlock ai-chat".
+  // nav. Distinct feature keys - both required, otherwise new tenants hit
+  // "Feature Not Available - unlock ai-chat".
   'ai_assistant', 'ai-chat',
   'whatsapp-conversations',
 ];
@@ -256,7 +256,7 @@ function Toggle({ checked, onChange, label }: {
 
 function TagGroup({ items, selected, onChange, locked = [] }: {
   items: string[]; selected: string[]; onChange: (v: string[]) => void;
-  /** Keys that must remain enabled — rendered with a distinct style and not toggleable. */
+  /** Keys that must remain enabled - rendered with a distinct style and not toggleable. */
   locked?: string[];
 }) {
   const lockedSet = new Set(locked);
@@ -493,7 +493,7 @@ function StepWaba({ form, set }: { form: FormData; set: (k: keyof FormData, v: a
 function StepFeatures({ form, set, meta }: {
   form: FormData;
   set: (k: keyof FormData, v: any) => void;
-  /** Live form metadata from /api/tenant/manage/meta — null until fetched (falls back to DEFAULT_*). */
+  /** Live form metadata from /api/tenant/manage/meta - null until fetched (falls back to DEFAULT_*). */
   meta: TenantFormMeta | null;
 }) {
   // Live lists if meta loaded, hardcoded fallbacks otherwise
@@ -502,14 +502,14 @@ function StepFeatures({ form, set, meta }: {
   const capItems       = meta?.capabilities          ?? DEFAULT_CAPABILITIES;
   const essentialFeatures      = meta?.essential_features      ?? FALLBACK_ESSENTIAL_FEATURES;
   const essentialCapabilities  = meta?.essential_capabilities  ?? FALLBACK_ESSENTIAL_CAPABILITIES;
-  // Feature flags have no essentials concept on the backend yet — pass [].
+  // Feature flags have no essentials concept on the backend yet - pass [].
 
   const allFeaturesOn = () => {
     set('features', [...new Set([...featureItems, ...essentialFeatures])]);
     set('featureFlags', [...flagItems]);
     set('capabilities', [...new Set([...capItems, ...essentialCapabilities])]);
   };
-  // "Clear All" still preserves essentials — they can never be off.
+  // "Clear All" still preserves essentials - they can never be off.
   const allFeaturesOff = () => {
     set('features', [...essentialFeatures]);
     set('featureFlags', []);
@@ -867,7 +867,7 @@ export default function TenantOnboardPage() {
   const [errors, setErrors] = useState<string[]>([]);
 
   // ── Live form metadata from /api/tenant/manage/meta ──────────────────────
-  // Single source of truth — provision.js (DEFAULT_*/ESSENTIAL_*). The
+  // Single source of truth - provision.js (DEFAULT_*/ESSENTIAL_*). The
   // hardcoded DEFAULT_* lists above are fallbacks for when this fetch fails.
   const [meta, setMeta] = useState<TenantFormMeta | null>(null);
   useEffect(() => {
@@ -975,7 +975,7 @@ export default function TenantOnboardPage() {
           waba_display_name:       form.enableWaba ? form.wabaDisplayName : undefined,
           waba_verify_token:       form.enableWaba ? form.wabaVerifyToken : undefined,
           waba_app_secret:         form.enableWaba ? form.wabaAppSecret : undefined,
-          // Features — explicit arrays override defaults in backend
+          // Features - explicit arrays override defaults in backend
           features:      form.features,
           feature_flags: form.featureFlags,
           capabilities:  form.capabilities,

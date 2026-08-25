@@ -7,8 +7,8 @@
  * One entry = one follow-up ("touch"): when it fires, and what it sends.
  *
  * Used at two scopes, with the SAME touch model on the wire:
- *   • tenant   — Settings → Chat → LinkedIn ("Follow-up Cadence")
- *   • campaign — Scheduled Follow-ups modal, per campaign (overrides the tenant)
+ *   • tenant   - Settings → Chat → LinkedIn ("Follow-up Cadence")
+ *   • campaign - Scheduled Follow-ups modal, per campaign (overrides the tenant)
  *
  * Controlled component: the parent owns `touches` and persists them. All state
  * here is transient UI (which row opened the create-template modal).
@@ -30,7 +30,7 @@ export type FollowupTouch = {
   hours: number;
   template_id: string | null;
   touch_type?: 'industry_trend' | 'company_page_post' | null;
-  /** Only set for touch_type 'company_page_post' — the page posts are shared from. */
+  /** Only set for touch_type 'company_page_post' - the page posts are shared from. */
   company_page_url?: string | null;
 };
 
@@ -268,7 +268,7 @@ export default function FollowupTouchesEditor({
                   </Select>
                 </div>
 
-                {/* Company page URL — only for the company-page-post mode.
+                {/* Company page URL - only for the company-page-post mode.
                     Asked for explicitly: LinkedIn's API exposes admined pages
                     by URN with no slug, so the page can't be auto-resolved. */}
                 {touch.touch_type === 'company_page_post' && (

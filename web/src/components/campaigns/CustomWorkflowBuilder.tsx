@@ -1,10 +1,10 @@
 'use client';
-// Custom Accelerator builder (node graph) — embeddable component.
+// Custom Accelerator builder (node graph) - embeddable component.
 //
 // Pick a contact SOURCE node (Zoho CRM recurring/one-time, GoHighLevel,
 // LinkedIn Search), chain OUTREACH nodes (LinkedIn / Email / WhatsApp / Voice /
 // Wait-condition) on a React Flow canvas, configure each node in a drawer, and
-// launch — assembles engine-compatible campaign steps and POSTs /api/campaigns.
+// launch - assembles engine-compatible campaign steps and POSTs /api/campaigns.
 // Recurrence comes from the engine's daily lead_generation loop
 // (source='zoho_contacts' etc.), not a separate scheduler.
 //
@@ -16,7 +16,7 @@
 // preview panel. Because the store is SHARED with the chat-built workflow
 // preview on advanced-search-ai, the builder snapshots workflowPreview on
 // mount and restores it on close. Node CONFIG (messages, delays, zoho
-// modules…) lives in local state keyed by step id — the store only carries the
+// modules…) lives in local state keyed by step id - the store only carries the
 // visual step list.
 
 import * as React from 'react';
@@ -91,7 +91,7 @@ const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNo
 
 // Target fields the file columns map to. 'ignore' drops the column.
 const IMPORT_FIELDS = [
-  { value: 'ignore', label: '— Ignore —' },
+  { value: 'ignore', label: ' -  Ignore  - ' },
   { value: 'full_name', label: 'Full name' },
   { value: 'first_name', label: 'First name' },
   { value: 'last_name', label: 'Last name' },
@@ -180,7 +180,7 @@ const OUTREACH: { type: StepType; label: string; group: string; channel: Channel
   { type: 'whatsapp_send', label: 'Send WhatsApp', group: 'WhatsApp', channel: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' },
   { type: 'voice_agent_call', label: 'AI voice call', group: 'Voice', channel: 'voice', icon: <Phone className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { type: 'condition', label: 'Wait for condition', group: 'Logic', channel: 'linkedin', icon: <Clock className="h-4 w-4 text-slate-500" />, chip: 'bg-slate-100 dark:bg-slate-800/50' },
-  { type: 'condition', label: 'Router — fallback', group: 'Logic', channel: 'linkedin', icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30', router: true },
+  { type: 'condition', label: 'Router - fallback', group: 'Logic', channel: 'linkedin', icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30', router: true },
 ];
 
 const ROUTER_CHANNELS = [
@@ -208,33 +208,33 @@ const CONDITIONS = [
 // What each node needs and how it behaves, shown at the top of its settings
 // drawer. Keyed by SourceKey for sources, by StepType for plain outreach/logic
 // nodes, by 'router' for the router variant, and by the node's fixed macro id
-// (see workflowTemplates.ts) for everything else — mirrors the key resolution
+// (see workflowTemplates.ts) for everything else - mirrors the key resolution
 // already used for icons/labels in renderEditor(). Deliberately a loose
 // Record<string,string>, not tied to the three exhaustive StepType maps
-// elsewhere (StepSettings.tsx / both campaignStore.ts) — this is a new,
+// elsewhere (StepSettings.tsx / both campaignStore.ts) - this is a new,
 // independent lookup so it can't break their exhaustiveness.
 const STEP_INSTRUCTIONS: Record<string, string> = {
   // Sources
-  zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required — the tag filter is optional.',
+  zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required - the tag filter is optional.',
   zoho_once: 'Imports contacts already synced from Zoho CRM, once. Nothing is required.',
   ghl_once: 'Imports contacts already synced from GoHighLevel, once. Nothing is required.',
-  ghl_recurring: 'Imports newly-created GoHighLevel contacts every day for the life of the campaign. Nothing is required — the tag filter is optional. GoHighLevel must be connected and synced first.',
-  file_import: "Imports leads from an uploaded CSV/Excel file. Needs a file with at least one column mapped to name, company, email, or LinkedIn URL. Rows with no LinkedIn URL are resolved automatically by name+company at send time — some may never match, and those retry indefinitely rather than fail. Map a LinkedIn URL column directly when you have one.",
+  ghl_recurring: 'Imports newly-created GoHighLevel contacts every day for the life of the campaign. Nothing is required - the tag filter is optional. GoHighLevel must be connected and synced first.',
+  file_import: "Imports leads from an uploaded CSV/Excel file. Needs a file with at least one column mapped to name, company, email, or LinkedIn URL. Rows with no LinkedIn URL are resolved automatically by name+company at send time - some may never match, and those retry indefinitely rather than fail. Map a LinkedIn URL column directly when you have one.",
   linkedin_search: 'Finds new leads by keyword, title, industry, or location. Needs at least one of those filled in.',
   linkedin_signal: 'Finds leads from hiring/buying signals. Needs a description of the signal to search for.',
   // LinkedIn outreach
-  linkedin_connect: "Sends a LinkedIn connection request — no prior connection needed. Needs an active LinkedIn account connected in Settings. Follow it with a Message step to reach leads once they accept.",
-  linkedin_message: "Sends a LinkedIn DM — but ONLY once a connection has already been accepted. If there is no Connection request step earlier in this sequence, the lead is never asked to connect, so this step waits for an acceptance that will never happen and no message is ever sent. Needs message text (supports {{first_name}}, {{company}}, {{web_insight}}, {{recent_post}}, {{article}}, {{news}}).",
-  linkedin_inmail: 'Sends a paid InMail straight to a non-connection — no prior connect step needed. Needs message text and a LinkedIn Premium / Sales Navigator / Recruiter seat with InMail credits on the sending account.',
+  linkedin_connect: "Sends a LinkedIn connection request - no prior connection needed. Needs an active LinkedIn account connected in Settings. Follow it with a Message step to reach leads once they accept.",
+  linkedin_message: "Sends a LinkedIn DM - but ONLY once a connection has already been accepted. If there is no Connection request step earlier in this sequence, the lead is never asked to connect, so this step waits for an acceptance that will never happen and no message is ever sent. Needs message text (supports {{first_name}}, {{company}}, {{web_insight}}, {{recent_post}}, {{article}}, {{news}}).",
+  linkedin_inmail: 'Sends a paid InMail straight to a non-connection - no prior connect step needed. Needs message text and a LinkedIn Premium / Sales Navigator / Recruiter seat with InMail credits on the sending account.',
   linkedin_visit: "Visits the lead's LinkedIn profile as a warm-up signal. Nothing is required; no sequence dependency, though it reads best placed before Connect/Message.",
   linkedin_follow: "Follows the lead's LinkedIn profile. Nothing is required; no sequence dependency.",
   // Other channels
   email_send: 'Sends an email. Needs a subject, a body, and a connected email sender.',
   whatsapp_send: 'Sends a WhatsApp message. Needs message text and a connected WhatsApp number.',
-  voice_agent_call: 'Places an AI voice call. Everything here is optional — with no agent selected the first available one is used, and the extra context is added to that agent\'s own instructions rather than replacing them.',
+  voice_agent_call: 'Places an AI voice call. Everything here is optional - with no agent selected the first available one is used, and the extra context is added to that agent\'s own instructions rather than replacing them.',
   condition: 'Pauses the lead here until the chosen condition (connection accepted, message replied, etc.) is met, then continues.',
   router: 'Watches the step placed right before it. After the set number of failed attempts, it stops retrying and reroutes the lead to the fallback channel instead.',
-  // Macro nodes (by fixed id — see workflowTemplates.ts)
+  // Macro nodes (by fixed id - see workflowTemplates.ts)
   [FOLLOWUP_STEP_ID]: 'Automatic follow-up touches if a lead does not reply, on the schedule below. Needs at least one touch configured (defaults are pre-filled).',
   [ANALYTICS_STEP_ID]: 'Emails or WhatsApps a daily performance digest. Needs a recipient.',
   [ZOHO_UPDATE_STEP_ID]: "Writes this workflow's results back onto the lead's Zoho record. Needs a target module and at least one field mapped.",
@@ -243,16 +243,16 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
   [AI_STEP_ID]: 'Uses AI to clean up messy imported titles/names before outreach runs. Nothing is required. Most useful placed right after the contact source, before any outreach step.',
   [ENRICH_STEP_ID]: "Reveals a lead's email/phone via FullEnrich, spending credits per lead found. Nothing is required. Most useful before an Email or WhatsApp step that needs that contact info.",
   [EXPORT_STEP_ID]: 'Sends the final lead list to a file, database, email, WhatsApp, webhook, Sheet, or Slack. Needs at least one destination configured.',
-  [AUTOPOST_STEP_ID]: "Publishes on a recurring schedule to the tenant's own LinkedIn feed — not sent to leads. Needs post content from a LinkedIn content node.",
+  [AUTOPOST_STEP_ID]: "Publishes on a recurring schedule to the tenant's own LinkedIn feed - not sent to leads. Needs post content from a LinkedIn content node.",
   [CONTENT_STEP_ID]: 'Writes (or AI-generates) the text for the scheduled LinkedIn post.',
-  [APPROVAL_STEP_ID]: 'Holds a post for approval over WhatsApp/email before it publishes. Needs an approver contact, AND a LinkedIn auto-post node in this workflow — approval has nothing to gate without one.',
+  [APPROVAL_STEP_ID]: 'Holds a post for approval over WhatsApp/email before it publishes. Needs an approver contact, AND a LinkedIn auto-post node in this workflow - approval has nothing to gate without one.',
   // Rewritten against WebIntelStepService.executeWebScrapeStep, which resolves
   // `(stepConfig.url || '').trim() || resolveWebsite(leadData)`. The previous
   // text claimed a URL was required, that the step never uses the lead's own
-  // site, and that {{web_insight}} comes from somewhere else — all three are
+  // site, and that {{web_insight}} comes from somewhere else - all three are
   // contradicted by that one line and by leadIntelTokens.resolveLeadIntelTokens,
   // where web_insight falls through to scrape.description || scrape.title.
-  [SCRAPE_STEP_ID]: "Reads a company website and stores the page text on the lead, so later steps have something concrete to work from. Runs before outreach. Leave the URL blank and it uses each lead's OWN site — their website field, else the domain from their work email. Enter a URL and every lead gets that same page instead. Whatever it reads feeds {{web_insight}} in your messages, unless a Web research node also ran, whose richer intel takes precedence.",
+  [SCRAPE_STEP_ID]: "Reads a company website and stores the page text on the lead, so later steps have something concrete to work from. Runs before outreach. Leave the URL blank and it uses each lead's OWN site - their website field, else the domain from their work email. Enter a URL and every lead gets that same page instead. Whatever it reads feeds {{web_insight}} in your messages, unless a Web research node also ran, whose richer intel takes precedence.",
   [RESEARCH_STEP_ID]: "Runs AI research on each lead's company from the open web. Nothing is required.",
   [SCORE_STEP_ID]: 'Scores each lead\'s buy-intent 0-100 and labels it hot/warm/cold. Nothing is required. Pairs naturally with a Multi-condition step placed right after it, to branch hot vs. cold leads.',
   [SPLIT_STEP_ID]: 'Sends variant A or B (roughly 50/50, sticky per lead) to compare two openers. Needs a message for BOTH variants.',
@@ -264,7 +264,7 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
 /**
  * Starting points on the resting screen. Each seeds the prompt with a shape the
  * drafter handles well and leaves the specifics in [brackets] for the user to
- * replace — a real head start, not decoration. Colours follow the channel
+ * replace - a real head start, not decoration. Colours follow the channel
  * palette used everywhere else in the builder, so a starter reads as the
  * channel it will build for.
  */
@@ -273,7 +273,7 @@ const AI_STARTERS: { label: string; prompt: string; icon: React.ReactNode; chip:
     label: 'LinkedIn outreach',
     chip: 'bg-[#0077B5]',
     icon: <Linkedin className="h-4 w-4 text-white" />,
-    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.',
+    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept - and follow up twice if they go quiet.',
   },
   {
     label: 'Email sequence',
@@ -313,7 +313,7 @@ type AiQuestion = {
   skippable?: boolean;
   /**
    * Whether the listed options are a shortlist rather than the whole set. Only
-   * set where a typed answer is genuinely honoured — offering it on a closed
+   * set where a typed answer is genuinely honoured - offering it on a closed
    * set (the three follow-up channels, yes/no) would take an answer the engine
    * cannot act on and silently drop it.
    */
@@ -332,7 +332,7 @@ type AiQuestion = {
 // them rather than by reading a description of them.
 //
 // Nothing reaches the lead. That is enforced in the backend executor
-// (WorkflowTestRunService), not here — the rows below are a rendering of what
+// (WorkflowTestRunService), not here - the rows below are a rendering of what
 // the server reports it did, and the panel has no say in what runs.
 
 /** One row of the timeline the server returns. */
@@ -368,7 +368,7 @@ const ARTIFACT_LABEL: Record<string, string> = {
 // does not take a person as input: it searches LinkedIn POSTS, asks Gemini
 // whether each post is the signal the user described, and enrols the AUTHOR of
 // the posts that pass. So the thing worth testing is the signal WORDING against
-// post text — "would this post have been picked up, and who would it enrol?".
+// post text - "would this post have been picked up, and who would it enrol?".
 //
 // What follows is a LOCAL preview of that decision, not the server's. There is
 // no endpoint that scores a supplied post: /api/signals/detect runs a live
@@ -377,11 +377,11 @@ const ARTIFACT_LABEL: Record<string, string> = {
 // cron. Every claim this screen makes is therefore one of two kinds, and the
 // panel says which is which:
 //
-//   REAL      — the search keywords the run will use, the 0.35 relevance floor,
+//   REAL      - the search keywords the run will use, the 0.35 relevance floor,
 //               the post → lead field mapping, and the whole buy-intent score
 //               (IntentScoringService is a fixed points table, not an LLM, so
 //               it is reproduced here arithmetic for arithmetic).
-//   PREVIEW   — the Gemini half: whether a post is relevant, how strong, how
+//   PREVIEW   - the Gemini half: whether a post is relevant, how strong, how
 //               urgent, and which pain points it names. At launch that is
 //               LinkedInPostAnalysisService.analyzePost; here it is keyword
 //               overlap. It catches wording that is far too narrow or far too
@@ -400,7 +400,7 @@ const ARTIFACT_LABEL: Record<string, string> = {
  * and the screen produces the posts. Only the "test a specific post" escape
  * hatch fills this in by hand, and only with the fields that change an outcome.
  * Post URL, likes and comments were asked for in an earlier cut of this screen
- * and are gone — a post URL is an OUTPUT of signal detection and cannot be
+ * and are gone - a post URL is an OUTPUT of signal detection and cannot be
  * invented, and engagement counts are shown to the classifier but score nothing.
  */
 type SamplePost = {
@@ -420,7 +420,7 @@ type SignalLeadPreview = {
   full_name: string;
   headline: string;
   current_company: string;
-  /** 0-1 on this path — SignalDetectionService passes _match_score straight through. */
+  /** 0-1 on this path - SignalDetectionService passes _match_score straight through. */
   icp_score: number;
   buy_intent_score: number;
   intent_level: 'high' | 'medium' | 'low';
@@ -443,7 +443,7 @@ type LiveSignalLead = {
   pain_points: string[];
   /** Job listing or feed post, whichever this lead came from. Null when neither. */
   link: { url: string; label: string } | null;
-  /** 'linkedin_job' | 'linkedin_post' — the backend's own discriminator. */
+  /** 'linkedin_job' | 'linkedin_post' - the backend's own discriminator. */
   sourceType: string;
   /** Jobs route only: how many matching roles that employer has open. */
   openRoles: number | null;
@@ -469,7 +469,7 @@ type SignalMatchResult = {
   lead: SignalLeadPreview | null;
 };
 
-/** SignalDetectionService.MIN_MATCH_SCORE — the floor a post must clear. */
+/** SignalDetectionService.MIN_MATCH_SCORE - the floor a post must clear. */
 const SIGNAL_MIN_MATCH_SCORE = 0.35;
 
 /**
@@ -483,14 +483,14 @@ const SIGNAL_STOPWORDS = [
 ];
 
 /**
- * The signal_type vocabulary, lifted from LinkedInPostAnalysisService — both the
+ * The signal_type vocabulary, lifted from LinkedInPostAnalysisService - both the
  * SIGNAL_TYPES array and the per-type rules in _buildPrompt. This is the whole
  * set the classifier can return; nothing here is invented.
  *
  * IMPORTANT: signal_type is an OUTPUT. Gemini reads it off each post, and there
  * is no parameter anywhere in the pipeline that filters a search by it. So the
  * chips built from this list edit the signal WORDING (`phrasing`) rather than
- * pretending to be a filter — see the copy on the chip row.
+ * pretending to be a filter - see the copy on the chip row.
  *
  * `words` is what the local preview matches on to label a post's type.
  */
@@ -519,7 +519,7 @@ const SIGNAL_TYPE_HINTS: { type: string; label: string; phrasing: string; wellne
 
 /**
  * Phrases that read as a stated problem. A crude stand-in for the classifier's
- * pain_points[] — Gemini phrases those in the post's own words; this can only
+ * pain_points[] - Gemini phrases those in the post's own words; this can only
  * spot the ones it knows to look for. Shown because pain points are the field
  * that tells you WHY a post matched, which is the thing a user tuning signal
  * wording actually needs.
@@ -545,7 +545,7 @@ const PAIN_POINT_CUES: { cue: string; label: string }[] = [
   { cue: 'onboarding', label: 'onboarding friction' },
 ];
 
-/** Words that read as "this is happening now" — urgency in the classifier's sense. */
+/** Words that read as "this is happening now" - urgency in the classifier's sense. */
 const URGENCY_CUES = [
   'asap', 'immediately', 'urgent', 'this week', 'this month', 'this quarter',
   'right now', 'starting monday', 'just started', 'kicking off', 'deadline',
@@ -553,7 +553,7 @@ const URGENCY_CUES = [
 
 /**
  * IntentScoringService's title → seniority buckets and their point values.
- * Copied verbatim (TITLE_TO_SENIORITY / SENIORITY_SCORES) — the order matters,
+ * Copied verbatim (TITLE_TO_SENIORITY / SENIORITY_SCORES) - the order matters,
  * because the service takes the first bucket whose keyword appears.
  */
 const SENIORITY_BUCKETS: { keywords: string[]; bucket: string }[] = [
@@ -588,7 +588,7 @@ const SENIORITY_POINTS: Record<string, number> = {
  *
  * Kept as a flag rather than deleted so the old shape stays documented and the
  * mirror below can be flipped back if the backend change is ever reverted. The
- * `true` branch is now dead in practice — delete both it and this constant once
+ * `true` branch is now dead in practice - delete both it and this constant once
  * the fix has had a while to settle on develop.
  */
 // Annotated `boolean` rather than inferred so flipping it does not make
@@ -606,9 +606,9 @@ const csvList = (v: any): string[] =>
  * and intent.keywords is never set. Both shapes of that function are here,
  * selected by TITLES_CROWD_SIGNAL_WORDING:
  *
- *   deployed — titles.slice(0, 2), and if that reaches two the function returns
+ *   deployed - titles.slice(0, 2), and if that reaches two the function returns
  *              early and the signal wording is never searched.
- *   fixed    — query terms first and unconditionally, titles appended as
+ *   fixed    - query terms first and unconditionally, titles appended as
  *              wideners, deduped case-insensitively and capped at five, so the
  *              cap can only ever evict a title.
  *
@@ -675,7 +675,7 @@ type PostClassification = {
  * Stand-in for LinkedInPostAnalysisService.analyzePost.
  *
  * Keyword overlap across the post text, the author's headline and the company
- * name — the same three fields the classifier prompt is handed — then the real
+ * name - the same three fields the classifier prompt is handed - then the real
  * 0.35 floor. signal_type, strength, urgency and pain points come from the
  * classifier prompt's own rules, read off the post rather than reasoned about.
  */
@@ -692,11 +692,11 @@ function classifySamplePost(post: SamplePost, keywords: string[]): PostClassific
   ));
 
   const reason = !post.content.trim()
-    ? 'Empty post — nothing to match against.'
+    ? 'Empty post - nothing to match against.'
     : matched
       ? `${hit.length} of ${keywords.length} search keyword${keywords.length === 1 ? '' : 's'} appear in this post (${hit.join(', ')})${typeHit ? `, and it reads as a ${typeHit.label.toLowerCase()} signal` : ''}.`
       : hit.length
-        ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) — below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
+        ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) - below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
         : `None of the search keywords appear in this post${typeHit ? `, though it does read as a ${typeHit.label.toLowerCase()} signal` : ''}.`;
 
   return {
@@ -719,7 +719,7 @@ function classifySamplePost(post: SamplePost, keywords: string[]): PostClassific
  * point awards test a lead's company against the companies of the batch's
  * hiring and funding posts. Score one post at a time and both come out wrong.
  *
- * Everything from `_postsToLeads` down is the real arithmetic — the only
+ * Everything from `_postsToLeads` down is the real arithmetic - the only
  * previewed input is match_score.
  */
 function evaluateSamplePosts(posts: SamplePost[], keywords: string[]): SignalMatchResult[] {
@@ -730,7 +730,7 @@ function evaluateSamplePosts(posts: SamplePost[], keywords: string[]): SignalMat
   const hiringSet = new Set(relevant.filter((c) => c.cls.signalType === 'hiring').map((c) => companyOf(c.post)));
   const fundingSet = new Set(relevant.filter((c) => c.cls.signalType === 'funding').map((c) => companyOf(c.post)));
 
-  // Oldest relevant post, in whole days — SignalDetectionService's own
+  // Oldest relevant post, in whole days - SignalDetectionService's own
   // reduce(). Defaults to 30 (no recency points) when no date is given.
   const ages = relevant
     .map((c) => Date.parse(c.post.posted_at))
@@ -787,7 +787,7 @@ const blankSamplePost = (label = 'Your post'): SamplePost => ({
   author_name: '', author_title: '', company_name: '', content: '', posted_at: '',
 });
 
-/** YYYY-MM-DD, `days` ago — for seeding plausible post dates. */
+/** YYYY-MM-DD, `days` ago - for seeding plausible post dates. */
 const isoDaysAgo = (days: number) =>
   new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
@@ -801,8 +801,8 @@ const isoDaysAgo = (days: number) =>
 // post yields its AUTHOR directly.
 //
 // The rule below mirrors the routing the backend is implementing. Unlike the
-// rest of this screen it is NOT reproduced from shipped code — the jobs path
-// does not exist in any backend branch yet — so the panel labels it as such.
+// rest of this screen it is NOT reproduced from shipped code - the jobs path
+// does not exist in any backend branch yet - so the panel labels it as such.
 
 type SignalRoute = 'jobs' | 'posts' | 'undecided';
 
@@ -811,7 +811,7 @@ type SignalRoute = 'jobs' | 'posts' | 'undecided';
  *
  * The order is the whole logic and a naive reading gets it backwards. "Somebody
  * WROTE something" is checked first and outranks the hiring vocabulary, so
- * "founders posting about hiring SDRs" is a POSTS signal — the lead is the
+ * "founders posting about hiring SDRs" is a POSTS signal - the lead is the
  * founder who wrote it. "companies posting jobs for SDRs" is a JOBS signal even
  * though it contains "posting", because a company posting a JOB is a listing.
  * An earlier version of this mirror used a flat keyword list and sent the first
@@ -864,20 +864,20 @@ const POSTS_PATTERNS: RegExp[] = [
 /**
  * Which source this signal wording will search.
  *
- * Mirrors SignalSourceClassifier.classify routes 0-2. Route 3 — where neither
- * bank matches and the backend asks an LLM to arbitrate — cannot be mirrored in
+ * Mirrors SignalSourceClassifier.classify routes 0-2. Route 3 - where neither
+ * bank matches and the backend asks an LLM to arbitrate - cannot be mirrored in
  * the browser, so it returns 'undecided' rather than guessing. The backend's
  * final fallback is posts, but claiming that here would show a definite answer
  * for the one input where the answer is genuinely not known yet.
  */
 function signalRoute(signalQuery: string): { route: SignalRoute; reason: string } {
   const q = String(signalQuery || '').trim();
-  if (!q) return { route: 'posts', reason: 'No signal wording yet — the default source is posts.' };
+  if (!q) return { route: 'posts', reason: 'No signal wording yet - the default source is posts.' };
 
   if (AUTHORED_CONTENT_PATTERNS.some((re) => re.test(q))) {
     return {
       route: 'posts',
-      reason: 'This asks for people who WROTE something, which outranks any hiring words in it — so it searches the feed, and the lead is the author.',
+      reason: 'This asks for people who WROTE something, which outranks any hiring words in it - so it searches the feed, and the lead is the author.',
     };
   }
   if (JOBS_PATTERNS.some((re) => re.test(q))) {
@@ -918,8 +918,8 @@ function withSignalPhrasing(current: string, phrasing: string): string {
  * classifier. Two copies would drift, and the drifted one would still be
  * claiming to mirror it.
  *
- * `compact` only shortens the explanation — the node drawer is narrower than the
- * test drawer — and never changes the vocabulary or the substance. The claim it
+ * `compact` only shortens the explanation - the node drawer is narrower than the
+ * test drawer - and never changes the vocabulary or the substance. The claim it
  * makes (these are not a filter) is the thing stopping a user believing they
  * have narrowed a search, so it survives in both lengths.
  */
@@ -932,7 +932,7 @@ function SignalTypeChips({ value, onChange, compact = false }: {
   return (
     <div>
       <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-        Common signals — tap to add the wording
+        Common signals - tap to add the wording
       </div>
       <div className="flex flex-wrap gap-1">
         {SIGNAL_TYPE_HINTS.filter((t) => !t.wellness).map((t) => (
@@ -952,16 +952,16 @@ function SignalTypeChips({ value, onChange, compact = false }: {
       </div>
       <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
         {compact
-          ? <>The classifier reads the type <em>out of</em> each post — nothing filters a search to one type, so these edit your wording.</>
+          ? <>The classifier reads the type <em>out of</em> each post - nothing filters a search to one type, so these edit your wording.</>
           : <>These are the signal types the classifier can report. It reads the type <em>out of</em> each
-            post — there is no setting that filters a search to one type — so these chips edit your wording
+            post - there is no setting that filters a search to one type - so these chips edit your wording
             rather than pretending to be a filter.</>}
       </p>
     </div>
   );
 }
 
-/** One sample job listing. A listing has no author — that is the whole point. */
+/** One sample job listing. A listing has no author - that is the whole point. */
 type SampleJob = {
   id: string;
   label: string;
@@ -1007,8 +1007,8 @@ const JOB_SAMPLE_SHAPES: {
  * SignalDetectionService.JOB_SEARCH_SCAFFOLDING, verbatim.
  *
  * Words that say "look in the jobs portal" rather than describing the role. The
- * backend strips these from the JOBS search terms — the request is already
- * scoped to category:'jobs', so they carry no information there — and leaves
+ * backend strips these from the JOBS search terms - the request is already
+ * scoped to category:'jobs', so they carry no information there - and leaves
  * them alone on the POSTS route, where "posted about hiring" is content.
  */
 const JOB_SEARCH_SCAFFOLDING = [
@@ -1020,7 +1020,7 @@ const JOB_SEARCH_SCAFFOLDING = [
 ];
 
 /**
- * A plausible job title from the signal wording — the content words, minus the
+ * A plausible job title from the signal wording - the content words, minus the
  * scaffolding the backend strips for exactly the same reason.
  */
 function signalRoleGuess(signalQuery: string): string {
@@ -1039,8 +1039,8 @@ function signalRoleGuess(signalQuery: string): string {
  * The relevance half mirrors the posts path (keyword overlap over the fields a
  * listing actually has, then the same 0.35 floor). What it deliberately does NOT
  * do is invent a buy-intent score: on this path the enrolled lead is a person
- * found later by a live people-search at the company, and their headline — which
- * is most of the score — is not knowable from the listing. Showing a number
+ * found later by a live people-search at the company, and their headline - which
+ * is most of the score - is not knowable from the listing. Showing a number
  * there would be a guess dressed as arithmetic.
  */
 function evaluateSampleJobs(jobs: SampleJob[], keywords: string[], titles: string[]): JobMatchResult[] {
@@ -1057,11 +1057,11 @@ function evaluateSampleJobs(jobs: SampleJob[], keywords: string[], titles: strin
       hit,
       missed,
       reason: !job.job_title.trim()
-        ? 'Empty listing — nothing to match against.'
+        ? 'Empty listing - nothing to match against.'
         : matched
           ? `${hit.length} of ${keywords.length} search keyword${keywords.length === 1 ? '' : 's'} appear in this listing (${hit.join(', ')}).`
           : hit.length
-            ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) — below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
+            ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) - below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
             : 'None of the search keywords appear in this listing.',
       company: matched ? (job.company_name.trim() || 'Unknown') : null,
       wouldEnrol: matched ? titles : [],
@@ -1073,7 +1073,7 @@ function evaluateSampleJobs(jobs: SampleJob[], keywords: string[], titles: strin
  * The link on a signal lead: a job listing on the jobs route, a feed post on the
  * posts route.
  *
- * `signal_context.source_type` is the discriminator and is the primary path —
+ * `signal_context.source_type` is the discriminator and is the primary path  - 
  * the backend emits 'linkedin_job' / 'linkedin_post' and BACKFILLED the post
  * value onto the existing path so both directions can be branched positively
  * rather than inferred from which URL key happens to be present.
@@ -1112,14 +1112,14 @@ function signalContextLink(ctx: any): { url: string; label: string } | null {
  * The posts the screen writes FOR the user, from their signal wording.
  *
  * Authors come from the same /workflow/sample-lead endpoint the person form
- * uses — real AI-invented people. Bodies are composed here on purpose: the set
+ * uses - real AI-invented people. Bodies are composed here on purpose: the set
  * that teaches you something spans one post that should clearly match, one
  * borderline, and one that should clearly miss. An LLM asked for "three posts
  * about X" returns three hits, which tells you nothing about where your wording
  * stops working.
  *
  * Ages vary deliberately. Post age is worth up to 10 intent points, so three
- * posts all dated today would flatter every score — and a live run produced no
+ * posts all dated today would flatter every score - and a live run produced no
  * high-intent leads at all.
  */
 const SAMPLE_POST_SHAPES: {
@@ -1130,13 +1130,13 @@ const SAMPLE_POST_SHAPES: {
     label: 'Should match',
     ageDays: 2,
     body: (signal, company) =>
-      `We're growing fast at ${company} and it's finally time — ${signal}. Doing this manually has become a real bottleneck this quarter. If this is your world, my DMs are open. Referrals very welcome.`,
+      `We're growing fast at ${company} and it's finally time - ${signal}. Doing this manually has become a real bottleneck this quarter. If this is your world, my DMs are open. Referrals very welcome.`,
   },
   {
     label: 'Borderline',
     ageDays: 11,
     body: (signal, company) =>
-      `Reflecting on the quarter at ${company}. We keep circling back to the same conversation — ${signal} — but nothing is signed off yet. Curious how other teams have approached it.`,
+      `Reflecting on the quarter at ${company}. We keep circling back to the same conversation - ${signal} - but nothing is signed off yet. Curious how other teams have approached it.`,
   },
   {
     label: 'Should NOT match',
@@ -1147,7 +1147,7 @@ const SAMPLE_POST_SHAPES: {
 ];
 
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
-// launch; analytics becomes campaign config read by the digest cron — it is
+// launch; analytics becomes campaign config read by the digest cron - it is
 // NOT an engine step.
 let stepSeq = 0;
 const nextId = () => `wf-${Date.now()}-${stepSeq++}`;
@@ -1158,29 +1158,29 @@ const FU_CHANNELS = [
   { value: 'whatsapp', label: 'WhatsApp' },
 ];
 
-// "Update Zoho record" write-back node (single-instance) — maps workflow data
+// "Update Zoho record" write-back node (single-instance) - maps workflow data
 // back onto the lead's Zoho record. Keys MUST match the backend
 // ZohoWritebackService.SOURCE_RESOLVERS.
 
-// "AI Media" node (single-instance) — generate a brand image/video at design
+// "AI Media" node (single-instance) - generate a brand image/video at design
 // time; the media_generation step records it and the asset is attached to the
 // workflow's email/WhatsApp outreach at launch.
 
-// "Multi-condition" (switch) node — routes each lead down one of N branches by
+// "Multi-condition" (switch) node - routes each lead down one of N branches by
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
 
-// "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
+// "AI Agent" node - LLM-normalises each lead (clean single title from a mixed
 // field, split name, tidy company) before the outreach/LinkedIn steps run.
 
-// "Enrich contact" node — reveals email/phone via FullEnrich; user multi-selects.
+// "Enrich contact" node - reveals email/phone via FullEnrich; user multi-selects.
 const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
   { key: 'official_email', label: 'Official email', sub: 'work / business email' },
   { key: 'personal_email', label: 'Personal email', sub: 'private email' },
   { key: 'phone', label: 'Phone number', sub: 'mobile number' },
 ];
 
-// "Export results" node — ships the campaign's result set to one or more
+// "Export results" node - ships the campaign's result set to one or more
 // destinations. Config-only (like the analytics digest): stored on
 // campaigns.config.export_results and run on completion / on demand.
 const EXPORT_FORMATS = [
@@ -1215,13 +1215,13 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
   { value: 'created_at', label: 'Added on' },
 ];
 
-// "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
+// "LinkedIn auto-post" node - posts to the tenant's OWN feed on a recurring
 // schedule while the campaign runs (social-selling warm-up). Campaign-level,
 // NOT per-lead: a per-lead post would fire once per enrolled lead.
-// Web-intel nodes — per-lead steps that enrich from the open web before
+// Web-intel nodes - per-lead steps that enrich from the open web before
 // outreach. Each is single-instance (fixed id) like the other AI/data nodes.
 // Logic / data nodes. split_test reuses the switch machinery on the backend
-// (stamps an outcome, prunes the losing variant) — see WorkflowProcessor.
+// (stamps an outcome, prunes the losing variant) - see WorkflowProcessor.
 const AUTOPOST_FREQUENCIES = [
   { value: 'daily', label: 'Every day' },
   { value: 'weekly', label: 'On selected days' },
@@ -1245,7 +1245,7 @@ const AUTOPOST_DAYS = [
 export function nextAutopostRun(frequency: string, days: number[], time: string, from = new Date()): Date | null {
   const [hh, mm] = String(time || '09:00').split(':').map((n) => parseInt(n, 10) || 0);
   const weekly = frequency !== 'daily';
-  // Weekly with nothing selected never fires — the backend treats it as daily.
+  // Weekly with nothing selected never fires - the backend treats it as daily.
   const allowed = weekly && days.length ? days : [0, 1, 2, 3, 4, 5, 6];
   for (let i = 0; i <= 8; i += 1) {
     const d = new Date(from);
@@ -1264,7 +1264,7 @@ export function nextAutopostRun(frequency: string, days: number[], time: string,
  * Not the same quantity as elapsed hours / 24, which is what this used to use
  * and is the bug it fixes: from Tuesday afternoon to Monday 09:00 is 5.8
  * elapsed days but 6 calendar days, and rounding the former printed "in 5 days"
- * next to a date six days out. Worse, the answer moved with the time of day —
+ * next to a date six days out. Worse, the answer moved with the time of day  - 
  * the same two dates read 5 or 6 depending on when you opened the panel.
  *
  * Both ends are normalised to local midnight first, so DST's 23- and 25-hour
@@ -1284,7 +1284,7 @@ export function calendarDaysBetween(from: Date, to: Date): number {
  * testable at a fixed instant.
  *
  * `missedToday` exists because the banner used to explain the wait with "that
- * time has already passed today" whenever the first post was 48+ hours out —
+ * time has already passed today" whenever the first post was 48+ hours out  - 
  * which is a different fact entirely. On a Tuesday with only Monday selected,
  * the wait has nothing to do with 09:00 having passed; it is Tuesday. The
  * sentence is only true when today IS a selected day and the time HAS gone.
@@ -1390,7 +1390,7 @@ function BuilderCanvas({ steps, branches = [], switchId }: { steps: WorkflowPrev
     return [...base, ...branchNodes];
   }, [steps, branches, switchId]);
   const initialEdges = useMemo(() => {
-    // Drop the linear edge leaving the switch — its outputs are the branches.
+    // Drop the linear edge leaving the switch - its outputs are the branches.
     const base = createReactFlowEdges(steps, 'vertical').filter((e) => e.source !== switchId);
     if (!switchId || !branches.length) return base;
     const fan = branches.map((b) => ({
@@ -1470,22 +1470,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * A pipeline drafted from a description in the chat, applied to the canvas on
    * mount. Unlike `initialTemplateKey` this is the template itself: it was
    * invented for that description, so there is no key to look it up by. Never
-   * launched automatically — the draft is a starting point for review.
+   * launched automatically - the draft is a starting point for review.
    */
   initialAiTemplate?: any;
   /**
-   * Caveats the drafter raised about `initialAiTemplate` — e.g. a requested
+   * Caveats the drafter raised about `initialAiTemplate` - e.g. a requested
    * parallel branch flattened to sequential. Shown as a banner under the
    * header, beside Launch, because that is where the user commits.
    */
   initialAiWarnings?: string[];
   /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
-  /** Answers collected in chat — merged into the source node's config. */
+  /** Answers collected in chat - merged into the source node's config. */
   initialSourceCfg?: Record<string, any>;
   /**
    * Message copy collected in chat, keyed by `macroId || type` (templateNodeKey).
-   * Each value replaces that node's template cfg wholesale — splitWizardAnswers
+   * Each value replaces that node's template cfg wholesale - splitWizardAnswers
    * already merged it over the node's defaults.
    */
   initialNodeCfg?: Record<string, any>;
@@ -1505,7 +1505,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /**
    * Every add*() helper below goes through this. Normally it appends, exactly
    * as the store action does; when the picker was opened from a node's "+" it
-   * drops the step into that slot instead — so one wrapper makes the whole
+   * drops the step into that slot instead - so one wrapper makes the whole
    * palette insert-aware without touching each helper.
    */
   const addWorkflowStep = useCallback((step: WorkflowPreviewStep) => {
@@ -1542,7 +1542,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
-  // Saved broadcast audiences. Loaded lazily — only a broadcast drawer needs
+  // Saved broadcast audiences. Loaded lazily - only a broadcast drawer needs
   // them, and most workflows have no broadcast at all.
   const [bcGroups, setBcGroups] = useState<{ id: string; name: string; member_count: number; is_active: boolean }[]>([]);
   const [bcGroupsLoading, setBcGroupsLoading] = useState(false);
@@ -1593,13 +1593,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBuilding, setAiBuilding] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  /** What the last AI draft produced — shown so the user can see what changed. */
+  /** What the last AI draft produced - shown so the user can see what changed. */
   const [aiResult, setAiResult] = useState<{ name: string; chain: string[]; notes: string } | null>(null);
   /** The draft being clarified; null once it has been applied to the canvas. */
   const [aiDraft, setAiDraft] = useState<any>(null);
   const [aiQuestions, setAiQuestions] = useState<AiQuestion[]>([]);
   const [aiAnswers, setAiAnswers] = useState<Record<string, any>>({});
-  /** Index of the question on screen — one at a time, like a conversation. */
+  /** Index of the question on screen - one at a time, like a conversation. */
   const [aiStep, setAiStep] = useState(0);
   /** Free-text buffer for the current question. */
   const [aiText, setAiText] = useState('');
@@ -1629,7 +1629,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // is LinkedIn Signal Search; every other source has nothing to match.
   const [testMode, setTestMode] = useState<'signal' | 'pipeline'>('signal');
   // The signal being tested. Seeded from the source node's config so the screen
-  // opens on what the user already configured, then editable in place — tuning
+  // opens on what the user already configured, then editable in place - tuning
   // wording is the entire job, and making them go back to the node to try a
   // rewording would kill the loop this screen exists to close.
   const [signalDraft, setSignalDraft] = useState<{ signal: string; titles: string; location: string }>({ signal: '', titles: '', location: '' });
@@ -1677,21 +1677,21 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [landingErr, setLandingErr] = useState<string | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   const autopostFileRef = useRef<HTMLInputElement | null>(null);
-  // Inline AI-media wizard for the auto-post node — runs the media builder's
+  // Inline AI-media wizard for the auto-post node - runs the media builder's
   // Q&A inside the drawer instead of the full-screen studio modal.
   const [inlineMedia, setInlineMedia] = useState(false);
   const [inlineAnswer, setInlineAnswer] = useState('');
   const inlinePrefilledRef = useRef<string | null>(null);
   // Agent-driven mode: the wizard still runs, but each question is answered
   // from the post copy instead of being shown. See autoMediaLog for what it
-  // decided — silent automation the user can't inspect is worse than a form.
+  // decided - silent automation the user can't inspect is worse than a form.
   const [autoMedia, setAutoMedia] = useState(false);
   const [autoMediaLog, setAutoMediaLog] = useState<{ phase: string; answer: string }[]>([]);
   const autoBusyRef = useRef(false);
   const autoKeyRef = useRef<string | null>(null);
   const autoCountRef = useRef(0);
   // Stall guard. The media worker's hold can be torn down mid-run, after which
-  // no further phase ever arrives — the loop simply waits, and the user watches
+  // no further phase ever arrives - the loop simply waits, and the user watches
   // a spinner indefinitely (observed: 10 minutes on Brand DNA). Nothing here
   // can keep the worker alive, but it can stop pretending work is happening.
   const autoProgressAtRef = useRef(0);
@@ -1710,7 +1710,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   // Web-extract source. Extraction runs HERE, in the config step, not at launch:
   // a directory takes tens of seconds, and the companies should be on screen
-  // before a campaign is committed to them — the same shape as uploading a file
+  // before a campaign is committed to them - the same shape as uploading a file
   // and previewing the parsed grid.
   const [wxUrl, setWxUrl] = useState('');
   const [wxGoal, setWxGoal] = useState('the exhibiting companies at this event');
@@ -1739,7 +1739,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setWxError('Nothing found on that page. Some directories load their list with JavaScript, which this cannot read yet.');
       } else if (!data.complete) {
         // Never let a capped crawl read as an exhaustive one.
-        setWxNote(`Stopped early (${data.stoppedBecause}) — this list may be incomplete.`);
+        setWxNote(`Stopped early (${data.stoppedBecause}) - this list may be incomplete.`);
       }
     } catch (e: any) {
       setWxError(e?.message || 'Extraction failed');
@@ -1754,7 +1754,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [ghlContactCount, setGhlContactCount] = useState(0);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
-  // preview (advanced-search-ai) — snapshot it and restore on close so opening
+  // preview (advanced-search-ai) - snapshot it and restore on close so opening
   // the builder never clobbers an in-progress campaign preview.
   useEffect(() => {
     const snapshot = useOnboardingStore.getState().workflowPreview;
@@ -1774,7 +1774,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     return () => window.removeEventListener('openStepEditor', onEdit);
   }, []);
 
-  // Node "+" clicks (CustomWorkflowNode dispatches 'addWorkflowStepAt') — open
+  // Node "+" clicks (CustomWorkflowNode dispatches 'addWorkflowStepAt') - open
   // the step picker anchored to that slot.
   useEffect(() => {
     const onInsertAt = (e: any) => {
@@ -1801,7 +1801,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setSignalDraft((prev) => ({
       signal: prev.signal || (cfg.signal_query || ''),
       titles: prev.titles || (cfg.decision_maker_titles || ''),
-      // `location`, singular — the signal node's own key. `locations` is the
+      // `location`, singular - the signal node's own key. `locations` is the
       // LinkedIn Search field and is a different setting entirely.
       location: prev.location || (cfg.location || ''),
     }));
@@ -1809,7 +1809,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   // Is GoHighLevel actually synced? Probed once, when the recurring GHL node is
   // opened, using the endpoint this builder already calls for the one-time
-  // import — no new endpoint, and limit=1 so it costs a single row.
+  // import - no new endpoint, and limit=1 so it costs a single row.
   //
   // Server-side this is a distinct outcome (`ghl_not_connected`, which leaves
   // the day unmarked so it retries) but the user never sees that log. Without
@@ -1826,7 +1826,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setGhlContactCount(res.ok && Array.isArray(data?.data) ? data.data.length : 0);
         setGhlContactsKnown(res.ok);
       } catch {
-        // Network failure says nothing about the integration — stay quiet
+        // Network failure says nothing about the integration - stay quiet
         // rather than accuse it of being disconnected.
         if (!cancelled) setGhlContactsKnown(false);
       }
@@ -1855,14 +1855,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   const addRouter = () => {
     const id = `rt-${Date.now()}-${stepSeq++}`;
-    addWorkflowStep({ id, type: 'condition', channel: 'linkedin', title: 'Router — fallback', description: '3 tries → Email' });
+    addWorkflowStep({ id, type: 'condition', channel: 'linkedin', title: 'Router - fallback', description: '3 tries → Email' });
     setEditingId(id);
   };
 
   const addFollowup = () => {
     if (!workflowPreview.some((s) => s.id === FOLLOWUP_STEP_ID)) {
       addWorkflowStep({ id: FOLLOWUP_STEP_ID, type: 'followup_sequence', channel: 'linkedin', title: 'Follow-up sequence', description: '3 touches · LinkedIn' });
-      // Seed the per-touch timeline (hours) — mirrors the WABA per-touch defaults.
+      // Seed the per-touch timeline (hours) - mirrors the WABA per-touch defaults.
       setCfg(FOLLOWUP_STEP_ID, { channel: 'linkedin', touches: [{ hours: 24 }, { hours: 72 }, { hours: 168 }] });
     }
     setEditingId(FOLLOWUP_STEP_ID);
@@ -1883,7 +1883,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(MINDBODY_STEP_ID);
   };
 
-  // Broadcasts run ONCE for the whole campaign, not per lead — the backend
+  // Broadcasts run ONCE for the whole campaign, not per lead - the backend
   // prunes them from the per-lead sequence and ticks them separately. Placement
   // in the canvas is therefore cosmetic, which the drawer copy says out loud.
   const addWaBroadcast = () => {
@@ -1971,7 +1971,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     });
   }, [fileRows, fileMapping]);
 
-  /** "Export now" — test the configured export against the leads loaded in the
+  /** "Export now" - test the configured export against the leads loaded in the
    *  builder, so destinations (email / webhook / Slack …) are proven before launch. */
   const runExportNow = async () => {
     const cfg = configs[EXPORT_STEP_ID] || {};
@@ -2008,9 +2008,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(AUTOPOST_STEP_ID);
   };
 
-  /** "Generate with AI" — drafts the post from ICP + campaign context. */
+  /** "Generate with AI" - drafts the post from ICP + campaign context. */
   const generateAutopost = async () => {
-    // Copy lives on the content node since the split — writing to the post
+    // Copy lives on the content node since the split - writing to the post
     // node here meant a successful generate updated nothing the user could see.
     const eid = CONTENT_STEP_ID;
     const c = configs[eid] || {};
@@ -2026,7 +2026,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (data?.success && data.content) {
         setCfg(eid, { content: data.content });
         updateWorkflowStep(eid, { description: data.content.slice(0, 40) });
-        setAutopostMsg({ ok: true, text: 'Draft generated — edit it below before posting.' });
+        setAutopostMsg({ ok: true, text: 'Draft generated - edit it below before posting.' });
       } else {
         setAutopostMsg({ ok: false, text: data?.error || 'Could not generate a post.' });
       }
@@ -2093,7 +2093,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * "Build with AI" — describe a pipeline in words, answer a few questions,
+   * "Build with AI" - describe a pipeline in words, answer a few questions,
    * get it on the canvas.
    *
    * Two-phase on purpose. Drafting straight to the canvas produced pipelines
@@ -2124,7 +2124,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setAiError(data?.error || 'Could not draft a workflow. Try rephrasing, or build it from the steps tab.');
         return;
       }
-      // Nothing to clarify — skip the questions entirely rather than inventing some.
+      // Nothing to clarify - skip the questions entirely rather than inventing some.
       if (!data.questions?.length) { applyAiTemplate(data.template); return; }
       setAiDraft(data.template);
       setAiQuestions(data.questions);
@@ -2162,7 +2162,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   /**
    * Record one answer and advance. Answering the last question builds straight
-   * away — a separate "done" click after the final answer is a step with no
+   * away - a separate "done" click after the final answer is a step with no
    * decision in it.
    */
   const answerAiQuestion = (value: any) => {
@@ -2196,7 +2196,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       });
       const data = await res.json();
       if (!data?.success || !data?.lead) {
-        setTestError(data?.error || 'Could not generate a sample lead — fill the fields in yourself.');
+        setTestError(data?.error || 'Could not generate a sample lead - fill the fields in yourself.');
         return;
       }
       setTestLead((prev) => ({ ...prev, ...data.lead }));
@@ -2208,13 +2208,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Run the current pipeline against one lead — for real, on the server.
+   * Run the current pipeline against one lead - for real, on the server.
    *
    * The executable steps in this payload come from the SAME builders Launch
    * uses (workflowPayload.ts), so what the test runs is what would launch.
    * Every other node is sent as type + title only: enough to list what was
    * skipped, and no message copy, template id or recipient for anything that
-   * could contact a person. The backend refuses to run them regardless — the
+   * could contact a person. The backend refuses to run them regardless - the
    * filter is a closed handler map there, not a shape of this request.
    */
   const runTest = async () => {
@@ -2246,8 +2246,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /**
    * The primary action: describe a signal, get posts back and see what they do.
    *
-   * The user does not author posts. They describe the signal — which they have
-   * already done once, in the node — and this writes a spread for them: one that
+   * The user does not author posts. They describe the signal - which they have
+   * already done once, in the node - and this writes a spread for them: one that
    * should match, one borderline, one that should miss. Authors are real
    * AI-invented people from /workflow/sample-lead (the same generator behind the
    * person form); bodies are composed from the signal wording. Then it scores
@@ -2257,7 +2257,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const generateAndTest = async () => {
     const signal = signalDraft.signal.trim();
     if (!signal) {
-      setSignalError('Describe the signal first — there is nothing to match on.');
+      setSignalError('Describe the signal first - there is nothing to match on.');
       return;
     }
     setSignalSampling(true); setSignalError(null); setSignalLive(null);
@@ -2337,7 +2337,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       });
       setSignalPosts(posts);
       setSignalJobs([]); setSignalJobResults(null);
-      // Scored as a batch, because the pipeline scores as a batch — see
+      // Scored as a batch, because the pipeline scores as a batch - see
       // evaluateSamplePosts.
       setSignalResults(evaluateSamplePosts(posts, keywords));
       if (authors.every((a) => !a)) {
@@ -2353,7 +2353,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /** Escape hatch: score one post the user pasted in, on its own. */
   const testManualPost = () => {
     const signal = signalDraft.signal.trim();
-    if (!signal) { setSignalError('Describe the signal first — there is nothing to match on.'); return; }
+    if (!signal) { setSignalError('Describe the signal first - there is nothing to match on.'); return; }
     if (!signalManual.content.trim()) { setSignalError('Paste the post text you want to check.'); return; }
     setSignalError(null); setSignalLive(null);
     // A pasted post is the posts route by definition, whatever the wording routes to.
@@ -2367,7 +2367,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * The highest-fidelity test: the real thing, against real LinkedIn posts.
    *
    * Calls the same /api/signals/detect the chat surface uses, which runs the
-   * genuine pipeline — Unipile post search, Gemini classification, real scoring.
+   * genuine pipeline - Unipile post search, Gemini classification, real scoring.
    * Everything it returns is real, which is why it is deliberately NOT the
    * primary button: it spends the LinkedIn account's search budget, which is
    * shared with the campaign's connection requests, and takes ~98 seconds.
@@ -2411,7 +2411,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           signal_type: ctx.signal_type || '',
           signal_strength: ctx.signal_strength || '',
           urgency: ctx.urgency || '',
-          // Job-sourced leads legitimately have none — the enrolled person did
+          // Job-sourced leads legitimately have none - the enrolled person did
           // not write anything, and the backend does not fabricate them.
           pain_points: Array.isArray(ctx.pain_points) ? ctx.pain_points.filter(Boolean) : [],
           link: signalContextLink(ctx),
@@ -2433,7 +2433,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * Saved strategies presented as WorkflowTemplates, so the gallery cards, the
    * overview drawer and applyTemplate() all treat them identically to built-in
    * recipes. definitionToTemplate returns null for a strategy whose source key
-   * this build doesn't know — those are skipped rather than crashing applyTemplate.
+   * this build doesn't know - those are skipped rather than crashing applyTemplate.
    */
   const strategyTemplates = useMemo(
     () => ownStrategies
@@ -2464,7 +2464,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     try {
       const definition = builderStateToDefinition({ source, workflowPreview, configs, perDay, days });
       await createStrategyMutation.mutateAsync({ name: name.trim(), definition });
-      setStrategyMsg({ ok: true, text: `Saved “${name.trim()}” — find it under My strategies.` });
+      setStrategyMsg({ ok: true, text: `Saved “${name.trim()}” - find it under My strategies.` });
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to save strategy.';
       setStrategyMsg({ ok: false, text: msg });
@@ -2486,7 +2486,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const { warnings } = await importStrategyMutation.mutateAsync({ id: sharedId, name: t.name });
       applyTemplate(t);
       setStrategyMsg(warnings.length
-        ? { ok: false, text: `Imported with warnings: ${warnings.map((w) => `${w.type} — ${w.reason}`).join(' ')}` }
+        ? { ok: false, text: `Imported with warnings: ${warnings.map((w) => `${w.type} - ${w.reason}`).join(' ')}` }
         : { ok: true, text: `Imported “${t.name}” into your strategies.` });
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to import strategy.';
@@ -2576,13 +2576,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Landing page — campaign-level, exactly like the auto-post node.
+   * Landing page - campaign-level, exactly like the auto-post node.
    *
    * Defaults to capture-on and approval-on: the page is published to a public
    * URL under the tenant's brand, so it is reviewed before anyone can read it.
    */
   /**
-   * Instagram auto-post — campaign-level, exactly like the LinkedIn one.
+   * Instagram auto-post - campaign-level, exactly like the LinkedIn one.
    *
    * Media is REQUIRED and there is no way around it: Instagram has no
    * text-only post type, so a caption alone can never be published.
@@ -2600,7 +2600,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Human task — PER-LEAD, unlike every other node added here.
+   * Human task - PER-LEAD, unlike every other node added here.
    *
    * Pauses each lead at this point until someone confirms via a one-time
    * link. Exists so a workflow can include work the platform cannot do
@@ -2608,7 +2608,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * pretending those steps happened.
    */
   /**
-   * Audit report — the ONE node whose execution model depends on its own config.
+   * Audit report - the ONE node whose execution model depends on its own config.
    *
    * scope 'lead'     → a per-lead step, written from that company's research
    * scope 'campaign' → a campaign-level macro, written about the industry
@@ -2730,10 +2730,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const res = await fetchWithTenant('/api/campaigns/linkedin-templates/media-upload', { method: 'POST', body: fd });
       // A failing upload can answer with an HTML error page rather than JSON.
       // res.json() would then either throw or, worse, the page ends up rendered
-      // as the error text — a stack trace in the drawer tells the user nothing.
+      // as the error text - a stack trace in the drawer tells the user nothing.
       const raw = await res.text();
       let d: any = null;
-      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON — keep the status instead */ }
+      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON - keep the status instead */ }
       if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
       setCfg(targetStepId, {
         media_url: d.url,
@@ -2750,7 +2750,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   // Kick the image flow off only after startFlow's sessionId has committed.
   // selectImageCreation is memoised on `sessionId`, so calling it in the same
-  // tick as startFlow captures the previous (empty) value — the worker then
+  // tick as startFlow captures the previous (empty) value - the worker then
   // fails with "Session not found: " and returns 500.
   useEffect(() => {
     if (!inlineMedia) { inlineStartedRef.current = false; return; }
@@ -2765,7 +2765,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // ── Agent-driven media configuration ──────────────────────────────────────
   // Answer each wizard question from the post copy instead of asking the user.
   // The wizard is the media worker's own state machine, so this drives it the
-  // same way a human would — one answer at a time — rather than trying to
+  // same way a human would - one answer at a time - rather than trying to
   // shortcut it. It deliberately STOPS at the image grid: picking the picture
   // is a real choice worth keeping, and it isn't the part that was tedious.
   const AUTO_MEDIA_MAX_PHASES = 30;
@@ -2801,18 +2801,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (mb.error) { setAutoMedia(false); return; }
 
     // Steps the driver waits through rather than acts on:
-    //   welcome  — startFlow sets this BEFORE selectImageCreation opens the
+    //   welcome  - startFlow sets this BEFORE selectImageCreation opens the
     //              conversation. Treating it as unanswerable switched auto mode
     //              off on the very first render, every time, and the user got
     //              the questionnaire they had just asked the agent to fill in.
-    //   gallery  — not part of the flow.
-    //   progress — brand-DNA extraction or generation; the hook polls it.
+    //   gallery  - not part of the flow.
+    //   progress - brand-DNA extraction or generation; the hook polls it.
     if (step === 'welcome' || step === 'gallery' || step === 'builder-video-progress') return;
 
     // The image grid. This used to be where the run stopped and waited, on the
     // theory that picking the picture was a choice worth keeping. It isn't one
     // anybody asked for: the four are renders of a single brief, and the only
-    // real judgement is spotting the one with garbled text or a mangled face —
+    // real judgement is spotting the one with garbled text or a mangled face  - 
     // which a model can do by looking. Choose, attach, close.
     if (step === 'builder-image-output') {
       const urls: string[] = (p.images || [])
@@ -2834,7 +2834,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           const data = await res.json();
           if (data?.success && data.url) { chosen = data.url; how = data.source || 'vision'; }
         } catch {
-          // Fall back to the first — an unvetted picture still beats none.
+          // Fall back to the first - an unvetted picture still beats none.
         }
         setAutoMediaLog((l) => [...l, {
           phase: p.phase || 'Image',
@@ -2848,14 +2848,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       })();
       return;
     }
-    // Nothing has come back from the worker yet — there is no question here to
+    // Nothing has come back from the worker yet - there is no question here to
     // fail to answer.
     if (!mb.uiPayload) return;
 
     // Steps that are not questions but still need a specific answer sent, or
-    // the wizard parks there forever — nothing polls them.
-    //   brand-dna      — a review screen; it waits for this exact label.
-    //   trend-options  — the creative-direction picker Phase 1.5 ends on. The
+    // the wizard parks there forever - nothing polls them.
+    //   brand-dna      - a review screen; it waits for this exact label.
+    //   trend-options  - the creative-direction picker Phase 1.5 ends on. The
     //                    drawer cannot render it at all, and the post copy is
     //                    already the brief, so take the skip.
     const CANNED: Record<string, string> = {
@@ -2864,7 +2864,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     };
     const canned = CANNED[step];
     const isConfirm = !!canned;
-    // Hand back to the manual UI on anything else we can't answer — a video or
+    // Hand back to the manual UI on anything else we can't answer - a video or
     // keyframe phase has no question, and pretending to work is worse than
     // showing the real screen.
     if (!isConfirm && step !== 'builder-mcq-few' && step !== 'builder-text') { setAutoMedia(false); return; }
@@ -2882,7 +2882,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
       let answer = '';
       if (canned) {
-        // The exact labels the worker matches on — the full studio sends these too.
+        // The exact labels the worker matches on - the full studio sends these too.
         answer = canned;
         setAutoMediaLog((l) => [...l, { phase: p.phase || 'Confirm', answer }]);
         try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
@@ -2904,7 +2904,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const data = await res.json();
         if (data?.success) answer = String(data.answer ?? '');
       } catch {
-        // Leave the answer empty — the wizard treats that as a skip, which is
+        // Leave the answer empty - the wizard treats that as a skip, which is
         // better than abandoning a run half-way through.
       }
       setAutoMediaLog((l) => [...l, { phase: p.phase || p.question || 'Step', answer }]);
@@ -2914,7 +2914,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload, mediaBuilder.generating, mediaBuilder.error]);
 
-  // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
+  // Lazy-load the LinkedIn company pages the account may post as. Fails soft  - 
   // an empty list simply leaves "personal profile" as the only option.
   useEffect(() => {
     if (editingId !== AUTOPOST_STEP_ID || liOrganizations.length) return;
@@ -2939,7 +2939,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         if (d?.success && Array.isArray(d.fields)) setZohoFields(d.fields);
         else { setZohoFields([]); setZohoFieldsError(d?.error || 'Could not load Zoho fields'); }
       })
-      .catch(() => { if (!cancelled) { setZohoFields([]); setZohoFieldsError('Could not load Zoho fields — is Zoho connected?'); } })
+      .catch(() => { if (!cancelled) { setZohoFields([]); setZohoFieldsError('Could not load Zoho fields - is Zoho connected?'); } })
       .finally(() => { if (!cancelled) setZohoFieldsLoading(false); });
     return () => { cancelled = true; };
   }, [editingId, zohoModule]);
@@ -2975,17 +2975,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const cfg = editingId ? (configs[editingId] || {}) : {};
 
   /**
-   * Hard sequence-order problems — derived from the visual step list itself,
+   * Hard sequence-order problems - derived from the visual step list itself,
    * not per-node field completeness (launch() below still owns that, on
    * click). Anything surfaced here disables Launch before the click, because
    * these aren't "a field is empty", they're "this step can never do
-   * anything, ever" — grounded in confirmed engine behaviour:
+   * anything, ever" - grounded in confirmed engine behaviour:
    *  - linkedin_message only sends once a connection is ACCEPTED
    *    (LinkedInStepExecutor's isConnectionAccepted check). With no earlier
    *    linkedin_connect step in this workflow, nothing ever asks the lead to
    *    connect, so the step waits forever and never actually sends.
    *  - post_approval has nothing to gate without a linkedin_post/autopost
-   *    node in the same workflow — same rule launch() already enforces on
+   *    node in the same workflow - same rule launch() already enforces on
    *    click (the APPROVAL_STEP_ID check further below); surfaced here too
    *    so Launch is disabled ahead of time instead of erroring after a click.
    */
@@ -2997,12 +2997,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       else if (step.type === 'linkedin_message' && !seenConnect) {
         issues.push({
           id: step.id,
-          message: "Add a 'Connection request' step before 'Message' — Message only sends once a connection is accepted, so without a Connect step earlier in the sequence it will wait forever and never send.",
+          message: "Add a 'Connection request' step before 'Message' - Message only sends once a connection is accepted, so without a Connect step earlier in the sequence it will wait forever and never send.",
         });
       }
     }
     if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) && !workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
-      issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node — it gates what that node publishes.' });
+      issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node - it gates what that node publishes.' });
     }
     // Broadcasts: catch the missing-required-field case here rather than letting
     // the backend validator answer with a 400 after the user hits Launch.
@@ -3059,7 +3059,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // A publisher-only workflow (content → approval → post) never touches a
     // lead: all three nodes compile into campaigns.config.autopost, a
     // campaign-level macro that linkedinAutopostCron fires on a schedule. There
-    // is nobody to enrol, so demanding a contact source — or an outreach step —
+    // is nobody to enrol, so demanding a contact source - or an outreach step  - 
     // would block a perfectly valid pipeline. Any other node present means the
     // workflow does operate on leads, and the normal guards apply again.
     const outreachSteps = workflowPreview.filter(
@@ -3077,14 +3077,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID) &&
       !outreachSteps.length && !followupNode && !multiCondNode;
     if (!source && !publisherOnly) { setError('Pick a contact source (first node).'); return; }
-    // LinkedIn Search needs at least one criterion — templates seed these empty
+    // LinkedIn Search needs at least one criterion - templates seed these empty
     // on purpose, so catch it here with a pointer instead of a backend 400.
     if (source === 'linkedin_search') {
       const sc = configs[SOURCE_STEP_ID] || {};
       const any = [sc.keywords, sc.job_titles, sc.industries, sc.locations]
         .some((v) => String(v || '').trim());
       if (!any) {
-        setError('Fill the LinkedIn Search targeting — at least one of job title, industry, location, or keywords.');
+        setError('Fill the LinkedIn Search targeting - at least one of job title, industry, location, or keywords.');
         setEditingId(SOURCE_STEP_ID);
         return;
       }
@@ -3102,7 +3102,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // failing hours later with a 422 that reads like a billing problem.
     //
     // A free LinkedIn account returns "insufficient credits", which is NOT a
-    // depleted balance — it has no InMail entitlement at all, so credits on
+    // depleted balance - it has no InMail entitlement at all, so credits on
     // another account are irrelevant. Fails OPEN: an unreachable probe must
     // never block a launch.
     if (workflowPreview.some((s) => s.type === 'linkedin_inmail')) {
@@ -3131,7 +3131,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           return;
         }
       } catch {
-        // Probe unavailable — let the launch proceed rather than block on it.
+        // Probe unavailable - let the launch proceed rather than block on it.
       }
     }
     if (multiCondNode) {
@@ -3139,17 +3139,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
       if (!validCases.length) { setError('Add at least one condition (value + message) in the Multi-condition node.'); setEditingId(MULTICOND_STEP_ID); return; }
     }
-    // A split test with only one variant filled would emit nothing at all —
+    // A split test with only one variant filled would emit nothing at all  - 
     // tell the user rather than silently dropping the node.
     if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
       const spc = configs[SPLIT_STEP_ID] || {};
       if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
-        setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
+        setError('Write a message for BOTH variants in the A/B split test - otherwise there is nothing to compare.');
         setEditingId(SPLIT_STEP_ID); return;
       }
     }
     // A post node with nothing to say, or an approval gate with nobody to ask,
-    // would launch silently doing nothing — point at the offending node instead.
+    // would launch silently doing nothing - point at the offending node instead.
     if (workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
       const hasContent = ((configs[CONTENT_STEP_ID]?.content ?? configs[AUTOPOST_STEP_ID]?.content) || '').trim();
       if (!hasContent) {
@@ -3164,7 +3164,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setEditingId(APPROVAL_STEP_ID); return;
       }
       if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
-        setError('The Approval node needs a LinkedIn post node — it gates what that node publishes.');
+        setError('The Approval node needs a LinkedIn post node - it gates what that node publishes.');
         setEditingId(APPROVAL_STEP_ID); return;
       }
     }
@@ -3178,7 +3178,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (!wxRows.length) { setError('Fetch the companies in the Web page source first.'); setEditingId(SOURCE_STEP_ID); return; }
       if (!wxRoles.trim()) {
         // Without roles these rows are company-only, and the import router
-        // classifies company-without-person-or-title as SKIP — the campaign
+        // classifies company-without-person-or-title as SKIP - the campaign
         // would enrol nobody at all.
         setError('Name at least one role to find at each company in the Web page source.'); setEditingId(SOURCE_STEP_ID); return;
       }
@@ -3215,7 +3215,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         });
       } else if (source === 'ghl_recurring') {
         // NOTE the two keys: the tile/SourceKey is `ghl_recurring`, the emitted
-        // config.source is `ghl_contacts` — the value LeadGenerationService
+        // config.source is `ghl_contacts` - the value LeadGenerationService
         // routes on. Exactly the zoho_recurring -> zoho_contacts split.
         //
         // No modules/record-type picker on purpose: GoHighLevel has a single
@@ -3231,7 +3231,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           },
         });
       } else if (source === 'linkedin_search') {
-        // Structured targeting — the backend normalises job_titles → roles,
+        // Structured targeting - the backend normalises job_titles → roles,
         // locations → location, industries as-is (LeadGenerationService).
         const csv = (v: any) => String(v || '').split(',').map((s: string) => s.trim()).filter(Boolean);
         const jt = csv(srcCfg.job_titles), ind = csv(srcCfg.industries), loc = csv(srcCfg.locations);
@@ -3266,7 +3266,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       } else if (source === 'web_extract') {
         // One row per company, carrying the roles. The import router splits the
         // role cell and runs title discovery per (company, role) to find real
-        // people — the same path a company+designation spreadsheet takes.
+        // people - the same path a company+designation spreadsheet takes.
         initialLeads = wxRows.map((r, i) => ({
           id: `web:${(r.name || `row-${i + 1}`).trim().toLowerCase()}`,
           company_name: r.name,
@@ -3302,7 +3302,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             website: val(r, idx.website) || undefined,
           };
         }).filter((l) => l.name || l.company_name || l.email || l.linkedin_url);
-        if (!initialLeads.length) throw new Error('No usable rows after mapping — check your column mapping.');
+        if (!initialLeads.length) throw new Error('No usable rows after mapping - check your column mapping.');
       } else {
         // One-time import: fetch synced contacts now → initial_leads at create.
         const limit = Math.min(500, Math.max(1, parseInt(srcCfg.import_count, 10) || 100));
@@ -3313,11 +3313,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const data = await res.json();
         const rows = data?.data || [];
         // A publisher workflow has nobody to enrol, so an empty import is not a
-        // failure — it only means the source was pointless, not that the
+        // failure - it only means the source was pointless, not that the
         // scheduled post can't run. Blocking here stopped a post-only workflow
         // from launching just because a source had been picked.
         if (!rows.length && !publisherOnly) {
-          throw new Error('No synced contacts found for this source — sync it first.');
+          throw new Error('No synced contacts found for this source - sync it first.');
         }
         initialLeads = rows.map((c: any, i: number) => ({
           id: String(c.source_id || c.id || i),
@@ -3354,7 +3354,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
       // Web-intel nodes → per-lead steps that run before outreach, so the
       // message generators can use what they gathered. Emitted by the shared
-      // builder, so a Test run executes exactly these — see workflowPayload.ts.
+      // builder, so a Test run executes exactly these - see workflowPayload.ts.
       const csvList = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
       for (const st of buildIntelSteps(workflowPreview, configs)) {
         steps.push({ ...st, order_index: order++ });
@@ -3392,7 +3392,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       // Outreach nodes in canvas order.
       for (const s of outreachSteps) {
         const c = configs[s.id] || {};
-        // Router node: guard the PREVIOUS engine step — after N failed
+        // Router node: guard the PREVIOUS engine step - after N failed
         // attempts the engine marks it exhausted and runs the fallback step;
         // if it succeeds, the fallback is skipped (WorkflowProcessor).
         if (s.id.startsWith('rt-')) {
@@ -3414,7 +3414,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         if (s.type === 'lead_report') {
           // Campaign-scoped reports are macros and were emitted into config
           // above; only the per-lead variant becomes a step. Shared with the
-          // Test run — see workflowPayload.ts.
+          // Test run - see workflowPayload.ts.
           const reportCfg = buildLeadReportStepConfig(c, delay);
           if (reportCfg) {
             steps.push({
@@ -3472,7 +3472,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           const body = (t.message || '').trim();
           const n = idx + 1;
           // Structured LinkedIn touch types (industry_trend | company_page_post)
-          // — the backend step-executor reuses the auto-follow-up research +
+          // - the backend step-executor reuses the auto-follow-up research +
           // persona generation when this is set. Only forward the two supported
           // modes so other touch_type values (e.g. lead_report) fall through.
           const liTouchType = (t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') ? t.touch_type : undefined;
@@ -3482,7 +3482,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         });
       }
 
-      // MindBody — per-lead: books the lead into a trial class, or checks payment.
+      // MindBody - per-lead: books the lead into a trial class, or checks payment.
       const mindBodyNode = workflowPreview.find((x) => x.id === MINDBODY_STEP_ID);
       if (mindBodyNode) {
         const mc = configs[MINDBODY_STEP_ID] || {};
@@ -3496,7 +3496,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         });
       }
 
-      // Broadcasts — CAMPAIGN-level. They are emitted as ordinary steps because
+      // Broadcasts - CAMPAIGN-level. They are emitted as ordinary steps because
       // that is where the backend reads their config from, but WorkflowProcessor
       // prunes them from the per-lead sequence and BroadcastMacroRunner ticks
       // them once per campaign run. order_index is therefore cosmetic here.
@@ -3638,7 +3638,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           builder: 'custom_workflow',
           // The builder's own state, stored so "Edit Accelerator" can reopen it
           // exactly as it was. Launch flattens these nodes into config.* and
-          // steps, and that flattening is lossy — reversing it would be guesswork.
+          // steps, and that flattening is lossy - reversing it would be guesswork.
           // Mirrors how the chat flow persists checkpoint_selections.
           builder_state: {
             version: 1,
@@ -3652,7 +3652,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             configs,
           },
           // Search targeting, surfaced at campaign level so AI features ground
-          // on it — notably the auto-post generator (LinkedInPostContentService
+          // on it - notably the auto-post generator (LinkedInPostContentService
           // reads config.targeting), making "daily post about the industry you
           // target" actually track the industry you searched.
           ...(source === 'linkedin_search' ? (() => {
@@ -3673,7 +3673,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             zoho_tag: (srcCfg.zoho_tag || '').trim() || undefined,
             // Compliant, read-only Instagram enrichment: resolve each contact's
             // handle + optional public business_discovery profile. No follow/DM
-            // (Meta's API exposes none) — maps contacts to IG for inbound.
+            // (Meta's API exposes none) - maps contacts to IG for inbound.
             ...(srcCfg.resolve_instagram ? { resolve_instagram: true, instagram_business_discovery: srcCfg.instagram_business_discovery !== false } : {}),
           } : {}),
           ...(source === 'ghl_recurring' ? {
@@ -3700,7 +3700,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               autopost: {
                 content,
                 ai_generate: !!pc.ai_generate,
-                // Read by LinkedInPostContentService — 'structured' switches the
+                // Read by LinkedInPostContentService - 'structured' switches the
                 // generator to the heading + numbered-list shape AI search cites.
                 post_format: pc.post_format === 'structured' ? 'structured' : undefined,
                 media_url: (pc.media_url || '').trim() || undefined,
@@ -3709,7 +3709,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 // from it, falling back to media_url above.
                 media_ai_generate: !!pc.media_ai_generate,
                 // The cron passes this to publishPost, which derives the MIME
-                // type from the extension — without it the filename is guessed
+                // type from the extension - without it the filename is guessed
                 // from the URL, which loses it for signed/query-string URLs.
                 media_filename: (pc.media_filename || '').trim() || undefined,
                 external_link: (pc.external_link || '').trim() || undefined,
@@ -3727,13 +3727,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             };
           })() : {}),
           // export_results / campaign_report / landing_page macros. Shared
-          // with the Test run, which executes all three — see workflowPayload.ts.
+          // with the Test run, which executes all three - see workflowPayload.ts.
           ...buildContentMacros(workflowPreview, configs),
           ...(workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID) ? (() => {
             const ic = configs[IG_AUTOPOST_STEP_ID] || {};
             return {
               // Read by InstagramAutopostScheduleService at launch. media_url is
-              // what the backend gates on — Instagram has no text-only post.
+              // what the backend gates on - Instagram has no text-only post.
               instagram_autopost: {
                 caption: (ic.caption || '').trim(),
                 media_url: (ic.media_url || '').trim(),
@@ -3749,7 +3749,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             };
           })() : {}),
           ...(analyticsNode ? {
-            // Read by core/cron/campaignDigestCron.js — daily 08:00 GST (weekly = Mondays).
+            // Read by core/cron/campaignDigestCron.js - daily 08:00 GST (weekly = Mondays).
             analytics_notifications: {
               channel: ac.channel === 'whatsapp' ? 'whatsapp' : 'email',
               recipient: (ac.recipient || '').trim(),
@@ -3760,10 +3760,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         },
         steps,
         // Mark one-time imports as direct outreach so the backend saves the
-        // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
+        // leads as source='direct_contact' (NOT 'linkedin_search') - otherwise
         // the LinkedIn step treats the row id as a Unipile provider_id and
         // skips the name+company resolution waterfall.
-        // `.length`, not just truthiness — an empty import (allowed for a
+        // `.length`, not just truthiness - an empty import (allowed for a
         // publisher workflow) would otherwise send initial_leads: [] and mark
         // the campaign direct_outreach with nobody in it.
         ...(initialLeads?.length ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
@@ -3773,7 +3773,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       // running alongside a duplicate, both posting to the same feed.
       let res: Response;
       if (editCampaignId) {
-        // PATCH, not PUT — the backend only registers patch('/:id'), so PUT hit
+        // PATCH, not PUT - the backend only registers patch('/:id'), so PUT hit
         // Express's 404 and returned "Cannot PUT /api/campaigns/<id>".
         const { status: _dropStatus, steps: editSteps, ...rest } = payload;
         const editPayload: any = {
@@ -3794,12 +3794,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         };
         // `status` is deliberately dropped. update() has no active→running
         // mapping (create does), so sending 'active' would write that literally
-        // and the cron's `status = 'running'` filter would stop matching — the
+        // and the cron's `status = 'running'` filter would stop matching - the
         // schedule would go quiet. It would also resurrect a paused campaign.
         res = await fetchWithTenant(`/api/campaigns/${editCampaignId}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editPayload),
         });
-        // Steps are not in update()'s allowedFields — they have their own
+        // Steps are not in update()'s allowedFields - they have their own
         // endpoint, so without this an edited outreach sequence saved nothing.
         if (res.ok && Array.isArray(editSteps)) {
           await fetchWithTenant(`/api/campaigns/${editCampaignId}/steps`, {
@@ -3829,7 +3829,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   // ── Programmatic template launch (chat "Accelerators" wizard hand-off) ────
-  // Effect 1 applies the template once on mount (silently — no confirm) with
+  // Effect 1 applies the template once on mount (silently - no confirm) with
   // the wizard's answers merged into the source config. Effect 2 fires launch()
   // exactly once, on the render AFTER the applied state has committed (the
   // !source guard skips the same-commit run where state is still stale).
@@ -3855,10 +3855,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           if (bs.days) setDays(String(bs.days));
         } else {
           // Launched before builder_state existed. Rather than silently opening
-          // an empty canvas over a live campaign, say so — the nodes cannot be
+          // an empty canvas over a live campaign, say so - the nodes cannot be
           // recovered and overwriting would delete the workflow.
           setName(camp?.name || '');
-          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
+          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it - build it again, or leave it running.');
         }
       } catch {
         setError('Could not load this Accelerator for editing.');
@@ -3881,7 +3881,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   }, [initialTemplateKey]);
   /**
    * A pipeline drafted in the chat lands on the canvas through the SAME apply
-   * path as a "Build with AI" draft made here — so what the chat produces and
+   * path as a "Build with AI" draft made here - so what the chat produces and
    * what this tab produces are the same object, configured the same way. The
    * palette opens on the AI tab because that is where the draft's summary and
    * its "adjust the steps" affordance live.
@@ -3894,7 +3894,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAiTemplate]);
   // Re-arm the banner if a fresh draft arrives while the builder is already
-  // open — a dismissed warning must not hide the NEXT draft's caveats.
+  // open - a dismissed warning must not hide the NEXT draft's caveats.
   useEffect(() => { setAiWarnings(initialAiWarnings || []); }, [initialAiWarnings]);
   useEffect(() => {
     if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
@@ -3905,7 +3905,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   }, [autoLaunch, source, workflowPreview, configs]);
 
   /**
-   * Step picker for a node's input/output "+". Same palette as the left rail —
+   * Step picker for a node's input/output "+". Same palette as the left rail  - 
    * each entry runs the very same add*() helper (so per-node config defaults are
    * still seeded) with insertAtRef pointing at the clicked slot, which is what
    * turns an append into an insert. Single-instance macro nodes that are
@@ -3969,7 +3969,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Right-hand "Template overview" drawer — full pipeline breakdown before you
+   * Right-hand "Template overview" drawer - full pipeline breakdown before you
    * commit. Applying from here routes through the same applyTemplate() the
    * gallery uses, so there is one code path for building a template.
    */
@@ -4131,7 +4131,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
-    // What this node needs / how it behaves — same key resolution as `visual`
+    // What this node needs / how it behaves - same key resolution as `visual`
     // above (macro id when fixed, 'router' for the router variant, else type).
     const instructionsKey = isSource ? (source || '') : isRouter ? 'router' : isMacro ? editingId : editingStep.type;
     const instructions = STEP_INSTRUCTIONS[instructionsKey as string];
@@ -4175,7 +4175,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </label>
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Finds each contact&apos;s Instagram handle (from their Zoho profile, website, or search) and maps them to Instagram for inbound engagement. Read-only — Meta&apos;s API does not permit auto-following, liking, or DMing.
+                Finds each contact&apos;s Instagram handle (from their Zoho profile, website, or search) and maps them to Instagram for inbound engagement. Read-only - Meta&apos;s API does not permit auto-following, liking, or DMing.
               </p>
             </div>
           </>)}
@@ -4202,12 +4202,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             {/* Disclosure 1: not-connected is a distinct outcome server-side, and
                 invisible here without a probe. /contacts/local ensures the table
                 exists before reading, so it cannot separate "never connected"
-                from "connected, nothing synced" — the copy names both rather
+                from "connected, nothing synced" - the copy names both rather
                 than claiming to know which. */}
             {ghlContactsKnown && ghlContactCount === 0 && (
               <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-[11.5px] text-amber-900 dark:text-amber-200 leading-snug">
                 <strong>No synced GoHighLevel contacts found.</strong> Either the integration is not connected
-                yet or it has not run a sync. This source will import nothing until it has — connect and sync
+                yet or it has not run a sync. This source will import nothing until it has - connect and sync
                 GoHighLevel in Settings, then this campaign picks up new contacts on its next daily run.
               </div>
             )}
@@ -4231,7 +4231,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </label>
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Finds each contact&apos;s Instagram handle (from their GoHighLevel profile, website, or search) and maps them to Instagram for inbound engagement. Read-only — Meta&apos;s API does not permit auto-following, liking, or DMing.
+                Finds each contact&apos;s Instagram handle (from their GoHighLevel profile, website, or search) and maps them to Instagram for inbound engagement. Read-only - Meta&apos;s API does not permit auto-following, liking, or DMing.
               </p>
             </div>
           </>)}
@@ -4250,7 +4250,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             <p className="text-xs text-muted-foreground">
               A page like this gives you <span className="font-medium text-foreground">companies</span>, not people.
-              Name the roles and LinkedIn is searched for whoever holds them at each company — leave it
+              Name the roles and LinkedIn is searched for whoever holds them at each company - leave it
               blank and there is nobody to contact.
             </p>
             <button type="button" onClick={runWebExtract} disabled={wxRunning || !wxUrl.trim()}
@@ -4294,7 +4294,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </>)}
           </>)}
           {isSource && source === 'linkedin_search' && (<>
-            {/* Structured targeting — the backend normalises job_titles → roles,
+            {/* Structured targeting - the backend normalises job_titles → roles,
                 locations → location, and matches industries against the lead's
                 company industry. Comma-separate to search several at once. */}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Job titles</label>
@@ -4306,7 +4306,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <Input value={cfg.locations || ''} onChange={(e) => setCfg(editingId, { locations: e.target.value })} placeholder="e.g. Dubai, United Arab Emirates" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra keywords (optional)</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="Anything else to match on" />
-              <p className="text-[11px] text-muted-foreground">Fill at least one field above — the search needs a title, industry, location, or keyword.</p></div>
+              <p className="text-[11px] text-muted-foreground">Fill at least one field above - the search needs a title, industry, location, or keyword.</p></div>
           </>)}
           {isSource && source === 'linkedin_signal' && (<>
             <div className="space-y-1">
@@ -4323,7 +4323,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   writer is the lead) while "posting jobs" is a listing. Getting
                   that backwards sends the user to a source with no results. */}
               <p className="text-[11px] text-muted-foreground">Describe the hiring or buying signal. &ldquo;Posting <strong>jobs</strong> for…&rdquo; searches LinkedIn <strong>job listings</strong>; &ldquo;posted <strong>about</strong>…&rdquo;, funding, launches and pain points search <strong>posts</strong>.</p>
-              {/* The chips belong here, where the wording is actually written —
+              {/* The chips belong here, where the wording is actually written  - 
                   they were only reachable from Test run, which is a later step.
                   Same component the test panel renders. */}
               <SignalTypeChips
@@ -4331,7 +4331,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(next) => setCfg(editingId, { signal_query: next })}
                 compact />
               {/* One line, because tapping "Hiring" silently changes which source
-                  runs — and the Location helper below already talks about "the
+                  runs - and the Location helper below already talks about "the
                   jobs route", which reads as a non-sequitur if the route was
                   never named. Deliberately a line and not the test panel's box. */}
               {!!(cfg.signal_query || '').trim() && (() => {
@@ -4353,13 +4353,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {/* These titles mean two different things depending on which source the
                   signal wording routes to, which is why the copy names both.
 
-                  POSTS — `decision_maker_titles` is read in
+                  POSTS - `decision_maker_titles` is read in
                   LeadGenerationService.executeSignalLeadGeneration and passed to
                   SignalDetectionService as intent.job_titles, whose only consumer is the
                   post-search keyword list. Nothing compares them to the author; the lead
                   enrolled is the post's author. So on this path they are search terms.
 
-                  JOBS — a job listing has no author, so the match yields a COMPANY and the
+                  JOBS - a job listing has no author, so the match yields a COMPANY and the
                   titles select which decision-makers at that company get enrolled. On this
                   path they genuinely do filter who is enrolled.
 
@@ -4384,7 +4384,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 That is the POSTS route, and it was the only route when this copy
                 was written. On the JOBS route the field does nothing at all: the
                 Unipile jobs search filters by LinkedIn location IDs, not typed
-                place names, and no resolver is wired — the backend logs a
+                place names, and no resolver is wired - the backend logs a
                 warning and searches worldwide. Nobody sees a server log, so a
                 user who types "Dubai" here would believe they had scoped the
                 search. Hence the split.
@@ -4396,13 +4396,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     The jobs search needs LinkedIn&apos;s own location IDs rather than a typed place name, so
                     results come back <strong>worldwide</strong>. Either filter the leads afterwards, or
                     reword the signal so it looks for what people <em>posted about</em> rather than for open
-                    roles — location does work on that route.
+                    roles - location does work on that route.
                   </p>
                 </div>
               ) : (
                 <p className="text-[11px] text-muted-foreground">
                   Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
-                  searches everywhere and then keeps only people whose profile location matches —
+                  searches everywhere and then keeps only people whose profile location matches  - 
                   a very specific place may find fewer leads.
                 </p>
               )}
@@ -4460,7 +4460,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         }
                         onChange={(e) => {
                           const v = e.target.value;
-                          // These options are TOUCH TYPES, not templates — the
+                          // These options are TOUCH TYPES, not templates - the
                           // backend branches on touch_type, so selecting one must
                           // clear template_id or the row carries both and the
                           // template path wins.
@@ -4490,7 +4490,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       )}
                       {!t.template_id && t.touch_type !== 'industry_trend' && t.touch_type !== 'company_page_post' && (
                         <textarea className={`${field} min-h-[64px]`} value={t.message || ''} onChange={(e) => setTouch(i, { message: e.target.value })}
-                          placeholder={`Message for touch ${i + 1} — leave blank to let Mr LAD draft it`} />
+                          placeholder={`Message for touch ${i + 1} - leave blank to let Mr LAD draft it`} />
                       )}
                     </div>
                   );
@@ -4515,7 +4515,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </span>
                     <span className="block text-[11px] text-muted-foreground leading-snug">
                       Play the whole cadence against a sample lead and read what each touch would
-                      actually send — before you launch.
+                      actually send - before you launch.
                     </span>
                   </span>
                 </a>
@@ -4555,13 +4555,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </div>
             {/* The two channels genuinely differ now, so this is no longer one
                 sentence with a swapped noun. WhatsApp goes from the Mr LAD
-                number as a PDF — template body parameters cannot hold the
+                number as a PDF - template body parameters cannot hold the
                 multi-line breakdown, and one message per lead would read as
                 spam. Email still sends from the tenant's own mailbox with the
                 breakdown inline, because it has neither constraint. */}
             <p className="text-xs text-muted-foreground">
               {(cfg.channel || 'email') === 'whatsapp'
-                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment — one message, however many leads there are.'
+                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment - one message, however many leads there are.'
                 : 'Sent by Mr LAD via your connected email account while the campaign is running.'}
             </p>
           </>)}
@@ -4584,7 +4584,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
                 Uses the tenant&apos;s connected MindBody account. MindBody identifies clients by phone, so a lead
-                with no phone number is skipped rather than booked under a guess. A booking is attempted once —
+                with no phone number is skipped rather than booked under a guess. A booking is attempted once  - 
                 a failure is recorded and the lead moves on rather than being re-booked every run.
               </p>
             </>);
@@ -4596,7 +4596,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md bg-muted/50 px-2.5 py-2">
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  This runs <strong>once for the whole campaign</strong>, not once per lead — so where it sits on the
+                  This runs <strong>once for the whole campaign</strong>, not once per lead - so where it sits on the
                   canvas doesn&apos;t change when it fires.
                 </p>
               </div>
@@ -4659,17 +4659,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </div>
                     <select className={field} value={cfg.group_id || ''}
                       onChange={(e) => setCfg(eid, { group_id: e.target.value })}>
-                      <option value="">— Choose an audience —</option>
+                      <option value=""> -  Choose an audience  - </option>
                       {bcGroups.map((g) => (
                         <option key={g.id} value={g.id} disabled={!g.is_active}>
-                          {g.name} ({g.member_count}){g.is_active ? '' : ' — inactive'}
+                          {g.name} ({g.member_count}){g.is_active ? '' : ' - inactive'}
                         </option>
                       ))}
                     </select>
                     {bcGroupsLoading && <p className="text-[11px] text-muted-foreground">Loading audiences…</p>}
                     {bcGroupsError && <p className="text-[11px] text-amber-700 dark:text-amber-500">{bcGroupsError}</p>}
                     {!bcGroupsLoading && !bcGroups.length && !bcGroupsError && (
-                      <p className="text-[11px] text-muted-foreground">No saved audiences yet — create one, then add people to it.</p>
+                      <p className="text-[11px] text-muted-foreground">No saved audiences yet - create one, then add people to it.</p>
                     )}
                     {chosen && chosen.member_count === 0 && (
                       <p className="text-[11px] text-amber-700 dark:text-amber-500">
@@ -4704,7 +4704,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     onChange={(e) => setCfg(eid, { template_language: e.target.value })} /></div>
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   A broadcast is business-initiated, so WhatsApp&apos;s 24-hour window is shut and free text cannot be
-                  delivered — Meta accepts it and then fails it silently. An <strong>approved template</strong> is required.
+                  delivered - Meta accepts it and then fails it silently. An <strong>approved template</strong> is required.
                 </p>
               </>) : (<>
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject</label>
@@ -4719,7 +4719,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     onChange={(e) => setCfg(eid, { unsubscribe_url: e.target.value })} />
                   {!cfg.unsubscribe_url && (
                     <p className="text-[11px] leading-snug text-amber-700 dark:text-amber-500">
-                      Without a List-Unsubscribe header, bulk email is very likely to be filed as spam — whatever the
+                      Without a List-Unsubscribe header, bulk email is very likely to be filed as spam - whatever the
                       law says in your market.
                     </p>
                   )}</div>
@@ -4760,14 +4760,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <div key={f.api_name} className="grid grid-cols-2 gap-2 items-center">
                       <span className="text-xs text-foreground truncate" title={`${f.field_label} (${f.data_type})`}>{f.field_label}</span>
                       <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={zmap[f.api_name] || ''} onChange={(e) => setMap(f.api_name, e.target.value)}>
-                        <option value="">— Skip —</option>
+                        <option value=""> -  Skip  - </option>
                         {WORKFLOW_DATA_POINTS.map((dp) => <option key={dp.key} value={dp.key}>{dp.label}</option>)}
                       </select>
                     </div>
                   ))}
                 </div>
               )}
-              <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence — writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence - writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
             </>);
           })()}
 
@@ -4802,7 +4802,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {mediaBuilder.loadingGallery ? (
                     <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
                   ) : (!imgs.length && !vids.length) ? (
-                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet — use the studio first.</p>
+                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet - use the studio first.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                       {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
@@ -4870,7 +4870,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
                 <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
               </div>
-              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch - the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
             </>);
           })()}
 
@@ -4881,7 +4881,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId!, { instruction: e.target.value })}
                 placeholder={AI_DEFAULT_INSTRUCTION} />
             </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data - e.g. picks the single best job title when the column has a mix - and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
           </>)}
 
           {isDataEnrich && (() => {
@@ -4915,7 +4915,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
                 <p className="text-[11px] text-sky-800 dark:text-sky-300">
-                  Posts to your own LinkedIn feed on a schedule while the campaign runs — it warms
+                  Posts to your own LinkedIn feed on a schedule while the campaign runs - it warms
                   your profile so the people you reach out to see recent activity. This posts
                   <strong> once per schedule</strong>, not once per lead.
                 </p>
@@ -4933,7 +4933,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || 'What the post says' }); }}
                   placeholder="Write your post, or add a topic and hit Generate with AI…" />
                 <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
-                {/* Generation feedback belongs here — the shared status line is
+                {/* Generation feedback belongs here - the shared status line is
                     rendered in the post drawer, which isn't visible from here. */}
                 {autopostMsg && (
                   <div className={`rounded-md border p-2 text-[11px] ${autopostMsg.ok
@@ -4953,7 +4953,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </span>
               </label>
 
-              {/* Shape of the post. Only meaningful when AI writes it — a post
+              {/* Shape of the post. Only meaningful when AI writes it - a post
                   typed by hand is already whatever shape it is. */}
               {!!cfg.ai_generate && (
                 <div className="space-y-1">
@@ -4981,7 +4981,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 const vids = mediaBuilder.galleryVideos || [];
                 const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
                 // Run the wizard inline in this drawer. selectImageCreation
-                // skips the image/video choice — an auto-post wants an image —
+                // skips the image/video choice - an auto-post wants an image  - 
                 // and the describe-image phase is pre-filled with the post text.
                 const openStudio = (auto = false) => {
                   setAutopostMsg(null);
@@ -4996,7 +4996,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   setAutoMedia(auto);
                   setInlineMedia(true);
                   // Only start the flow here. selectImageCreation closes over
-                  // the sessionId STATE, which startFlow has just queued —
+                  // the sessionId STATE, which startFlow has just queued  - 
                   // calling it in this tick sends an empty session id and the
                   // worker 500s with "Session not found". The effect below
                   // fires it once the id has actually committed.
@@ -5034,7 +5034,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       const busy = step === 'loading' || mb.generating;
                       const cancel = () => { setInlineMedia(false); setInlineAnswer(''); setAutoMedia(false); mb.closeFlow?.(); };
 
-                      // The prompt phase — seed it with the post content once.
+                      // The prompt phase - seed it with the post content once.
                       const isDescribe = /describe image/i.test(phase) || /describe.*image/i.test(p.question || '');
                       if (step === 'builder-text' && isDescribe && inlinePrefilledRef.current !== phase) {
                         inlinePrefilledRef.current = phase;
@@ -5081,7 +5081,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       );
 
                       // Agent-driven: never show the questionnaire. Show what it
-                      // has decided instead — automation you can't inspect is
+                      // has decided instead - automation you can't inspect is
                       // worse than the form it replaced. Stops at the image
                       // grid, which is a real choice and was never the tedious
                       // part.
@@ -5145,7 +5145,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
                           {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
                           {isDescribe && (
-                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post — edit if you want a different image.</p>
+                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post - edit if you want a different image.</p>
                           )}
                           <textarea className={`${field} min-h-[80px]`} value={inlineAnswer}
                             onChange={(e) => setInlineAnswer(e.target.value)} placeholder="Type your answer…" />
@@ -5159,18 +5159,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         </>)
                       );
 
-                      // Generated images — click one to attach it to the post
+                      // Generated images - click one to attach it to the post
                       if (step === 'builder-image-output') {
                         const outImgs: any[] = p.images || [];
                         return (
                           shell(<>
-                            {/* Only reachable once the user has taken over —
+                            {/* Only reachable once the user has taken over  - 
                                 the agent picks and closes without showing this. */}
                             <p className="text-[13px] font-medium text-foreground leading-snug">
                               {p.question || 'Pick an image for your post'}
                             </p>
                             {!outImgs.length ? (
-                              <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
+                              <p className="text-[12px] text-muted-foreground">No images came back - try the full studio.</p>
                             ) : (
                               <div className="grid grid-cols-2 gap-2">
                                 {outImgs.map((im: any, i: number) => {
@@ -5189,7 +5189,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       }
 
                       // Video / keyframe phases aren't worth reproducing in a
-                      // 22rem drawer — hand off to the studio.
+                      // 22rem drawer - hand off to the studio.
                       return (
                         shell(<>
                           <p className="text-[12.5px] text-muted-foreground leading-snug">This part of the wizard needs more room.</p>
@@ -5204,7 +5204,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           already the brief, so making everyone sit through the
                           questionnaire to restate it is the wrong default. */}
                       <button type="button" onClick={() => openStudio(true)} disabled={inlineMedia || !(cfg.content || '').trim()}
-                        title={!(cfg.content || '').trim() ? 'Write or generate the post first — the copy is what the image is based on' : undefined}
+                        title={!(cfg.content || '').trim() ? 'Write or generate the post first - the copy is what the image is based on' : undefined}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
                         <Wand2 className="h-3.5 w-3.5" /> Generate with AI
                       </button>
@@ -5231,7 +5231,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         {mediaBuilder.loadingGallery ? (
                           <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
                         ) : (!imgs.length && !vids.length) ? (
-                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet — use Generate with AI first.</p>
+                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet - use Generate with AI first.</p>
                         ) : (
                           <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                             {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
@@ -5278,7 +5278,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-3 py-2">
                 <p className="text-[11px] text-green-800 dark:text-green-300">
                   Nothing is published until you approve it. At each scheduled slot the post is
-                  drafted and sent to you — tap <strong>Approve</strong> and it goes out immediately.
+                  drafted and sent to you - tap <strong>Approve</strong> and it goes out immediately.
                 </p>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
@@ -5295,7 +5295,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   placeholder={(cfg.approval_channel || 'whatsapp') === 'email' ? 'you@company.com' : '+971500000000'} />
               </div>
               <p className="text-[11px] leading-snug text-muted-foreground">
-                A draft nobody answers is released after 48 hours so the schedule keeps running —
+                A draft nobody answers is released after 48 hours so the schedule keeps running  - 
                 that slot is skipped, not posted.
               </p>
             </>);
@@ -5328,7 +5328,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
                 </select>
                 {liOrganizations.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
+                  <p className="text-[11px] text-muted-foreground">No company pages found for this account - posting to your personal profile.</p>
                 )}</div>
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
@@ -5362,10 +5362,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {(() => {
                 const first = autopostFirstRun(freq, days, cfg.time || '09:00');
                 if (!first) {
-                  return <p className="text-[11px] text-amber-600">This schedule never fires — check the days and time.</p>;
+                  return <p className="text-[11px] text-amber-600">This schedule never fires - check the days and time.</p>;
                 }
                 const { next, away, dayGap, missedToday } = first;
-                // Amber once the first post is more than a day out — the case
+                // Amber once the first post is more than a day out - the case
                 // where "launched successfully" and "has posted nothing" look
                 // identical for a while.
                 const far = dayGap >= 2;
@@ -5376,7 +5376,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <p className={`text-[11.5px] ${far ? 'text-amber-800 dark:text-amber-300' : 'text-foreground'}`}>
                       First post: <strong>{next.toLocaleString(undefined, {
                         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                      })}</strong> — {away}.
+                      })}</strong> - {away}.
                     </p>
                     {missedToday && (
                       <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
@@ -5416,11 +5416,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/30 px-3 py-2">
                 <p className="text-[11px] text-pink-800 dark:text-pink-300">
                   Randomly sends each lead <strong>one</strong> of two variants, so you can compare openers
-                  in a single campaign. The assignment sticks — a lead never receives both.
+                  in a single campaign. The assignment sticks - a lead never receives both.
                 </p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Split — {pct}% A / {100 - pct}% B</label>
+                <label className="text-xs font-medium text-foreground">Split - {pct}% A / {100 - pct}% B</label>
                 <input type="range" min={10} max={90} step={5} value={pct} className="w-full"
                   onChange={(e) => { setCfg(eid, { split_pct: parseInt(e.target.value, 10) }); updateWorkflowStep(eid, { description: `${e.target.value} / ${100 - parseInt(e.target.value, 10)}` }); }} />
               </div>
@@ -5459,7 +5459,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Tags</label>
-                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar — comma separated" />
+                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar - comma separated" />
                 <p className="text-[11px] text-muted-foreground">Added to any tags the lead already has.</p></div>
             </>);
           })()}
@@ -5474,7 +5474,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-800 dark:bg-pink-950/30 px-3 py-2">
                 <p className="text-[11px] text-pink-900 dark:text-pink-200">
-                  Posts to <strong>your own Instagram account</strong> on a schedule — one post
+                  Posts to <strong>your own Instagram account</strong> on a schedule - one post
                   per campaign, not one per lead.
                 </p>
               </div>
@@ -5496,7 +5496,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => setCfg(eid, { media_url: e.target.value })}
                   placeholder={isReel ? 'https://…/video.mp4' : 'https://…/image.jpg'} />
                 <p className="text-[11px] text-muted-foreground">
-                  Instagram downloads this itself, so it has to be publicly reachable — a
+                  Instagram downloads this itself, so it has to be publicly reachable - a
                   private or expiring link fails while Instagram processes it, not when you save.
                 </p>
               </div>
@@ -5723,7 +5723,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     ? (hasLanding
                       ? 'Your landing page will offer this as a download once someone fills the form.'
                       : 'Add a Landing page node and this becomes a download people can fill a form to get.')
-                    : 'A per-lead report cannot go on a landing page — one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
+                    : 'A per-lead report cannot go on a landing page - one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
                 </p>
               </div>
             </>);
@@ -5736,7 +5736,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
                 <p className="text-[11px] text-amber-900 dark:text-amber-200">
                   <strong>Pauses each lead here</strong> until a person confirms. Use it for work
-                  Mr LAD cannot do itself — recording a video, building a deck, a judgement call.
+                  Mr LAD cannot do itself - recording a video, building a deck, a judgement call.
                 </p>
               </div>
 
@@ -5774,7 +5774,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => setCfg(eid, { assignee_to: e.target.value })}
                   placeholder={isWa ? '+9715…' : 'someone@yourcompany.com'} />
                 <p className="text-[11px] text-muted-foreground">
-                  They get a link to confirm — no Mr LAD login needed. Without someone to
+                  They get a link to confirm - no Mr LAD login needed. Without someone to
                   notify, leads would wait here forever.
                 </p>
               </div>
@@ -5965,7 +5965,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               {savedLanding ? (() => {
                 // Compare against what produced the LIVE page. Mirrors
-                // hasInputChanges() on the backend, which is the real gate —
+                // hasInputChanges() on the backend, which is the real gate  - 
                 // this only decides whether to offer the choice.
                 const norm = (v: any) => String(v ?? '').trim();
                 const sortedFields = (v: any) => (Array.isArray(v) ? [...v].sort().join(',') : '');
@@ -6071,7 +6071,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <p className="text-[11px] text-muted-foreground">Stored on the lead under this name.</p></div>
               <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
                 <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                  Public http/https addresses only — private, loopback and cloud-metadata hosts are refused.
+                  Public http/https addresses only - private, loopback and cloud-metadata hosts are refused.
                 </p>
               </div>
             </>);
@@ -6099,12 +6099,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </p>
             </div>
             <p className="text-[12px] text-muted-foreground leading-snug">
-              Nothing to configure — the company name comes from each lead. Leads without a company are
+              Nothing to configure - the company name comes from each lead. Leads without a company are
               skipped automatically.
             </p>
             <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
               <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                Costs LLM credits per lead and takes several seconds each — best paired with a lead-scoring
+                Costs LLM credits per lead and takes several seconds each - best paired with a lead-scoring
                 step so you only research leads worth the spend.
               </p>
             </div>
@@ -6114,7 +6114,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30 px-3 py-2">
               <p className="text-[11px] text-yellow-800 dark:text-yellow-300">
                 Scores each lead <strong>0-100</strong> on buy intent (ICP fit + seniority + signals) and tags
-                them <strong>hot / warm / cold</strong>. Free — no external calls.
+                them <strong>hot / warm / cold</strong>. Free - no external calls.
               </p>
             </div>
             <p className="text-[12px] text-muted-foreground leading-snug">
@@ -6123,7 +6123,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </p>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Companies hiring (optional)</label>
               <input className={field} value={cfg.hiring_companies || ''} onChange={(e) => setCfg(editingId!, { hiring_companies: e.target.value })}
-                placeholder="Acme, Globex — comma separated" /></div>
+                placeholder="Acme, Globex - comma separated" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Recently funded (optional)</label>
               <input className={field} value={cfg.funding_companies || ''} onChange={(e) => setCfg(editingId!, { funding_companies: e.target.value })}
                 placeholder="Comma separated" /></div>
@@ -6173,7 +6173,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 ))}
               </div>
 
-              {/* Per-destination inputs — only shown for the ones selected. */}
+              {/* Per-destination inputs - only shown for the ones selected. */}
               {has('email') && (
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Email to</label>
                   <input className={field} value={cfg.email_to || ''} onChange={(e) => setCfg(eid, { email_to: e.target.value })} placeholder="you@company.com" /></div>
@@ -6189,7 +6189,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {has('google_sheets') && (
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Google Sheet ID</label>
                   <input className={field} value={cfg.sheet_id || ''} onChange={(e) => setCfg(eid, { sheet_id: e.target.value })} placeholder="1AbC…xyz (from the sheet URL)" />
-                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account — the Sheets scope must be granted.</p></div>
+                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account - the Sheets scope must be granted.</p></div>
               )}
               {has('slack') && (
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Slack incoming webhook</label>
@@ -6223,7 +6223,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </span>
               </label>
 
-              {/* Execute now — proves the destinations work before launch. */}
+              {/* Execute now - proves the destinations work before launch. */}
               <div className="space-y-2 pt-1">
                 <button type="button" onClick={runExportNow} disabled={exportRunning}
                   className="w-full rounded-md bg-[#0b1957] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
@@ -6232,7 +6232,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   {source === 'file_import'
                     ? 'Runs the export against the leads loaded above, so you can check the file and confirm your destinations work.'
-                    : 'Sends a test export (no leads are loaded yet for this source) — useful to confirm the destination settings are valid.'}
+                    : 'Sends a test export (no leads are loaded yet for this source) - useful to confirm the destination settings are valid.'}
                 </p>
                 {exportResult && (
                   <div className={`rounded-md border p-2.5 text-[11px] ${exportResult.success ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
@@ -6240,7 +6240,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     {typeof exportResult.count === 'number' && <p className="text-foreground font-medium">{exportResult.count} row{exportResult.count !== 1 ? 's' : ''} exported</p>}
                     {exportResult.results && Object.entries(exportResult.results).map(([k, v]: any) => (
                       <p key={k} className={v.ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
-                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` — ${v.error}` : ''}{v.skipped ? ` — ${v.skipped}` : ''}
+                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` - ${v.error}` : ''}{v.skipped ? ` - ${v.skipped}` : ''}
                       </p>
                     ))}
                     {exportResult.file_url && (
@@ -6254,7 +6254,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {/* Who is this actually going to? Built from the SOURCE node's
-                targeting, because that is what decides who gets enrolled — this
+                targeting, because that is what decides who gets enrolled - this
                 node only decides what they receive. Connection requests cannot
                 be unsent, so seeing the people first is worth the extra call. */}
             {(() => {
@@ -6266,7 +6266,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               // Only LinkedIn search targeting can be previewed. An imported
               // file or a CRM sync already has its people, so there is nothing
               // to search for and offering the button would just fail.
-              // `source` is the SourceKey state, not the node's StepType — the
+              // `source` is the SourceKey state, not the node's StepType - the
               // source node is always type 'lead_generation' regardless of
               // which kind of source was picked.
               const isSearchSource = source === 'linkedin_search';
@@ -6292,7 +6292,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value=""> -  None (write below / AI-drafted)  - </option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6313,7 +6313,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value=""> -  None (write below / AI-drafted)  - </option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6327,17 +6327,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!isSource && editingStep.type === 'whatsapp_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp account</label>
               <select className={field} value={cfg.whatsapp_account_id || ''} onChange={(e) => setCfg(editingId!, { whatsapp_account_id: e.target.value || undefined })}>
-                <option value="">— Default connected account —</option>
+                <option value=""> -  Default connected account  - </option>
                 {res.waAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.slug || a.display_name || a.phone_number || a.id}</option>)}
               </select>
-              {res.waAccounts.length === 0 && <p className="text-[11px] text-muted-foreground">No WhatsApp account connected — connect one in Settings.</p>}</div>
+              {res.waAccounts.length === 0 && <p className="text-[11px] text-muted-foreground">No WhatsApp account connected - connect one in Settings.</p>}</div>
             {res.waTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
                 <select className={field} value={cfg.whatsapp_template_id || ''} onChange={(e) => {
                   const t = res.waTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { whatsapp_template_id: e.target.value || undefined, message: t?.content ?? t?.body ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value=""> -  None (write below / AI-drafted)  - </option>
                   {res.waTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6351,17 +6351,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 const s = res.emailSenders.find((x: any) => x.email === e.target.value);
                 setCfg(editingId!, { from_email: e.target.value || undefined, email_provider: s?.provider || undefined });
               }}>
-                <option value="">— Default connected account —</option>
+                <option value=""> -  Default connected account  - </option>
                 {res.emailSenders.map((s: any) => <option key={s.email} value={s.email}>{s.email}{s.provider ? ` (${s.provider})` : ''}</option>)}
               </select>
-              {res.emailSenders.length === 0 && <p className="text-[11px] text-muted-foreground">No email account connected — connect Gmail/Outlook in Settings.</p>}</div>
+              {res.emailSenders.length === 0 && <p className="text-[11px] text-muted-foreground">No email account connected - connect Gmail/Outlook in Settings.</p>}</div>
             {res.emailTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
                 <select className={field} value={cfg.template_id || ''} onChange={(e) => {
                   const t = res.emailTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { template_id: e.target.value || undefined, subject: t?.subject ?? cfg.subject, body: t?.body ?? t?.content ?? cfg.body });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value=""> -  None (write below / AI-drafted)  - </option>
                   {res.emailTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6381,7 +6381,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!isSource && editingStep.type === 'voice_agent_call' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Calling number</label>
               <select className={field} value={cfg.from_number || ''} onChange={(e) => setCfg(editingId!, { from_number: e.target.value || undefined })}>
-                <option value="">— Default number —</option>
+                <option value=""> -  Default number  - </option>
                 {res.voiceNumbers.map((n: any) => <option key={n.phone_number} value={n.phone_number}>{n.phone_number}</option>)}
               </select>
               {res.voiceNumbers.length === 0 && <p className="text-[11px] text-muted-foreground">No voice number configured.</p>}</div>
@@ -6391,25 +6391,25 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 setCfg(editingId!, { agent_id: e.target.value || undefined, voice_id: a?.voice_id || undefined });
                 updateWorkflowStep(editingId!, { description: a?.name || 'AI voice call' });
               }}>
-                <option value="">— Select an agent —</option>
+                <option value=""> -  Select an agent  - </option>
                 {res.voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              {res.voiceAgents.length === 0 && <p className="text-[11px] text-muted-foreground">No voice agent found — create one in the Voice playground.</p>}</div>
+              {res.voiceAgents.length === 0 && <p className="text-[11px] text-muted-foreground">No voice agent found - create one in the Voice playground.</p>}</div>
             {/* The panel's description has always promised a "script" field.
                 It is real: the executor reads stepConfig.added_context ||
                 stepConfig.voiceContext, runs it through personalizeContext (so
                 {{tokens}} resolve per lead), and POSTs it to VOAG as
-                added_context — see channelDispatchers/voice.js and
+                added_context - see channelDispatchers/voice.js and
                 StepExecutors' voice step. It simply had no input, and the launch
                 payload did not send it. Both fixed. */}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra context for the agent (optional)</label>
               <textarea className={`${field} min-h-[80px]`} value={cfg.added_context || ''}
                 onChange={(e) => setCfg(editingId!, { added_context: e.target.value })}
                 placeholder="e.g. They downloaded our logistics guide last week. Ask what prompted it before pitching." />
-              <p className="text-[11px] text-muted-foreground">Added to the agent&apos;s existing instructions for this call — it does not replace them. Supports {'{{first_name}}'}, {'{{company}}'} and the other lead tokens.</p></div>
+              <p className="text-[11px] text-muted-foreground">Added to the agent&apos;s existing instructions for this call - it does not replace them. Supports {'{{first_name}}'}, {'{{company}}'} and the other lead tokens.</p></div>
           </>)}
           {isRouter && (<>
-            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Attempts before falling back (1–10)</label>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Attempts before falling back (1-10)</label>
               <Input type="number" value={cfg.attempts || '3'} onChange={(e) => {
                 setCfg(editingId, { attempts: e.target.value });
                 updateWorkflowStep(editingId!, { description: `${Math.min(10, Math.max(1, parseInt(e.target.value, 10) || 3))} tries → ${ROUTER_CHANNELS.find((r) => r.value === (cfg.fallback_channel || 'email'))?.label}` });
@@ -6459,8 +6459,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    *
    * The input is the SIGNAL, and almost all of it arrives prefilled from the
    * node the user already configured. An earlier cut of this screen asked them
-   * to hand-author three LinkedIn posts — author, headline, company, body, URL,
-   * date, likes, comments — which inverted the feature: it made the user
+   * to hand-author three LinkedIn posts - author, headline, company, body, URL,
+   * date, likes, comments - which inverted the feature: it made the user
    * manufacture the artifacts signal detection exists to discover, and asked for
    * a post URL that is an OUTPUT of the search and cannot be invented. Posts are
    * now written FOR the user from their signal. Pasting a specific post is still
@@ -6474,7 +6474,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const titles = csvList(signalDraft.titles);
     // Editable here like the signal and the titles, because location is the
     // third input that decides the outcome and was the only one you could not
-    // try. `location`, singular — the signal node's own key; `locations` is the
+    // try. `location`, singular - the signal node's own key; `locations` is the
     // LinkedIn Search field and a different setting.
     const location = signalDraft.location.trim();
     const routing = signalRoute(signal);
@@ -6482,7 +6482,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const { keywords, titlesOverride } = signalSearchKeywords(signal, titles, routing.route);
     const byId = new Map(signalPosts.map((p) => [p.id, p]));
     const jobById = new Map(signalJobs.map((j) => [j.id, j]));
-    // The draft has drifted from the node — offer to keep the better wording.
+    // The draft has drifted from the node - offer to keep the better wording.
     const draftDiffers = signal !== String(srcCfg.signal_query || '').trim()
       || signalDraft.titles.trim() !== String(srcCfg.decision_maker_titles || '').trim()
       || signalDraft.location.trim() !== String(srcCfg.location || '').trim();
@@ -6522,7 +6522,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           onChange={(e) => setSignalDraft((p) => ({ ...p, signal: e.target.value }))}
           placeholder="e.g. companies hiring Salesforce revenue operations managers" />
         <p className="text-[11px] text-muted-foreground leading-snug">
-          Prefilled from your source node. Edit it here to try a different wording — the source and the
+          Prefilled from your source node. Edit it here to try a different wording - the source and the
           search keywords below update as you type.
         </p>
 
@@ -6541,15 +6541,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <p className="text-[10.5px] text-muted-foreground leading-snug mt-0.5">{routing.reason}</p>
             <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
               {isJobs
-                ? 'A job listing has no author, so each match yields a company — and the decision-maker titles below choose who gets enrolled there.'
+                ? 'A job listing has no author, so each match yields a company - and the decision-maker titles below choose who gets enrolled there.'
                 : routing.route === 'undecided'
-                  ? 'Add a phrase like “posting jobs for…” to force the jobs portal, or “posted about…” to force the feed — the samples below assume posts until then.'
+                  ? 'Add a phrase like “posting jobs for…” to force the jobs portal, or “posted about…” to force the feed - the samples below assume posts until then.'
                   : 'Each matching post yields its author, who is enrolled directly.'}
             </p>
           </div>
         )}
 
-        {/* Same chips the node config shows — one definition, see SignalTypeChips. */}
+        {/* Same chips the node config shows - one definition, see SignalTypeChips. */}
         <SignalTypeChips
           value={signalDraft.signal}
           onChange={(next) => setSignalDraft((p) => ({ ...p, signal: next }))} />
@@ -6560,13 +6560,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             onChange={(e) => setSignalDraft((p) => ({ ...p, titles: e.target.value }))} />
           <p className="text-[10.5px] text-muted-foreground leading-snug">
             {isJobs
-              ? 'Comma-separated. On this signal they choose who gets enrolled at each hiring company — a listing has no author, so these are how a company becomes people.'
+              ? 'Comma-separated. On this signal they choose who gets enrolled at each hiring company - a listing has no author, so these are how a company becomes people.'
               : 'Comma-separated. On this signal they only widen what the post search looks for; the post’s author is the lead either way.'}
           </p>
         </div>
 
         {/* Always rendered, never gated on being non-empty. Blank is not "no
-            information" — it means worldwide, and on the jobs route the gap
+            information" - it means worldwide, and on the jobs route the gap
             between "I scoped this to Dubai" and "this searched everywhere" is
             exactly what the user needs told.
 
@@ -6586,7 +6586,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2 text-[10.5px] leading-snug text-amber-900 dark:text-amber-200">
               <strong>Location is not applied on the jobs route.</strong> The jobs search needs
               LinkedIn&apos;s own location IDs rather than a typed place name, and that lookup is not wired
-              yet — so this searches <strong>worldwide</strong>
+              yet - so this searches <strong>worldwide</strong>
               {location ? <> and &ldquo;{location}&rdquo; is ignored</> : null}. Filter the leads afterwards,
               or reword the signal so it looks for what people posted about, where location does work.
             </div>
@@ -6616,10 +6616,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <p className="text-[11px] text-muted-foreground">Nothing to search on yet.</p>
           )}
           <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
-            Derived from your wording — the search runs on these, not on the sentence.
+            Derived from your wording - the search runs on these, not on the sentence.
           </p>
           {titlesOverride && (
-            // Driven by TITLES_CROWD_SIGNAL_WORDING — see the note there for
+            // Driven by TITLES_CROWD_SIGNAL_WORDING - see the note there for
             // which backend branch changes this and when to drop the banner.
             // Worded against the chips above so it stays true either way: it
             // points at what is on screen rather than asserting a defect.
@@ -6638,8 +6638,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         {isJobs ? (<>
           <p>
             <strong>Real:</strong> the routing decision, the {SIGNAL_MIN_MATCH_SCORE} relevance floor, the
-            search keywords — including the hiring words stripped out of them, since the search is already
-            scoped to job listings — and the company-to-people expansion this describes.
+            search keywords - including the hiring words stripped out of them, since the search is already
+            scoped to job listings - and the company-to-people expansion this describes.
           </p>
           <p>
             <strong>Previewed:</strong> the sample listings and whether each one matches. A real run asks an
@@ -6647,7 +6647,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </p>
           <p>
             <strong>No buy-intent score is shown for job matches</strong>, and that is deliberate. A real run
-            does score them — but from how well the listing matched and how closely the title matched, with
+            does score them - but from how well the listing matched and how closely the title matched, with
             no pain points, so the number is composed differently from a post lead&apos;s and is not
             comparable to one. It also depends on a person this preview has not found yet. Use{' '}
             <em>Run against real LinkedIn jobs</em> for real scores.
@@ -6655,14 +6655,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         </>) : (<>
           <p>
             <strong>Real:</strong> the search keywords, the {SIGNAL_MIN_MATCH_SCORE} relevance floor, the
-            post-to-lead mapping, and the whole buy-intent score and its breakdown — that scorer is a fixed
+            post-to-lead mapping, and the whole buy-intent score and its breakdown - that scorer is a fixed
             points table, so the arithmetic here is the arithmetic that runs.
           </p>
           <p>
             <strong>Previewed:</strong> the sample posts, and whether each one matches, how strong and urgent
             it is, and the pain points. At launch Gemini reads real posts; here it is keyword overlap in your
-            browser. The two agree on wording that is clearly too broad or clearly too narrow — which is what
-            this screen is for — and will disagree on borderline posts.
+            browser. The two agree on wording that is clearly too broad or clearly too narrow - which is what
+            this screen is for - and will disagree on borderline posts.
           </p>
           <p className="text-amber-800/90 dark:text-amber-300/90">
             For scale: a live run scanned 30 posts, kept 21, produced 18 leads and took about 98 seconds.
@@ -6679,7 +6679,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       <div className="rounded-xl border border-border bg-muted/20">
         <button type="button" onClick={() => setSignalAdvanced((v) => !v)}
           className="w-full flex items-center justify-between gap-2 p-2.5 text-left">
-          <span className="text-[11.5px] font-semibold text-foreground">Advanced — test a specific post</span>
+          <span className="text-[11.5px] font-semibold text-foreground">Advanced - test a specific post</span>
           <span className="text-[11px] text-muted-foreground">{signalAdvanced ? 'Hide' : 'Show'}</span>
         </button>
         {signalAdvanced && (
@@ -6807,13 +6807,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           </div>
                           <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
                             A live search finds the actual people holding these titles at {r.company}, so the
-                            names — and their buy-intent scores — are only knowable on a real run.
+                            names - and their buy-intent scores - are only knowable on a real run.
                           </p>
                         </>
                       ) : (
                         <p className="text-[10.5px] text-amber-700 dark:text-amber-400 leading-snug">
                           No decision-maker titles set. On a jobs signal that leaves nobody to enrol from this
-                          company — add at least one title above.
+                          company - add at least one title above.
                         </p>
                       )}
                     </div>
@@ -6856,7 +6856,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </span>
                 </div>
 
-                {/* The post itself — generated, so it has to be readable and
+                {/* The post itself - generated, so it has to be readable and
                     editable, otherwise the verdict is unfalsifiable. */}
                 {post && (
                   <div className="mt-2 space-y-1">
@@ -6897,7 +6897,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     Missing: {r.missed.join(', ')}
                   </p>
                 )}
-                {/* Pain points are the "why" — the fastest read on whether the
+                {/* Pain points are the "why" - the fastest read on whether the
                     signal is catching the problem you sell into. */}
                 <div className="mt-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
@@ -6952,7 +6952,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             );
           })}
           <p className="text-[10.5px] text-muted-foreground leading-snug pt-1">
-            The post&apos;s <strong>author</strong> is the lead — author name, headline and company, in that
+            The post&apos;s <strong>author</strong> is the lead - author name, headline and company, in that
             order, plus their LinkedIn profile, which only the real search can supply. In live data the
             company often comes back as &ldquo;Unknown&rdquo; even when the post names one.
           </p>
@@ -6963,7 +6963,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {signalLive && (
         <div className="space-y-2">
           {/* stats.signal_source is the run's OWN account of which source it
-              used — worth preferring over the local routing guess, since it is
+              used - worth preferring over the local routing guess, since it is
               the only place an LLM-arbitrated route becomes visible. */}
           {(() => {
             const ranJobs = String(signalLive.stats.signal_source || '') === 'jobs';
@@ -6971,7 +6971,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               ? ` in ${Math.round(signalLive.stats.latencyMs / 1000)}s` : '';
             return (
               <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[11.5px] leading-relaxed text-emerald-900 dark:text-emerald-200">
-                <strong>Live run — everything below is real.</strong>{' '}
+                <strong>Live run - everything below is real.</strong>{' '}
                 {ranJobs
                   ? <>Searched the <strong>jobs portal</strong> and produced {signalLive.leads.length} lead{signalLive.leads.length === 1 ? '' : 's'}{secs}.</>
                   : <>Scanned {signalLive.stats.total_posts ?? 0} posts, kept {signalLive.stats.relevant_posts ?? 0}, produced {signalLive.leads.length} lead{signalLive.leads.length === 1 ? '' : 's'}{secs}.</>}
@@ -6994,7 +6994,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           )}
           {!signalLive.leads.length && !signalLive.stats.skipped_reason && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11.5px] text-muted-foreground leading-snug">
-              Nothing cleared the relevance floor. That is a real answer about this wording — try the sample
+              Nothing cleared the relevance floor. That is a real answer about this wording - try the sample
               run above to see where it starts letting matches through.
             </div>
           )}
@@ -7027,9 +7027,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     urgency {l.urgency}
                   </span>
                 )}
-                {/* Jobs route only. open_roles is the genuine intent tell — an
+                {/* Jobs route only. open_roles is the genuine intent tell - an
                     employer with four matching openings is hiring harder than
-                    one with a single req — and matched_title is what makes this
+                    one with a single req - and matched_title is what makes this
                     person's presence in the list explicable. */}
                 {l.openRoles !== null && (
                   <span className="px-1.5 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
@@ -7065,7 +7065,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   a job lead's score is not comparable to a post lead's. */}
               {l.sourceType === 'linkedin_job' && (
                 <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
-                  Scored from how well the listing matched and how closely the title matched — not from
+                  Scored from how well the listing matched and how closely the title matched - not from
                   anything this person wrote. Not directly comparable to a post lead&apos;s score.
                 </p>
               )}
@@ -7109,12 +7109,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // came to look at.
     const artifacts: TestArtifact[] = (testSteps || []).flatMap((s) => s.artifacts || []);
     // The signal source is the one contact source whose behaviour a sample
-    // PERSON cannot exercise — and the one the pipeline test never runs at all,
+    // PERSON cannot exercise - and the one the pipeline test never runs at all,
     // since lead_generation is not a test-runnable step type. It gets its own
     // half of the drawer, shown first.
     const isSignalSource = source === 'linkedin_signal';
     const signalMode = isSignalSource && testMode === 'signal';
-    // Which source the signal wording routes to — the footer's labels and its
+    // Which source the signal wording routes to - the footer's labels and its
     // warnings differ between the jobs portal and the feed.
     const signalIsJobs = isSignalSource && signalRoute(signalDraft.signal).route === 'jobs';
     const tab = (active: boolean) =>
@@ -7156,7 +7156,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </p>
             <p>
               <strong>Nothing is sent to the prospect.</strong> Every message, connection request and call is
-              skipped. Anything the Export step delivers goes to the addresses you put on that node — yours.
+              skipped. Anything the Export step delivers goes to the addresses you put on that node - yours.
             </p>
             <p className="text-emerald-800/90 dark:text-emerald-300/90">
               This costs credits: live web research, AI-written reports and pages, and a real PDF render.
@@ -7166,7 +7166,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {isSignalSource && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
-              This half does not run your Signal Search — a test run never executes a contact source, so the
+              This half does not run your Signal Search - a test run never executes a contact source, so the
               lead below is one you supply, not one the signal found. Use <strong>Signal match</strong> to
               check the source itself.
             </div>
@@ -7175,7 +7175,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!runnable && !!workflowPreview.length && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
               Nothing in this workflow produces something to look at yet. A test run executes research,
-              scraping, scoring, reports, landing pages and exports — add one of those and there will be an
+              scraping, scoring, reports, landing pages and exports - add one of those and there will be an
               artifact to review.
             </div>
           )}
@@ -7294,13 +7294,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 : signalIsJobs ? 'Run against real LinkedIn jobs' : 'Run against real LinkedIn posts'}
             </button>
             {/* /api/signals/detect routes internally now, so this exercises
-                whichever source the wording picks — including the jobs portal. */}
+                whichever source the wording picks - including the jobs portal. */}
             <p className="text-[10.5px] text-amber-700 dark:text-amber-400 text-center leading-snug">
               {signalLiveRunning
                 ? signalIsJobs
                   ? 'Searching the jobs portal and expanding each company to decision-makers.'
                   : 'Searching LinkedIn and classifying each post. This takes about 98 seconds.'
-                : 'Real search, real results — takes up to ~98s and spends your LinkedIn account’s search budget, which is shared with your campaign’s connection requests.'}
+                : 'Real search, real results - takes up to ~98s and spends your LinkedIn account’s search budget, which is shared with your campaign’s connection requests.'}
             </p>
           </>) : (<>
             <Button className="w-full" onClick={runTest} disabled={testRunning || !workflowPreview.length}>
@@ -7321,7 +7321,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Suggested next node — a deterministic recommendation, not a live AI call,
+   * Suggested next node - a deterministic recommendation, not a live AI call,
    * so it can't be flaky about something adjacent to what gates Launch. Each
    * rule traces to a documented producer/consumer relationship already noted
    * in STEP_INSTRUCTIONS or the palette copy above (e.g. lead-score → Multi-
@@ -7407,7 +7407,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {!error && sequenceIssues.length > 0 && (
         <div className="mx-4 mt-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <span className="flex-1">
-            <strong className="font-semibold">Launch is disabled — fix the sequence first: </strong>
+            <strong className="font-semibold">Launch is disabled - fix the sequence first: </strong>
             {sequenceIssues[0].message}
             {sequenceIssues.length > 1 && ` (+${sequenceIssues.length - 1} more)`}
           </span>
@@ -7421,7 +7421,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         <div className="mx-4 mt-3 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-[2px] text-amber-700 dark:text-amber-300" />
           <div className="flex-1 text-sm text-amber-900 dark:text-amber-200">
-            <strong className="font-semibold">Before you launch — how this differs from what you described:</strong>
+            <strong className="font-semibold">Before you launch - how this differs from what you described:</strong>
             <ul className="mt-1.5 space-y-1 list-disc pl-4">
               {aiWarnings.map((w, i) => <li key={i} className="leading-snug">{w}</li>)}
             </ul>
@@ -7449,7 +7449,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         {/* Column, not a plain scroller: the AI tab pins its composer to the
             bottom the way a chat does, so it owns its own scroll region. */}
         <div className="w-[19rem] border-r border-border bg-card flex flex-col min-h-0">
-          {/* Tabs — Templates | Build with AI | Build from steps */}
+          {/* Tabs - Templates | Build with AI | Build from steps */}
           <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-slate-800/60">
             {([['templates', 'Templates'], ['ai', 'Build with AI'], ['steps', 'From steps']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setPaletteTab(k)}
@@ -7472,7 +7472,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
               {/* Resting state: a calm starting screen rather than a form. The
-                  starters are real accelerators — each seeds the prompt with a
+                  starters are real accelerators - each seeds the prompt with a
                   shape Mr LAD handles well, which the user then edits. */}
               {!aiQuestions.length && !aiResult && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
@@ -7687,7 +7687,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
             </div>
 
-            {/* Composer — pinned, like a chat. Hidden mid-conversation: the
+            {/* Composer - pinned, like a chat. Hidden mid-conversation: the
                 answer controls are the input at that point, and two places to
                 type would be ambiguous. */}
             {!aiQuestions.length && (
@@ -7733,7 +7733,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
             <div>
               <div className="text-[15px] font-bold text-foreground">Start from a template</div>
-              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline — then tune each node</p>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline - then tune each node</p>
 
               <div className="space-y-2.5">
                 {(() => {
@@ -7745,7 +7745,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   if (!list.length) return (
                     <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
                   );
-                  // 13 templates is a lot for one flat list — split general
+                  // 13 templates is a lot for one flat list - split general
                   // pipelines from the industry-tuned ones.
                   const renderCard = (t: typeof WORKFLOW_TEMPLATES[number]) => {
                     const open = expandedTpl === t.key;
@@ -7829,7 +7829,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </div>
                   );
                   return (<>
-                    {/* The tenant's own saved playbooks lead — they're the most
+                    {/* The tenant's own saved playbooks lead - they're the most
                         likely thing someone opening this panel is reaching for. */}
                     {mine.length > 0 && heading('My strategies', mine.length)}
                     {mine.map(renderCard)}
@@ -7851,7 +7851,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
 
           {paletteTab === 'steps' && (<>
-          {/* Suggested next step — a shortcut, not a requirement. Every option
+          {/* Suggested next step - a shortcut, not a requirement. Every option
               here is also always pickable manually from the sections below. */}
           {suggestions.length > 0 && (
             <div className="rounded-2xl border border-dashed border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3 space-y-2">
@@ -7875,7 +7875,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 ))}
               </div>
-              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you&rsquo;d rather.</p>
+              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion - pick any other step below instead if you&rsquo;d rather.</p>
             </div>
           )}
           {/* 1 · Contact source */}
@@ -7952,7 +7952,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">Click a node on the canvas to configure it · hover a node and use ✕ to remove it.</p>
-            {/* Branching — route each lead to a different message by a field. */}
+            {/* Branching - route each lead to a different message by a field. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === MULTICOND_STEP_ID);
               return (
@@ -7973,7 +7973,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
-            {/* AI Agent — clean/normalise lead data before outreach. */}
+            {/* AI Agent - clean/normalise lead data before outreach. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === AI_STEP_ID);
               return (
@@ -7994,7 +7994,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
-            {/* Data enrichment — reveal email/phone via FullEnrich. */}
+            {/* Data enrichment - reveal email/phone via FullEnrich. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === ENRICH_STEP_ID);
               return (
@@ -8015,7 +8015,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
-            {/* Export results — ship the final result set to files / DB / channels. */}
+            {/* Export results - ship the final result set to files / DB / channels. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === EXPORT_STEP_ID);
               return (
@@ -8036,7 +8036,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
-            {/* Instagram auto-post — one scheduled post per campaign. */}
+            {/* Instagram auto-post - one scheduled post per campaign. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID);
               return (
@@ -8058,7 +8058,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               );
             })()}
 
-            {/* Audit report — a PDF worth receiving. */}
+            {/* Audit report - a PDF worth receiving. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === REPORT_STEP_ID);
               return (
@@ -8080,7 +8080,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               );
             })()}
 
-            {/* Human task — the escape hatch for work Mr LAD cannot do. */}
+            {/* Human task - the escape hatch for work Mr LAD cannot do. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === HUMAN_TASK_STEP_ID);
               return (
@@ -8102,7 +8102,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               );
             })()}
 
-            {/* Landing page — one public page for the whole campaign. */}
+            {/* Landing page - one public page for the whole campaign. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === LANDING_STEP_ID);
               return (
@@ -8123,7 +8123,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
-            {/* Web intelligence — enrich each lead from the open web. */}
+            {/* Web intelligence - enrich each lead from the open web. */}
             {([
               { id: SCRAPE_STEP_ID, on: addWebScrape, icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30', label: 'Webpage scraper', sub: "Read the lead's website" },
               { id: RESEARCH_STEP_ID, on: addWebResearch, icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30', label: 'Web research', sub: 'AI company intel from the web' },
@@ -8153,7 +8153,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })}
-            {/* LinkedIn auto-post — recurring posts to the tenant's own feed. */}
+            {/* LinkedIn auto-post - recurring posts to the tenant's own feed. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID);
               return (
@@ -8314,20 +8314,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {/* Step picker opened from a node's input/output "+". */}
       {renderInsertMenu()}
 
-      {/* AI Media Studio (MAGe) — generate assets, then pick from the gallery. */}
+      {/* AI Media Studio (MAGe) - generate assets, then pick from the gallery. */}
       {showMediaStudio && (
         <MediaGenerationModal
           isOpen={showMediaStudio}
           onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
           // The builder is hosted in a fixed z-index:10000 overlay and the
           // dialog portals to <body>, so without these it opens BEHIND the
-          // builder — invisible, and closed by the next click.
+          // builder - invisible, and closed by the next click.
           className="z-[10050]"
           overlayClassName="z-[10040]"
         />
       )}
 
-      {/* Publish confirmation — shows exactly what would leave this account. */}
+      {/* Publish confirmation - shows exactly what would leave this account. */}
       {publishingId && (
         <StrategyPublishDialog
           strategyId={publishingId}

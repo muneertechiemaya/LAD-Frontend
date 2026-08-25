@@ -5,7 +5,7 @@
  *
  * WHY THIS EXISTS WHEN THE PICKER ALREADY DOES
  * The picker can only reach conversations already in Mr LAD. A studio's best
- * material is usually OLDER than their account — years of WhatsApp history
+ * material is usually OLDER than their account - years of WhatsApp history
  * where a real person answered the pricing, parking and injury questions
  * properly. Export that chat from WhatsApp, upload it here, and it becomes
  * the same reviewed-proposal flow as everything else.
@@ -15,7 +15,7 @@
  *    it come back with message counts.
  * 2. The studio marks which participant is THEM. The extractor trusts the
  *    studio's side like their written instructions and everyone else as a
- *    customer — so a skipped or wrong mapping doesn't fail, it produces
+ *    customer - so a skipped or wrong mapping doesn't fail, it produces
  *    confident settings attributed to the wrong side. The server refuses a
  *    scan without the mapping; this UI just makes that visible up front.
  *
@@ -65,11 +65,11 @@ export function TranscriptUpload({
     try {
       const text = await file.text();
       // Parsed server-side so the file the studio sees judged is exactly the
-      // file the scan will read — a second client-side parser would drift.
+      // file the scan will read - a second client-side parser would drift.
       const parsed = await previewTranscript(pipeline, text);
       setTranscript(text);
       setPreview(parsed);
-      // No default. Someone has to SAY which side is theirs — see header.
+      // No default. Someone has to SAY which side is theirs - see header.
     } catch (err) {
       const serverMessage =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error;

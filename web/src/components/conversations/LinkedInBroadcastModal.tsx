@@ -6,9 +6,9 @@
  * Purpose-built for the rate-limited LinkedIn reality (NOT a fork of the
  * WhatsApp BroadcastModal, whose naive client-side per-recipient fan-out would
  * get LinkedIn accounts restricted). Flow:
- *   1. Audience — pick or build a broadcast group from campaign-accepted connections.
- *   2. Message — pick a saved LinkedIn template.
- *   3. Queue — POST /send returns 202 + an ETA; the backend drips the sends over
+ *   1. Audience - pick or build a broadcast group from campaign-accepted connections.
+ *   2. Message - pick a saved LinkedIn template.
+ *   3. Queue - POST /send returns 202 + an ETA; the backend drips the sends over
  *      days within each account's daily cap. Progress shows in the Runs tab.
  *
  * All data is reached under /api/campaigns/linkedin-broadcast/* via fetchWithTenant.
@@ -46,7 +46,7 @@ function runLabel(r: Run) {
   return r.group_name || r.name || r.template_name || 'Broadcast';
 }
 
-/** "3 Aug 2026, 14:32" — the send date, or the queue date if it never started. */
+/** "3 Aug 2026, 14:32" - the send date, or the queue date if it never started. */
 function formatSentAt(r: Run) {
   const raw = r.started_at || r.created_at;
   if (!raw) return null;
@@ -350,7 +350,7 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
                 const seen = r.seen_count || 0;
                 const replied = r.replied_count || 0;
                 const sent = r.sent_count || 0;
-                // Percentages are of what actually went out — "12 seen of 36 queued"
+                // Percentages are of what actually went out - "12 seen of 36 queued"
                 // would understate a broadcast still mid-drip.
                 const rate = (n: number) => (sent ? Math.round((n / sent) * 100) : 0);
                 return (

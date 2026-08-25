@@ -139,7 +139,7 @@ interface BusinessHoursModalProps {
   /** Receives structured payload AND formatted summary string */
   onSave: (payload: BusinessHoursPayload, summary: string) => void;
   onClose: () => void;
-  /** Mutation in flight — disables the button so a slow save can't be double-fired. */
+  /** Mutation in flight - disables the button so a slow save can't be double-fired. */
   saving?: boolean;
   /** Set by the caller's onError. Previously there was nowhere for this to go:
    *  a failed save left the modal open with no indication anything went wrong. */
@@ -191,8 +191,8 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
     const sorted = [...activeDays].sort((a, b) => a - b);
     if (!sorted.length) return 'No days selected';
     if (sorted.length === 7) return 'All 7 days selected';
-    if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) return 'Mon – Fri selected';
-    if (JSON.stringify(sorted) === JSON.stringify([5, 6])) return 'Sat – Sun selected';
+    if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) return 'Mon-Fri selected';
+    if (JSON.stringify(sorted) === JSON.stringify([5, 6])) return 'Sat-Sun selected';
     return sorted.map(i => DAYS[i]).join(', ') + ' selected';
   };
 
@@ -209,10 +209,10 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
     const sorted = [...activeDays].sort((a, b) => a - b);
     let dayStr = 'No days';
     if (sorted.length === 7) dayStr = 'All Days';
-    else if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) dayStr = 'Mon–Fri';
-    else if (JSON.stringify(sorted) === JSON.stringify([5, 6])) dayStr = 'Sat–Sun';
+    else if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) dayStr = 'Mon-Fri';
+    else if (JSON.stringify(sorted) === JSON.stringify([5, 6])) dayStr = 'Sat-Sun';
     else dayStr = sorted.map(i => DAYS[i]).join(', ');
-    return `${fmt12(startTime)} – ${fmt12(endTime)} · ${dayStr} · ${tzText}`;
+    return `${fmt12(startTime)} - ${fmt12(endTime)} · ${dayStr} · ${tzText}`;
   };
 
   const PRESET_LABELS: Record<string, string> = {
@@ -339,7 +339,7 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
             </div>
           </div>
 
-          {/* Save error — the mutation's onError previously had nowhere to surface to. */}
+          {/* Save error - the mutation's onError previously had nowhere to surface to. */}
           {error && (
             <div
               role="alert"

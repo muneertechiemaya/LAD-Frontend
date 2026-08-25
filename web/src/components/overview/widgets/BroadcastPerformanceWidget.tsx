@@ -8,7 +8,7 @@
  * (`WidgetWrapper`) with `chromeless` so the inner card/title don't duplicate
  * the wrapper's.
  *
- * Surface: rendered on /overview for all tenants — appears in every default
+ * Surface: rendered on /overview for all tenants - appears in every default
  * dashboard layout and is migrated onto existing user layouts via the persist
  * migration in `dashboardStore.ts`.
  */

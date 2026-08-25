@@ -1,5 +1,5 @@
 /**
- * RunSearchPanel — top-of-page widget on /prospects that triggers a new
+ * RunSearchPanel - top-of-page widget on /prospects that triggers a new
  * SearchDispatcher run and shows the result inline.
  *
  * Backend contract: POST /api/ai-icp-assistant/search.
@@ -108,7 +108,7 @@ function RunningStrip() {
   return (
     <div className="border-t border-gray-200 bg-blue-50 px-5 py-3 text-sm text-blue-700">
       <span className="inline-block animate-pulse">●</span>{' '}
-      Finding prospects… typically 3–8s.
+      Finding prospects… typically 3-8s.
     </div>
   );
 }

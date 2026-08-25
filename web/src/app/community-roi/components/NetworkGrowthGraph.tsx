@@ -26,10 +26,10 @@ interface MonthRow {
   downgrades: number      // relationships that degraded vs prior snapshot
   netUpgrades: number     // upgrades - downgrades; a positive upgrade count can
                           // still be a net decline (Jun 2026: +156 / -372)
-  activeMembers: number   // roster size that month — totals shrink when members
+  activeMembers: number   // roster size that month - totals shrink when members
                           // leave, so this is needed to read the trend correctly
   tyfcbAed: number
-  tyfcbTracked: boolean   // false when the tenant records no TYFCB — hide, not 0
+  tyfcbTracked: boolean   // false when the tenant records no TYFCB - hide, not 0
 }
 
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
           setRawData(rows)
           setIsLive(true)
         } else {
-          // No data yet — fall back to mock so the graph is never blank
+          // No data yet - fall back to mock so the graph is never blank
           setRawData(null)
           setIsLive(false)
         }
@@ -135,7 +135,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
   const baseData: MonthRow[] = rawData ?? MOCK_DATA
 
   // Meetings/referrals are STATE snapshots (all relationships as of that month),
-  // so they must NOT be summed across months — the same pair would be counted
+  // so they must NOT be summed across months - the same pair would be counted
   // once per snapshot. Only upgrades/downgrades/TYFCB are true monthly deltas
   // and can accumulate.
   const chartData = useMemo(() => {
@@ -160,7 +160,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
   const netUpgrades      = totalUpgrades - totalDowngrades
   const totalTyfcb       = baseData.reduce((s, w) => s + w.tyfcbAed,   0)
   const showTyfcb        = !isLive || baseData.some(w => w.tyfcbTracked || w.tyfcbAed > 0)
-  // Signed — the old version hardcoded '+' and rendered "+-15%" on a decline.
+  // Signed - the old version hardcoded '+' and rendered "+-15%" on a decline.
   const pctGrowth = (a: number, b: number) =>
     b === 0 ? '-' : `${a - b >= 0 ? '+' : ''}${Math.round(((a - b) / b) * 100)}%`
   const meetingGrowth  = pctGrowth(last.uniqueMeetings,  first.uniqueMeetings)
@@ -321,7 +321,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         interval={0}
                       />
 
-                      {/* Left Y — counts */}
+                      {/* Left Y - counts */}
                       <YAxis
                         yAxisId="count"
                         axisLine={false}
@@ -330,7 +330,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         width={32}
                       />
 
-                      {/* Right Y — AED */}
+                      {/* Right Y - AED */}
                       <YAxis
                         yAxisId="aed"
                         orientation="right"
@@ -344,7 +344,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                       <Tooltip content={<CustomTooltip />} />
 
                       {/* TYFCB bars (drawn first = behind). Hidden when the tenant
-                          records no TYFCB — a flat 0 series is just noise. */}
+                          records no TYFCB - a flat 0 series is just noise. */}
                       {showTyfcb && (
                         <Bar
                           yAxisId="aed"
@@ -383,7 +383,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         activeDot={{ r: 5, fill: '#f97316' }}
                       />
 
-                      {/* Upgrades line — dashed violet, shows relationship improvements */}
+                      {/* Upgrades line - dashed violet, shows relationship improvements */}
                       <Line
                         yAxisId="count"
                         type="monotone"
@@ -425,7 +425,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                       {baseData.map((w, i) => {
                         const prev = baseData[i - 1]
                         // MoM is based on MEETINGS (the headline metric). It used to be
-                        // derived only from TYFCB, so it showed '—' on every row for any
+                        // derived only from TYFCB, so it showed ' - ' on every row for any
                         // tenant that doesn't record TYFCB.
                         const momMeetings = prev && prev.uniqueMeetings > 0
                           ? Math.round(((w.uniqueMeetings - prev.uniqueMeetings) / prev.uniqueMeetings) * 100)
