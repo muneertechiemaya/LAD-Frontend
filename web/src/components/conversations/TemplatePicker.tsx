@@ -49,6 +49,11 @@ interface WhatsAppTemplate {
   header_type: string;        // "text" | "image" | "document" | "video" | ""
   header_param_count: number; // how many leading parameters belong to the header component
   header_url: string;         // media handle for image/document/video header templates
+  // Which connected number this template lives on. A template belongs to a WABA,
+  // not to a workspace, so a tenant with two numbers has two libraries and the
+  // same name can legitimately appear in both.
+  account_id?: string;
+  account_phone?: string;
 }
 
 type NameFormat = 'first' | 'full';
@@ -426,7 +431,10 @@ export function TemplatePicker({
                   <div className={cn(isWA ? "space-y-1.5" : "space-y-1")}>
                     {filtered.map((template) => (
                       <div
-                        key={`${template.name}-${template.language}`}
+                        // account_id is part of the identity, not decoration:
+                        // without it two numbers holding a same-named template
+                        // collide into one React key and the list mis-renders.
+                        key={`${template.account_id ?? ''}-${template.name}-${template.language}`}
                         className={cn(
                           "cursor-pointer transition-all group",
                           isWA
