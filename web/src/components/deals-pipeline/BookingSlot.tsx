@@ -819,7 +819,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white"
+                  className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white dark:[color-scheme:dark]"
               />
             </div>
             {/* User Selection */}
