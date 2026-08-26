@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Loader2, Repeat, Linkedin, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 /**
@@ -192,10 +193,15 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
             <div className="text-sm font-medium text-foreground">Zoho source</div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Import from</label>
-              <select value={modules} onChange={(e) => setModules(e.target.value as any)} className={field}>
-                <option value="contacts">Contacts only</option>
-                <option value="contacts_leads">Contacts + Leads</option>
-              </select>
+              <Select value={modules} onValueChange={(val) => setModules(val as 'contacts' | 'contacts_leads')}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Select import source" />
+                </SelectTrigger>
+                <SelectContent className="z-[100000]">
+                  <SelectItem value="contacts">Contacts only</SelectItem>
+                  <SelectItem value="contacts_leads">Contacts + Leads</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Only contacts with tag (optional)</label>
