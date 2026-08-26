@@ -204,11 +204,11 @@ export default function EmployeeCard({
                   <Badge
                     variant="default"
                     className={`
-                      font-semibold text-xs h-auto py-0.5 max-w-full px-3 whitespace-normal line-clamp-2 dark:text-white
+                      font-semibold text-xs h-auto py-0.5 max-w-full px-3 whitespace-normal line-clamp-2
                       ${employeeViewMode === 'grid' ? 'self-center' : 'self-start'}
                     `}
                   >
-                    {employee.title.toUpperCase()}
+                    {employee.title}
                   </Badge>
                 )}
                 {/* Company shown on its own line, under the name/title chip */}
@@ -543,7 +543,7 @@ export default function EmployeeCard({
                   e.stopPropagation();
                   onViewSummary(employee);
                 }}
-                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#2b7cff] font-semibold text-sm py-2 hover:text-[#2140A5] hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
+                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#2b7cff] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Generate Summary

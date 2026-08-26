@@ -463,56 +463,29 @@ export default function CampaignLeadsPage() {
     );
   }
   return (
-    <div className="w-full h-screen overflow-auto bg-slate-50 dark:sm:bg-[#000724] dark:bg-[#050814]">
+    <div className="w-full h-screen overflow-auto bg-slate-50 dark:bg-[#000724]">
       <div className="p-6 pb-12">
         {/* Header */}
-        {/* Desktop only */}
-        <div className="hidden sm:block">
-          <div className="mb-6 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/campaigns/${campaignId}/analytics`)}
-                className="min-w-auto dark:bg-[#071131] dark:border-[#1e293b] dark:text-white"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-              </Button>
-              <div>
-                <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
-                  {campaign?.name || 'Campaign Leads'}
-                </h4>
-                <p className="text-sm text-slate-500 dark:text-slate-300">
-                  {total} {filterParams !== 'all' ? FILTER_LABELS[filterParams] ?? filterParams : ''} leads
-                  {total > filteredLeads.length && ` (showing ${filteredLeads.length})`}
-                </p>
-              </div>
+        <div className="mb-6 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/campaigns/${campaignId}/analytics`)}
+              className="min-w-auto dark:bg-[#071131] dark:border-[#1e293b] dark:text-white"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+            </Button>
+            <div>
+              <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
+                {campaign?.name || 'Campaign Leads'}
+              </h4>
+              <p className="text-sm text-slate-500 dark:text-slate-300">
+                {total} {filterParams !== 'all' ? FILTER_LABELS[filterParams] ?? filterParams : ''} leads
+                {total > filteredLeads.length && ` (showing ${filteredLeads.length})`}
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Mobile only */}
-        <div className="block sm:hidden">
-          <button
-                onClick={() => router.push(`/campaigns/${campaignId}/analytics`)}
-                className="flex items-center gap-2 text-[10px] font-semibold uppercase text-blue-500 hover:text-blue-700"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to campaign leads</span>
-          </button>
-          <div className="mb-6 flex justify-between items-center border-b border-slate-200 dark:border-white pb-3">
-            <div className="flex items-center gap-4">
-              <div className="mt-5">
-                <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-3">
-                  {campaign?.name || 'Campaign Leads'}
-                </h4>
-                <p className="text-sm text-slate-500 dark:text-slate-300">
-                  {filteredLeads.length} {filterParams !== 'all' ? filterParams : ''} active CRM lead records
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
 
         {/* Filter Tabs */}
         <div className="mb-4 flex gap-2 flex-wrap">
