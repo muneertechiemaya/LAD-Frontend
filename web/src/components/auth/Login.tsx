@@ -22,14 +22,29 @@ const Login: React.FC = () => {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  // After a successful login, go to redirect_url if present, otherwise the default dashboard
-  const redirectUrl = searchParams.get('redirect_url') || '/onboarding/advanced-search-ai';
+  // Mobile entry points can arrive with the legacy `/onboarding` redirect.
+  // Keep genuine deep links intact, but route that legacy destination to the
+  // mobile-ready advanced search experience.
+  const requestedRedirectUrl = searchParams.get('redirect_url') || '/onboarding/advanced-search-ai';
+  const [isMobile, setIsMobile] = useState(false);
+  const isLegacyOnboardingRedirect = requestedRedirectUrl === '/onboarding' || requestedRedirectUrl.startsWith('/onboarding?');
+  const redirectUrl = isMobile && isLegacyOnboardingRedirect
+    ? '/onboarding/advanced-search-ai'
+    : requestedRedirectUrl;
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const auth = useSelector((state: RootState) => state.auth);
   const { loading, error } = auth || { loading: false, error: null };
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const syncMobile = () => setIsMobile(mediaQuery.matches);
+    syncMobile();
+    mediaQuery.addEventListener('change', syncMobile);
+    return () => mediaQuery.removeEventListener('change', syncMobile);
+  }, []);
 
   useEffect(() => {
     // Load saved credentials
@@ -88,7 +103,12 @@ const Login: React.FC = () => {
       refreshUser(user);
       // Honour redirect_url param (e.g. /tenant/onboard/new for super-admin)
       // Fall back to default dashboard for all other users
-      router.push(redirectUrl);
+      // Read the viewport at submit time as well, so a very fast login cannot
+      // race the mobile media-query effect above.
+      const destination = window.matchMedia('(max-width: 768px)').matches && isLegacyOnboardingRedirect
+        ? '/onboarding/advanced-search-ai'
+        : requestedRedirectUrl;
+      router.push(destination);
       // Backfill the richer /me payload (tenants[] for the switcher,
       // tenantFeatures[] for feature gates) WITHOUT blocking navigation.
       authService.getCurrentUser()

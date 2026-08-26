@@ -171,7 +171,7 @@ export function definitionToTemplate(
   if (!sourceKey) return null;
 
   const nodes = Array.isArray(definition.nodes) ? definition.nodes : [];
-  const accent = opts.shared ? '#7c3aed' : '#0b1957';
+  const accent = opts.shared ? '#7c3aed' : '#38bdf8';
 
   return {
     key: `${opts.shared ? SHARED_STRATEGY_PREFIX : OWN_STRATEGY_PREFIX}${strategy.id}`,

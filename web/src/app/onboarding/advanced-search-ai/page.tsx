@@ -7890,7 +7890,9 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                             </svg>
-                                            {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
+                                            <span className="adv-premium-label">
+                                                {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
+                                            </span>
                                         </button>
                                     )}
                                     {/* Right flank - a wrapper, not flex on the button itself:
@@ -11944,7 +11946,7 @@ function CheckpointFormInline({
     return (
         <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
             <div className="adv-ai-avatar adv-ai-avatar-viz"><AgentVisualizer state="idle" size={36} /></div>
-            <div style={{ flex: 1, maxWidth: '540px' }}>
+            <div className="adv-checkpoint-content" style={{ flex: 1, maxWidth: '540px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div className="adv-ai-name">LAD in Action</div>
                     <button onClick={() => setStep(-1)} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#9ca3af', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
@@ -11978,7 +11980,7 @@ function CheckpointFormInline({
                 >
                     {q.question}
                 </div>
-                <div style={baseBox}>
+                <div className="adv-checkpoint-box" style={baseBox}>
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
                         <div className="flex flex-col dark:bg-[#000724]" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -12931,7 +12933,7 @@ function CheckpointFormInline({
                             {/* Voice Agent Config (inline when voice_call selected) */}
                             {nextChannels.includes('voice_call') && (
                               <div
-                                className="bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
+                                className="adv-voice-settings bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
                                 style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
                               >
                                   <div
@@ -12958,7 +12960,7 @@ function CheckpointFormInline({
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
                                                       <SelectValue placeholder="Select an AI Agent" />
                                                   </SelectTrigger>
-                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                  <SelectContent align="start" className="adv-voice-select-content bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {voiceAgents.map((a: any) => (
                                                         <SelectItem
                                                           key={a.id}
@@ -12999,7 +13001,7 @@ function CheckpointFormInline({
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
                                                       <SelectValue placeholder="Select a number" />
                                                   </SelectTrigger>
-                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                  <SelectContent align="start" className="adv-voice-select-content bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {voiceNumbers.map((n: any) => {
                                                           const num = n.phone_number || n.number || n.phoneNumber || '';
                                                           const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` - ${n.provider}` : '');
@@ -14843,17 +14845,7 @@ function MediaStepWidget({
                         loading={isActive ? mb.loadingGallery : false}
                         onBack={() => mb.setStep("welcome")}
                         onGenerateImages={isActive ? mb.generateImagesFromGallery : undefined}
-                        onAnimateImage={isActive ? async (url) => {
-                            setMediaMessages(prev => [
-                                ...prev.filter(m => !m.loading),
-                                {
-                                    id: `user-${Date.now()}`,
-                                    role: "user",
-                                    text: "Animate this concept",
-                                    references: [{ path: url, thumbnail: url }],
-                                    timestamp: new Date()
-                                }
-                            ]);
+                        onAnimateImage={isActive ? async (url: string) => {
                             await mb.animateImageFromGallery(url);
                         } : undefined}
                         onExtendVideo={isActive ? mb.extendVideoFromGallery : undefined}
@@ -15275,11 +15267,11 @@ const css = `
             }
             .adv-chat-blur { pointer-events: none; opacity: 0.5; }
             .adv-msg-counter {font-size:11px; color:#9ca3af; padding:4px 0 8px; text-align:center; }
-            .adv-chat-input-box {display:flex; flex-direction:column; background:#fff; border:1.5px solid transparent; border-radius:24px; padding:16px 20px 12px; max-width:70%; margin:0 auto; transition:all .2s; box-shadow:0 2px 12px rgba(11,25,87,0.06); position:relative; z-index:0; }
-            .adv-chat-input-box::before {content:''; position:absolute; inset:-1.5px; border-radius:25.5px; padding:1.5px; background:linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb,#3b82f6,#0b1957); background-size:300% 100%; animation:adv-border-move 4s linear infinite; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; z-index:-1; pointer-events:none; }
-            .adv-chat-input-box:focus-within::before {animation:adv-border-move 2s linear infinite; opacity:1; }
-            @keyframes adv-border-move {0%{background-position:0% 50%}100%{background-position:300% 50%}}
-            .adv-chat-ta {width:100%; resize:none; border:none; outline:none; background:transparent; font-size:16px; color:#111827; font-family:inherit; line-height:1.6; padding:0; max-height:120px; }
+            .adv-chat-input-box {display:flex; flex-direction:column; background:#fff; border:1.5px solid #e5e7eb; border-radius:24px; padding:16px 20px 12px; max-width:70%; margin:0 auto; transition:all .2s; box-shadow:0 2px 12px rgba(11,25,87,0.06); position:relative; z-index:0; outline:none!important; ring:0!important; -webkit-ring-color:transparent!important; --tw-ring-color:transparent!important; --tw-ring-shadow:0 0 #0000!important; }
+            .adv-chat-input-box::before, .adv-chat-input-box:focus-within::before, .adv-chat-input-box.has-extension::before { display:none!important; content:none!important; opacity:0!important; }
+            .adv-chat-input-box:focus, .adv-chat-input-box:focus-within, .adv-chat-input-box:focus-visible { outline:none!important; box-shadow:none!important; ring:0!important; -webkit-ring-color:transparent!important; --tw-ring-color:transparent!important; --tw-ring-shadow:0 0 #0000!important; }
+            .adv-chat-ta, textarea.adv-chat-ta {width:100%; resize:none; border:none!important; outline:none!important; background:transparent; font-size:16px; color:#111827; font-family:inherit; line-height:1.6; padding:0; max-height:120px; box-shadow:none!important; ring:0!important; -webkit-ring-color:transparent!important; --tw-ring-color:transparent!important; --tw-ring-shadow:0 0 #0000!important; }
+            .adv-chat-ta:focus, .adv-chat-ta:focus-visible, .adv-chat-ta:focus-within, textarea.adv-chat-ta:focus, textarea.adv-chat-ta:focus-visible, .dark textarea.adv-chat-ta:focus, .dark textarea.adv-chat-ta:focus-visible { outline:none!important; border:none!important; box-shadow:none!important; ring:0!important; -webkit-ring-color:transparent!important; --tw-ring-color:transparent!important; --tw-ring-shadow:0 0 #0000!important; border-color:transparent!important; }
             .adv-chat-ta::placeholder {color:#0b1957; font-weight:400; }
             .adv-chat-input-foot {display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid #f3f4f6; }
             /* Equal-width flanks put the middle child (Premium Search / the mic)
@@ -15290,15 +15282,15 @@ const css = `
                drifts off centre rather than sliding under the Accelerators button. */
             .adv-foot-side {flex:1 1 0; }
             .adv-chat-input-foot > .adv-premium-btn {flex:0 0 auto; }
-            .adv-chat-attach-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
-            .adv-chat-attach-btn:hover {background:#e0eaf5; border-color:#c2d6eb; color:#0b1957; }
-            .adv-mic-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
-            .adv-mic-btn:hover {background:#e0eaf5; border-color:#c2d6eb; color:#0b1957; }
+            .adv-chat-attach-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s ease; }
+            .adv-chat-attach-btn:hover {border-color:#0b1957; box-shadow:0 4px 14px rgba(11,25,87,.14); transform:translateY(-1px); }
+            .adv-mic-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s ease; flex-shrink:0; }
+            .adv-mic-btn:hover {border-color:#0b1957; box-shadow:0 4px 14px rgba(11,25,87,.14); transform:translateY(-1px); }
             .adv-mic-btn:disabled {cursor:default; color:#94a3b8; }
             .adv-mic-btn.adv-mic-btn-rec, .adv-mic-btn.adv-mic-btn-rec:hover {background:#fef2f2; border-color:#ef4444; color:#ef4444; }
             .adv-roles-btn {display:inline-flex; align-items:center; gap:6px; white-space:nowrap; padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb; background:#fff; color:#0b1957; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s ease; }
             .adv-roles-btn:hover {border-color:#0b1957; box-shadow:0 4px 14px rgba(11,25,87,.14); transform:translateY(-1px); }
-            .adv-roles-menu {position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:8px; width:370px; max-width:calc(100vw - 32px); max-height:440px; overflow-y:auto; box-shadow:0 16px 48px rgba(15,23,42,.16); z-index:100; animation:fadeUp .15s ease both; }
+            .adv-roles-menu {position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:8px; width:370px; max-width:calc(100vw - 32px); max-height:min(340px, 45vh); overflow-y:auto; box-shadow:0 16px 48px rgba(15,23,42,.16); z-index:100; animation:fadeUp .15s ease both; }
             .adv-model-label {display:flex; align-items:center; gap:4px; font-size:12px; color:#9ca3af; font-weight:500; cursor:pointer; }
             .adv-model-label:hover {color:#374151; }
             .adv-send-sm {width:34px!important; height:34px!important; }
@@ -15556,12 +15548,17 @@ const css = `
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
                 .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
                 .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
-                /* Mobile keeps the tuned space-between layout - at this width equal
-                   flanks would squeeze the pill against its 95px min-width. */
+                /* Mobile keeps the tuned space-between layout and reduces Premium
+                   Search to its icon so the chatbox controls cannot overflow. */
                 .adv-foot-side { flex: 0 1 auto !important; }
-                .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
-                .adv-chat-attach-btn, .adv-send-sm, .adv-mic-btn { width: 28px !important; height: 28px !important; }
+                .adv-premium-btn { width: 30px !important; height: 30px !important; min-width: 30px !important; justify-content: center !important; padding: 0 !important; margin: 0 !important; }
+                .adv-premium-btn .adv-premium-label { display: none !important; }
+                .adv-premium-btn svg { width: 13px !important; height: 13px !important; }
+                .adv-chat-attach-btn, .adv-send-sm, .adv-mic-btn { width: 30px !important; height: 30px !important; flex-shrink: 0 !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg, .adv-mic-btn svg { width: 13px !important; height: 13px !important; }
+                .adv-roles-btn { padding: 5px 10px !important; font-size: 11px !important; max-width: 120px !important; flex-shrink: 0 !important; text-overflow: ellipsis !important; overflow: hidden !important; white-space: nowrap !important; }
+                .adv-roles-menu { position: fixed !important; bottom: 85px !important; left: 16px !important; right: 16px !important; transform: none !important; width: auto !important; max-width: calc(100vw - 32px) !important; max-height: min(400px, calc(100vh - 140px)) !important; z-index: 1000 !important; }
+                .adv-attach-menu { position: fixed !important; bottom: 85px !important; left: 16px !important; right: 16px !important; transform: none !important; width: auto !important; max-width: calc(100vw - 32px) !important; max-height: min(360px, calc(100vh - 140px)) !important; z-index: 1000 !important; }
                 .adv-msg-counter { font-size: 10px !important; color: #9ca3af !important; margin: 4px 0 0 !important; padding: 0 !important; line-height: 1.2 !important; }
                 
                 .adv-mobile-add-btn, .adv-mobile-send-btn {
@@ -15596,6 +15593,12 @@ const css = `
                 .adv-ai-name { justify-content: flex-start !important; }
                 .adv-ai-avatar { width: 32px !important; height: 32px !important; flex-shrink: 0 !important; }
                 .adv-bubble-ai { gap: 10px !important; width: 100% !important; max-width: 100% !important; align-items: flex-start !important; }
+                .adv-checkpoint-content { min-width: 0 !important; max-width: calc(100% - 42px) !important; }
+                .adv-checkpoint-box, .adv-voice-settings { width: 100% !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
+                .adv-voice-settings [data-slot="select-trigger"] { min-width: 0 !important; max-width: 100% !important; }
+                .adv-voice-select-content { width: var(--radix-select-trigger-width) !important; max-width: calc(100vw - 24px) !important; }
+                .adv-voice-select-content [data-slot="select-item"] { min-width: 0 !important; max-width: 100% !important; }
+                .adv-voice-select-content [data-slot="select-item"] > span:last-child { min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
                 .adv-ai-text { text-align: left !important; width: 100% !important; font-size: 13.5px !important; }
                 .adv-rc { padding: 10px 12px !important; border-radius: 10px !important; gap: 8px !important; overflow-x: hidden !important; }
                 .adv-rc-icon { width: 26px !important; height: 26px !important; border-radius: 6px !important; font-size: 14px !important; }
@@ -15718,16 +15721,17 @@ const css = `
                 .adv-chat-ta { background: transparent; }
 
                 /* ── MOBILE DARK MODE OVERRIDES ── */
+                /* ── MOBILE DARK MODE OVERRIDES ── */
                 .dark html, .dark body, .dark main, .dark #__next, .dark [data-reactroot], .dark .adv-landing, .dark .adv-chat-root, .dark .adv-chat-main, .dark .adv-chat-left { background: #000724 !important; }
-                .dark .adv-chat-input-box { background: #1A2A43 !important; border: 1.5px solid #1e293b !important; }
+                .dark .adv-chat-input-box { background: #071131 !important; border: 1.5px solid rgba(23, 37, 84, 0.4) !important; }
                 .dark .adv-chat-ta { background: transparent !important; }
-                .dark .adv-chat-input-wrap { background: #000724 !important; }
+                .dark .adv-chat-input-wrap { background: #071131 !important; }
                 .dark .adv-mobile-footer { background: #000724 !important; border-top: 1px solid #1e293b !important; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important; }
                 .dark .adv-footer-btn.active .adv-footer-btn-icon { background: #2B7CFF !important; color: #000724 !important; }
                 .dark .adv-footer-btn { color: #7a8ba3; }
                 .dark .adv-footer-btn-icon { color: #cbd5e1; }
                 .dark .adv-footer-btn.active { color: #ffffff; }
-                .dark .adv-mobile-add-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
+                .dark .adv-mobile-add-btn { background: #071131 !important; border-color: #1e293b !important; color: #ffffff !important; }
                 .dark .adv-mobile-send-btn { background: #2B7CFF !important; border-color: #2B7CFF !important; color: #000724 !important; }
                 .dark .adv-mobile-send-btn:disabled { background: #1A2A43 !important; border-color: #1e293b !important; color: #7a8ba3 !important; }
                 .dark .adv-opt-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
@@ -15754,8 +15758,8 @@ const css = `
             .dark .adv-chat-left-empty .adv-chat-input-wrap { background: transparent; }
             /* ── Chat Input Wrap ── */
             .dark .adv-chat-input-wrap { 
-                background: #000724; 
-                border-top: 1px solid #000724; /* Prevents a light line appearing above the input */
+                background: linear-gradient(to top, #000724 65%, rgba(0,7,36,0.92) 85%, transparent 100%) !important; 
+                border-top: none !important;
             }
             /* Text & Titles */
             .dark .adv-title { color: #ffffff; }
@@ -15786,13 +15790,14 @@ const css = `
             .dark .adv-button:hover { background: #1e5fa8; }
             .dark .adv-send-btn { color: #2B7CFF; }
             .dark .adv-send-btn:hover { color: #ffffff; }
-            .dark .adv-send-circle.adv-send-sm { background: #1A2A43 !important; border: 1px solid #484b4f !important; box-shadow: none !important; color: #ffffff; }
+            .dark .adv-send-circle.adv-send-sm { background: #071131 !important; border: 1px solid rgba(23, 37, 84, 0.4) !important; box-shadow: none !important; color: #ffffff; }
             .dark .adv-send-circle.adv-send-sm svg { stroke: #ffffff; }
-            .dark .adv-send-circle.adv-send-sm:hover { background: #253456 !important; border-color: #484b4f !important; }
+            .dark .adv-send-circle.adv-send-sm:hover { background: #111e42 !important; border-color: rgba(23, 37, 84, 0.4) !important; }
 
             /* Chat Input */
-            .dark .adv-chat-input-box { background: #1A2A43; color: #ffffff; border-color: #000724; box-shadow: none; z-index: auto; }
-            .dark .adv-chat-input-box::before { display: none; }
+            .dark .adv-chat-input-box { background: #071131 !important; color: #ffffff; border: 1.5px solid rgba(23, 37, 84, 0.4) !important; box-shadow: none; z-index: auto; outline: none !important; ring: 0 !important; }
+            .dark .adv-chat-input-box::before, .dark .adv-chat-input-box:focus-within::before { display: none !important; content: none !important; opacity: 0 !important; }
+            .dark .adv-chat-input-box:focus, .dark .adv-chat-input-box:focus-within, .dark .adv-chat-input-box:focus-visible { outline: none !important; box-shadow: none !important; ring: 0 !important; }
             .dark .adv-chat-input-box::placeholder { color: #7a8ba3; }
             .dark .adv-chat-input-box textarea,
             .dark .adv-chat-input-box input { color: #ffffff; }
@@ -15881,22 +15886,30 @@ const css = `
             .dark .adv-close-panel:hover { background: #253456; border-color: #000724; }
 
             /* ATTACH & UNLOCK BUTTONS */
-            .dark .adv-chat-attach-btn { background: #1A2A43; border: 1px solid #484b4f; color: #ffffff; box-shadow: none; }
-            .dark .adv-roles-btn { background: #1A2A43; border-color: #484b4f; color: #ffffff; }
-            .dark .adv-roles-btn:hover { border-color: #5b7cff; box-shadow: 0 4px 14px rgba(43,124,255,.18); }
-            .dark .adv-roles-menu { background: #0f1b33; border-color: #31415f; }
+            .dark .adv-chat-attach-btn { background: #071131 !important; border: 1px solid rgba(23, 37, 84, 0.4) !important; color: #ffffff; box-shadow: none; transition: all .15s ease; }
+            .dark .adv-roles-btn { background: #071131 !important; border: 1px solid rgba(23, 37, 84, 0.4) !important; color: #ffffff; transition: all .15s ease; }
+            .dark .adv-roles-btn:hover,
+            .dark .adv-chat-attach-btn:hover,
+            .dark .adv-mic-btn:hover,
+            .dark .adv-mobile-add-btn:hover,
+            .dark .adv-send-circle.adv-send-sm:hover { border-color: #2b7cff !important; background: #111e42 !important; box-shadow: 0 4px 14px rgba(43,124,255,.18) !important; transform: translateY(-1px); }
+            .dark .adv-roles-menu { background: #000724; border: 1px solid rgba(23, 37, 84, 0.4); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+            .dark .adv-roles-menu button:hover { background: #1e293b !important; }
             .dark .adv-chat-attach-btn svg { stroke: #ffffff; }
-            .dark .adv-chat-attach-btn:hover { background: #253456; border-color: #484b4f; }
-            .dark .adv-mic-btn { background: #1A2A43; border: 1px solid #484b4f; color: #ffffff; }
-            .dark .adv-mic-btn:hover { background: #253456; border-color: #484b4f; }
+            .dark .adv-mic-btn { background: #071131 !important; border: 1px solid rgba(23, 37, 84, 0.4) !important; color: #ffffff; transition: all .15s ease; }
             .dark .adv-mic-btn svg { stroke: #ffffff; }
-            .dark .adv-mic-btn.adv-mic-btn-rec, .dark .adv-mic-btn.adv-mic-btn-rec:hover { background: #3b1d1d; border-color: #ef4444; color: #ef4444; }
+            .dark .adv-mic-btn.adv-mic-btn-rec, .dark .adv-mic-btn.adv-mic-btn-rec:hover { background: #3b1d1d !important; border-color: #ef4444 !important; color: #ef4444 !important; }
             .dark .adv-mic-btn.adv-mic-btn-rec svg { stroke: #ef4444; fill: #ef4444; }
+            .dark .adv-premium-btn { background: #111e42 !important; border: 1px solid rgba(23, 37, 84, 0.4) !important; color: #60a5fa !important; transition: all .15s ease; }
+            .dark .adv-premium-btn:hover { background: #192a58 !important; border-color: #2b7cff !important; color: #93c5fd !important; box-shadow: 0 4px 14px rgba(43,124,255,.18) !important; transform: translateY(-1px); }
             .dark .adv-unlock-btn { background: #2B7CFF; color: #000724; }
             .dark .adv-unlock-btn:hover { background: #1e5fa8; box-shadow: 0 4px 12px rgba(43, 124, 255, 0.3); }
 
             /* TARGETING CARD */
-            .dark .adv-targeting-card { background: linear-gradient(135deg, #1A2A43, #253456); border-color: #000724; }
+            .dark .adv-targeting-card { background: linear-gradient(135deg, #071131, #111e42); border-color: #1e293b; }
+            .dark .adv-tc-header { color: #60a5fa; }
+            .dark .adv-tag-label { color: #7a8ba3; }
+            .dark .adv-tag { background: #111e42; color: #ffffff; border-color: #1e293b; }
             .dark .adv-tc-header { color: #60a5fa; }
             .dark .adv-tag-label { color: #7a8ba3; }
             .dark .adv-tag { background: #253456; color: #ffffff; border-color: #000724; }
