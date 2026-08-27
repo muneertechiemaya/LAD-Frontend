@@ -58,21 +58,19 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              // Initialize theme from localStorage or system preference
+              // Initialize from a saved preference; first visits use light mode.
               (function() {
                 try {
                   const theme = localStorage.getItem('theme');
-                  const isDark = theme === 'dark' || ((theme === null || theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
                   } else {
                     document.documentElement.classList.remove('dark');
                   }
                 } catch(e) {
-                  // Fallback to system preference
-                  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.classList.add('dark');
-                  }
+                  // A storage failure should still produce the light default.
+                  document.documentElement.classList.remove('dark');
                 }
               })();
               // Suppress Chrome extension message passing errors immediately
