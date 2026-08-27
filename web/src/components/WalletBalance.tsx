@@ -2,18 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Plus, ArrowUpRight, Clock, CheckCircle2, Repeat, RefreshCw, AlertCircle } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-utils';
-import {
-  getCreditPackages,
-  getWalletBalance,
-  getWalletBalanceLegacy,
-  rechargeWallet,
-  subscribeMonthly,
-  setupAutoRecharge,
-  getRecurring,
-  cancelRecurring,
-  type RecurringStatus,
-} from '@lad/frontend-features/billing';
-
+import { getCreditPackages, getWalletBalance, getWalletBalanceLegacy } from '@lad/frontend-features/billing';
+import { rechargeWallet, subscribeMonthly, setupAutoRecharge, getRecurring, cancelRecurring, type RecurringStatus } from '../../../sdk/features/billing/api';
 interface WalletData {
   balance: number;
   currency: string;
@@ -389,8 +379,8 @@ export const WalletBalance: React.FC = () => {
                     {(() => {
                       const pkg = packages.find(p => p.id === selectedPackage);
                       if (!pkg) return 'Continue';
-                      if (purchaseMode === 'monthly') return `Subscribe ${pkg.name} — $${pkg.price}/mo`;
-                      if (purchaseMode === 'auto_recharge') return `Enable auto-recharge — $${pkg.price} per top-up`;
+                      if (purchaseMode === 'monthly') return `Subscribe ${pkg.name} - $${pkg.price}/mo`;
+                      if (purchaseMode === 'auto_recharge') return `Enable auto-recharge - $${pkg.price} per top-up`;
                       return `Purchase ${pkg.name} - $${pkg.price}`;
                     })()}
                     <ArrowUpRight className="h-4 w-4 ml-1.5" />

@@ -58,7 +58,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
   const [hideEmpty, setHideEmpty] = useState(false);
   const [sortBy, setSortBy] = useState<ConversationSortBy>('date');
 
-  // Build filters from local state — include the channel override so both the
+  // Build filters from local state - include the channel override so both the
   // query key and the HTTP request carry it, keeping personal/waba caches separate.
   // hide_empty / sort_by are part of the queryKey via spread, so toggling either
   // triggers a fresh fetch from page 0 instead of mutating already-loaded pages.
@@ -80,7 +80,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
     [conversationsQuery.data],
   );
 
-  // allConversations: same data (no separate unfiltered query needed — unread counts computed from loaded batch)
+  // allConversations: same data (no separate unfiltered query needed - unread counts computed from loaded batch)
   const allConversations = conversations;
 
   // Selected conversation (with messages loaded separately)
@@ -94,9 +94,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
     const counts = { all: 0, whatsapp: 0, linkedin: 0, gmail: 0 };
     allConversations.forEach((conv) => {
       counts.all += conv.unreadCount;
-      if (conv.channel in counts) {
-        counts[conv.channel as keyof typeof counts] += conv.unreadCount;
-      }
+      counts[conv.channel] += conv.unreadCount;
     });
     return counts;
   }, [allConversations]);
@@ -115,7 +113,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
 
     // Fire-and-forget: persist the reset to the DB so polls stay at 0
     markConversationReadApi(id, hookOptions?.channel).catch(() => {
-      // Non-critical — the next poll will re-sync from DB
+      // Non-critical - the next poll will re-sync from DB
     });
   }, [hookOptions?.channel]);
 
@@ -183,15 +181,13 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
   );
 
   const muteConversation = useCallback(
-    (id?: string) => {
-      const targetId = id || selectedId;
-      if (!targetId) return;
+    (id: string) => {
       // Toggle mute
-      const conv = allConversations.find((c) => c.id === targetId);
+      const conv = allConversations.find((c) => c.id === id);
       const newStatus = conv?.status === 'muted' ? 'open' : 'muted';
-      statusMutation.mutate({ id: targetId, status: newStatus });
+      statusMutation.mutate({ id, status: newStatus });
     },
-    [statusMutation, allConversations, selectedId]
+    [statusMutation, allConversations]
   );
 
   return {

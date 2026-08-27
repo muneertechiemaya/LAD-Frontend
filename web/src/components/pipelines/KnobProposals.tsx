@@ -10,8 +10,8 @@
  * into configuration, where it is far harder to notice. So nothing here is
  * saved until someone ticks it.
  *
- * That makes the EVIDENCE the most important thing on screen — it is the only
- * way a reviewer can tell a fact from a hallucination — so it is shown in full
+ * That makes the EVIDENCE the most important thing on screen - it is the only
+ * way a reviewer can tell a fact from a hallucination - so it is shown in full
  * next to every proposal rather than hidden behind a disclosure.
  *
  * Anything the server flagged for closer review starts UNTICKED. The default
@@ -31,7 +31,7 @@ const SOURCE_LABEL: Record<ProposalSource, string> = {
 
 /** Values are arbitrary knob types; render them the way the form shows them. */
 function displayValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
+  if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? 'On' : 'Off';
   if (Array.isArray(value)) return value.join('\n');
   return String(value);
@@ -77,7 +77,7 @@ function ProposalRow({
             )}
           </label>
 
-          {/* The change, not just the value — a reviewer needs to see what it
+          {/* The change, not just the value - a reviewer needs to see what it
               would replace before agreeing to it. */}
           <div className="mt-1.5 text-sm">
             {hasCurrent && (
@@ -180,7 +180,7 @@ export function KnobProposals({
       {flaggedCount > 0 && (
         <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
           {flaggedCount} {flaggedCount === 1 ? 'suggestion needs' : 'suggestions need'} a closer look
-          and {flaggedCount === 1 ? 'is' : 'are'} left unticked — they came from the assistant’s own
+          and {flaggedCount === 1 ? 'is' : 'are'} left unticked - they came from the assistant’s own
           replies, or your records disagreed.
         </p>
       )}
@@ -230,8 +230,8 @@ export function KnobProposals({
  * The two ways to start a scan, plus its busy and error states.
  *
  * Reading everything is offered first because it needs no decisions. Picking
- * specific chats is the better input — a studio knows which conversations went
- * the way they want — but it is work, so it is the second option rather than
+ * specific chats is the better input - a studio knows which conversations went
+ * the way they want - but it is work, so it is the second option rather than
  * the gate.
  */
 export function ScanHistoryButton({
@@ -245,7 +245,7 @@ export function ScanHistoryButton({
   error: string | null;
   onScan: () => void;
   onPick: () => void;
-  /** Open the WhatsApp-export upload — for history OLDER than the account. */
+  /** Open the WhatsApp-export upload - for history OLDER than the account. */
   onUpload: () => void;
 }) {
   return (

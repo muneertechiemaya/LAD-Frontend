@@ -21,15 +21,15 @@ export const useWalletBalance = useCreditsBalance;
 /**
  * Hook to get pricing for a component
  */
-export function usePricing<T = any>(params?: {
-  category?: string;
-  provider?: string;
-  model?: string;
-  unit?: string;
+export function usePricing(params: {
+  category: string;
+  provider: string;
+  model: string;
+  unit: string;
 }) {
-  return useQuery<T>({
+  return useQuery({
     queryKey: ['billing', 'pricing', params],
-    queryFn: () => billingApi.getPricing<T>(params),
+    queryFn: () => billingApi.getPricing(params),
     staleTime: 300000, // Pricing is stable, cache for 5 minutes
   });
 }
@@ -84,8 +84,6 @@ export function useUsage(params?: {
   status?: string;
   limit?: number;
   offset?: number;
-  startDate?: string;
-  endDate?: string;
 }) {
   return useQuery({
     queryKey: ['billing', 'usage', params],
@@ -100,9 +98,6 @@ export function useUsageAggregation(params?: {
   from?: string;
   to?: string;
   featureKey?: string;
-  startDate?: string;
-  endDate?: string;
-  groupBy?: string;
 }) {
   return useQuery({
     queryKey: ['billing', 'usage-aggregation', params],

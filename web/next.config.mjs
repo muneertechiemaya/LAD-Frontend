@@ -8,7 +8,6 @@ const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@lad/frontend-features'],
   // ✅ REQUIRED when importing ../sdk
   experimental: {
     optimizePackageImports: [
@@ -41,8 +40,8 @@ const nextConfig = {
       ...config.resolve.alias,
       '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
       '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
-      '@lad/shared': path.resolve(__dirname, '../sdk/shared'),
       'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
+      '@lad/frontend-features$': path.resolve(__dirname, '../sdk'),
       '@livekit/components-react': path.resolve(__dirname, '../node_modules/@livekit/components-react'),
       '@livekit/components-styles': path.resolve(__dirname, '../node_modules/@livekit/components-styles'),
       'livekit-client': path.resolve(__dirname, '../node_modules/livekit-client'),
@@ -63,8 +62,8 @@ const nextConfig = {
       // Force all @tanstack/react-query imports to use root node_modules (monorepo setup)
       '@tanstack/react-query': '../node_modules/@tanstack/react-query',
       '@tanstack/query-core': '../node_modules/@tanstack/query-core',
-      '@lad/shared': '../sdk/shared',
       'chart.js': './node_modules/chart.js/dist/chart.js',
+      '@lad/frontend-features$': '../sdk',
       '@livekit/components-react': '../node_modules/@livekit/components-react',
       '@livekit/components-styles': '../node_modules/@livekit/components-styles',
       'livekit-client': '../node_modules/livekit-client',
@@ -76,7 +75,7 @@ const nextConfig = {
   // (web.mrlads.com/api/social-integration/email/{provider}/callback) because
   // that URL is registered as the authorized redirect URI in Google Cloud Console
   // and Azure Portal. The actual handler lives on the backend, so we transparently
-  // forward the request — including all query params (code, state, etc.) —
+  // forward the request - including all query params (code, state, etc.)  - 
   // to the backend. The backend then redirects the user back to the frontend
   // settings page upon success.
   async rewrites() {
@@ -138,7 +137,7 @@ const nextConfig = {
           },
         ],
       },
-      // Static media in /public (videos, images, fonts) is immutable content —
+      // Static media in /public (videos, images, fonts) is immutable content  - 
       // let the browser and CDN cache it instead of re-downloading it on every
       // visit. This rule comes after the blanket no-store above and, matching
       // the same Cache-Control key, overrides it for these file types only.
@@ -196,11 +195,11 @@ const nextConfig = {
     ];
   },
 
-  // ⚠️ TEMPORARY — not permanent.
+  // ⚠️ TEMPORARY - not permanent.
   // While this is true, `next build` skips type-checking entirely, which is how
   // two missing-export runtime crashes shipped to users in one day (proxyGet
   // from '@/lib/api'; community-roi's useDataImport). It stays true only because
-  // develop currently carries ~363 pre-existing type errors — flipping it now
+  // develop currently carries ~363 pre-existing type errors - flipping it now
   // would fail every Docker / Cloud Run build.
   // A report-only `tsc --noEmit` CI gate now surfaces these on every PR
   // (.github/workflows/ci.yml → type-check job). PHASE 2: once that baseline is
@@ -228,7 +227,7 @@ const nextConfig = {
 };
 
 // Wrap with Sentry (source-map upload + tunneling) only when @sentry/nextjs is
-// installed — keeps `next.config` loading before `npm install @sentry/nextjs`.
+// installed - keeps `next.config` loading before `npm install @sentry/nextjs`.
 // Source-map upload activates only when SENTRY_ORG/PROJECT/AUTH_TOKEN are set.
 let exportedConfig = nextConfig;
 try {
@@ -241,7 +240,7 @@ try {
     widenClientFileUpload: true,
   });
 } catch {
-  // @sentry/nextjs not installed yet — ship the plain config.
+  // @sentry/nextjs not installed yet - ship the plain config.
 }
 
 export default exportedConfig;
