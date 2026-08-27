@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['@lad/frontend-features'],
   // ✅ REQUIRED when importing ../sdk
   experimental: {
     optimizePackageImports: [
@@ -40,8 +41,8 @@ const nextConfig = {
       ...config.resolve.alias,
       '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
       '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
+      '@lad/shared': path.resolve(__dirname, '../sdk/shared'),
       'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
-      '@lad/frontend-features$': path.resolve(__dirname, '../sdk'),
       '@livekit/components-react': path.resolve(__dirname, '../node_modules/@livekit/components-react'),
       '@livekit/components-styles': path.resolve(__dirname, '../node_modules/@livekit/components-styles'),
       'livekit-client': path.resolve(__dirname, '../node_modules/livekit-client'),
@@ -62,8 +63,8 @@ const nextConfig = {
       // Force all @tanstack/react-query imports to use root node_modules (monorepo setup)
       '@tanstack/react-query': '../node_modules/@tanstack/react-query',
       '@tanstack/query-core': '../node_modules/@tanstack/query-core',
+      '@lad/shared': '../sdk/shared',
       'chart.js': './node_modules/chart.js/dist/chart.js',
-      '@lad/frontend-features$': '../sdk',
       '@livekit/components-react': '../node_modules/@livekit/components-react',
       '@livekit/components-styles': '../node_modules/@livekit/components-styles',
       'livekit-client': '../node_modules/livekit-client',

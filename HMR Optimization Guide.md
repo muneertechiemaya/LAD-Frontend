@@ -24,6 +24,7 @@ npm run dev
 ```
 
 ---
+
 ## 1. What Was Changed and Why
 
 | Change | File | Why |
@@ -135,7 +136,7 @@ const nextConfig = {
 ```diff
 -  "dev": "next dev --webpack",
 +  "dev": "next dev --turbo",
-    "build": "next build --webpack",
+   "build": "next build --webpack",
 ```
 
 > **Note on production:** Production builds remain on `next build --webpack`. This ensures complete deployment safety in Docker and Cloud Run environments (`Dockerfile` line 88: `RUN npm run build`) while allowing local development to benefit from Turbopack's fast HMR (`next dev --turbo`).
