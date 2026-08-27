@@ -484,7 +484,7 @@ export default function WhatsAppTemplateCreatePage() {
               )}
 
               {/* Name + Language row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">Name your template</label>
                   <div className="relative">
@@ -573,9 +573,9 @@ export default function WhatsAppTemplateCreatePage() {
             <div className="p-6 space-y-6">
 
               {/* Variable type + Media sample row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+                  <label className="flex items-center text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Type of variable
                     <span className="ml-1.5 text-[#94A3B8] dark:text-gray-500 text-xs">ⓘ</span>
                   </label>
@@ -584,7 +584,7 @@ export default function WhatsAppTemplateCreatePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+                  <label className="flex items-center text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Media sample
                     <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
                   </label>
