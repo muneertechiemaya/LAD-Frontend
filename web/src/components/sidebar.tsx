@@ -397,15 +397,22 @@ export function Sidebar() {
         </div>
         <div className="w-10" />
       </div>
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-xs z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-40 flex flex-col transition-colors duration-300",
+          "md:hidden fixed inset-y-0 left-0 w-72 max-w-[80vw] backdrop-blur-2xl border-r shadow-2xl z-50 flex flex-col transition-colors duration-300",
           isBlackGrayChannel
             ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#171717]"
             : "border-sidebar-border bg-sidebar/95",
           "transition-transform duration-300 ease-out",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+          isMobileMenuOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none",
         )}
       >
         <div className="h-14 px-3 flex items-center justify-between border-b border-sidebar-border">
@@ -595,13 +602,6 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-      {/* Mobile Backdrop */}
-      {isMobileMenuOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/40 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
       <aside
         className={cn(
           "hidden md:flex flex-col shrink-0 h-screen border-r",
