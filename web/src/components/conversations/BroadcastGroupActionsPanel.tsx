@@ -85,7 +85,7 @@ export function BroadcastGroupActionsPanel({ groupIds, channel }: BroadcastGroup
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       // Update the count from the backend's returned group (authoritative) rather
-      // than a re-fetch that can race or be cached — this is what showed "same count".
+      // than a re-fetch that can race or be cached - this is what showed "same count".
       const updatedIds = Array.isArray(data?.group?.metadata?.member_group_ids)
         ? data.group.metadata.member_group_ids.map(String)
         : [...new Set([...list.member_group_ids, ...groupIds.map(String)])];

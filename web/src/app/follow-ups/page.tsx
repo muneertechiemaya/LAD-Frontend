@@ -585,7 +585,7 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ idle_hours: parseInt(e.target.value) || 1 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Hours of inactivity before sending (1–168)</p>
+                        <p className="text-xs text-gray-400 mt-1">Hours of inactivity before sending (1-168)</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -599,7 +599,7 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ interval_minutes: parseInt(e.target.value) || 5 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Minutes between repeat messages (5–1440)</p>
+                        <p className="text-xs text-gray-400 mt-1">Minutes between repeat messages (5-1440)</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -613,7 +613,7 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ max_attempts: parseInt(e.target.value) || 1 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Max follow-up messages per member (1–10)</p>
+                        <p className="text-xs text-gray-400 mt-1">Max follow-up messages per member (1-10)</p>
                       </div>
                     </div>
 

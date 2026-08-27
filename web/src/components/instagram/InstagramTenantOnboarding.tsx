@@ -15,7 +15,7 @@
  *   PATCH  /api/accounts/{id}     → update fields (ai_replies_enabled, etc.)
  *   DELETE /api/accounts/{id}     → soft-delete
  *
- * No backend changes needed — the create endpoint already accepts both
+ * No backend changes needed - the create endpoint already accepts both
  * provider credential shapes.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -129,7 +129,7 @@ async function createAccount(
   form: CreateAccountForm,
 ): Promise<{ success: boolean; account?: InstagramAccount; error?: string }> {
   // Build a body that only includes fields relevant to the chosen provider
-  // — keeps the backend free of empty-string noise that would otherwise
+  // - keeps the backend free of empty-string noise that would otherwise
   // override stored defaults during a re-connect.
   const body: Record<string, any> = {
     provider:           form.provider,
@@ -220,7 +220,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const [showSecrets, setShowSecrets] = useState(false);
-  // Instagram sign-in modal — same pattern as LinkedIn's connection modal.
+  // Instagram sign-in modal - same pattern as LinkedIn's connection modal.
   // When the operator finishes sign-in here we just stash the returned
   // connection id into the form's provider_account_id field; the outer
   // "Connect Instagram account" button does the actual upsert.
@@ -280,7 +280,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
 
   // Modal state for the "AI Likes unavailable on Meta" explanation. We open
   // this instead of toggling when an operator clicks AI Likes on a Meta
-  // account — Meta's official Graph API has no comment-like endpoint, so
+  // account - Meta's official Graph API has no comment-like endpoint, so
   // turning it on would just silently do nothing.
   const [likesUnavailableOpen, setLikesUnavailableOpen] = useState(false);
 
@@ -295,7 +295,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
       // Hard gate: AI Likes is unsupported on Meta-provider accounts because
       // Meta's Instagram Graph API exposes no comment-like endpoint. Show
       // the explainer modal and bail without touching the toggle. We only
-      // gate the ENABLE direction — turning a stuck-on toggle OFF still works.
+      // gate the ENABLE direction - turning a stuck-on toggle OFF still works.
       if (field === 'ai_likes_enabled' && next === true && account.provider === 'meta') {
         setLikesUnavailableOpen(true);
         return;
@@ -423,7 +423,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Per-account AI toggles — same shape as the AI Replies tab,
+                {/* Per-account AI toggles - same shape as the AI Replies tab,
                     just exposed here for quick scanning across accounts. */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <AiToggleChip
@@ -690,7 +690,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
         </form>
       </section>
 
-      {/* Explainer modal — fires when an operator clicks "AI Likes" on a
+      {/* Explainer modal - fires when an operator clicks "AI Likes" on a
           Meta-connected account. Meta's Instagram Graph API has no comment-
           like endpoint; only Unipile-provider accounts can auto-like. */}
       {likesUnavailableOpen && (
@@ -779,7 +779,7 @@ function EditAccountModal({
   onError: (msg: string) => void;
 }): JSX.Element {
   // Pre-populate from the current row. Secrets aren't returned by GET, so they
-  // start blank — empty stays blank means "leave existing secret untouched".
+  // start blank - empty stays blank means "leave existing secret untouched".
   const [displayName, setDisplayName] = useState(account.display_name || '');
   const [username, setUsername] = useState(account.instagram_username || '');
   const [aiModel, setAiModel] = useState(account.ai_model || 'gemini-2.5-flash');
@@ -800,7 +800,7 @@ function EditAccountModal({
 
     // Build a diff. Only send fields that differ from the persisted row.
     // For secret rotates (app_secret, access_token) we send only when the
-    // operator has typed a non-empty value — empty means "don't touch".
+    // operator has typed a non-empty value - empty means "don't touch".
     const updates: Record<string, any> = {};
     const trimOrNull = (s: string) => (s.trim() === '' ? null : s.trim());
 
@@ -1324,7 +1324,7 @@ function InstagramSignInModal({
             </div>
           ) : (
             <>
-              {/* Method tabs — Credentials / Cookies, same as LinkedIn */}
+              {/* Method tabs - Credentials / Cookies, same as LinkedIn */}
               <div className="text-center">
                 <h4 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
                   Choose a method

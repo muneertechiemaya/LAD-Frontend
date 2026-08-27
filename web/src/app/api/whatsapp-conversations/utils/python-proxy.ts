@@ -13,7 +13,7 @@ import { resolveAuthorizedTenantId } from '../../utils/tenant-scope';
 
 // ── Service URL resolvers ───────────────────────────────────────────
 
-/** LAD_backend (Node.js) – everything except personal WhatsApp post-Phase 5 */
+/** LAD_backend (Node.js) - everything except personal WhatsApp post-Phase 5 */
 export function getBackendUrl(): string {
   return (
     process.env.BACKEND_INTERNAL_URL ||
@@ -22,7 +22,7 @@ export function getBackendUrl(): string {
   );
 }
 
-/** LAD-WAPA-Comms (Node.js) – personal WhatsApp via Baileys (Phase 5+) */
+/** LAD-WAPA-Comms (Node.js) - personal WhatsApp via Baileys (Phase 5+) */
 export function getWAPAServiceUrl(): string {
   return (
     process.env.NEXT_PUBLIC_WAPA_SERVICE_URL ||
@@ -32,7 +32,7 @@ export function getWAPAServiceUrl(): string {
   );
 }
 
-/** LAD-WABA-Comms (Python FastAPI) – WhatsApp Business API */
+/** LAD-WABA-Comms (Python FastAPI) - WhatsApp Business API */
 export function getWABAServiceUrl(): string {
   return (
     process.env.NEXT_PUBLIC_WHATSAPP_API_URL ||
@@ -43,10 +43,11 @@ export function getWABAServiceUrl(): string {
   );
 }
 
-/** @deprecated – use channel-based routing; kept for backwards compat */
+/** @deprecated-use channel-based routing; kept for backwards compat */
 export function getWhatsAppServiceUrl(): string {
   return getWABAServiceUrl();
 }
+
 
 export async function proxyToPythonService(
   req: NextRequest,
@@ -54,7 +55,7 @@ export async function proxyToPythonService(
   path: string,
 ): Promise<Response> {
   // ── Channel-based routing ──────────────────────────────────────
-  // Read from req.url (raw URL) — nextUrl may cache the original URL even after
+  // Read from req.url (raw URL) - nextUrl may cache the original URL even after
   // a route rewrites it via new NextRequest(modifiedUrl, req).
   const rawUrl = new URL(req.url);
   const channel =
@@ -81,7 +82,7 @@ export async function proxyToPythonService(
     resolvedBaseUrl = getBackendUrl();
     resolvedPath = '/api/linkedin-conversations' + path.replace(/^\/api/, '');
   } else if (channel === 'backend') {
-    // Direct route — no path transformation. Path-aware destination:
+    // Direct route - no path transformation. Path-aware destination:
     //   /api/personal-whatsapp/*  → LAD-WAPA-Comms  (Phase 5+)
     //   anything else             → LAD_backend     (LinkedIn, billing, etc.)
     resolvedBaseUrl = path.startsWith('/api/personal-whatsapp/')
@@ -96,7 +97,7 @@ export async function proxyToPythonService(
 
   const url = new URL(resolvedPath, resolvedBaseUrl);
 
-  // Forward query parameters (except `channel` — consumed by proxy)
+  // Forward query parameters (except `channel` - consumed by proxy)
   req.nextUrl.searchParams.forEach((value, key) => {
     if (key !== 'channel') {
       url.searchParams.set(key, value);
@@ -158,7 +159,7 @@ export async function proxyToPythonService(
   // Forward body for POST/PUT/PATCH.
   // Use req.text() rather than req.json()+JSON.stringify() to:
   //   1. Avoid double parse/reserialise overhead (important for large base64 payloads like PDFs)
-  //   2. Prevent silent body loss — req.json() throws on any read error and the old catch
+  //   2. Prevent silent body loss - req.json() throws on any read error and the old catch
   //      block silently forwarded a body-less POST, causing FastAPI 422 on dict params.
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     try {
@@ -168,7 +169,7 @@ export async function proxyToPythonService(
       }
     } catch (bodyErr) {
       console.error(`[python-proxy] Failed to read request body for ${req.method} ${path}:`, bodyErr);
-      // Body could not be read — proceed without it (FastAPI will return its own validation error)
+      // Body could not be read - proceed without it (FastAPI will return its own validation error)
     }
   }
 

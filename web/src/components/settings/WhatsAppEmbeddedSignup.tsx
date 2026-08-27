@@ -5,7 +5,7 @@
  * ========================
  * The self-serve way to connect WhatsApp: the tenant clicks one button,
  * completes Meta's own hosted dialog, and lands with a working, webhook-
- * subscribed number — no credentials to find, paste, or get wrong.
+ * subscribed number - no credentials to find, paste, or get wrong.
  *
  * This sits ABOVE the legacy TenantOnboarding form, which stays as the
  * "bring your own Meta app" fallback for the tenants already provisioned that
@@ -133,7 +133,7 @@ export function WhatsAppEmbeddedSignup() {
         </div>
       </div>
 
-      {/* Environment not configured — explain rather than silently disable */}
+      {/* Environment not configured - explain rather than silently disable */}
       {!configLoading && !isConfigured && (
         <div className="mx-6 mt-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -203,7 +203,7 @@ export function WhatsAppEmbeddedSignup() {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"
+                className="flex items-center justify-between gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-[#030a21]/60"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -237,7 +237,7 @@ export function WhatsAppEmbeddedSignup() {
                   </button>
                 </div>
 
-                {/* Meta refused the one-time history import — the only place the
+                {/* Meta refused the one-time history import - the only place the
                     tenant can be told, since it happens after the handshake. */}
                 <CoexistenceHistoryNotice account={account} />
               </div>

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-// Same-origin fetcher — hits the Next.js proxy at /api/instagram-conversations/*
+// Same-origin fetcher - hits the Next.js proxy at /api/instagram-conversations/*
 // rather than lib/api (which prepends NEXT_PUBLIC_BACKEND_URL = LAD_backend :3004).
 import { igGet as apiGet, igPost as apiPost, igPatch as apiPatch, igDelete as apiDelete } from './instagram-api';
 import {

@@ -57,7 +57,7 @@ const toBackendProvider = (p: EmailProvider): string =>
   : p === 'custom' ? 'custom_smtp'
   : 'google';
 
-// Mirrors the LAD-Email-Comms quota defaults (services/quota_tracker.py) —
+// Mirrors the LAD-Email-Comms quota defaults (services/quota_tracker.py)  - 
 // past these, the orchestrator paces/pauses, so warn the user up front.
 const SAFE_DAILY_VOLUME: Record<EmailProvider, number> = {
   gmail: 400,
@@ -102,7 +102,7 @@ interface SendResult {
   failed: number;
   total: number;
   errors: { email: string; error: string }[];
-  /** True when the send was queued on the paced broadcast orchestrator —
+  /** True when the send was queued on the paced broadcast orchestrator  - 
    *  progress lives in the Sent folder rather than this dialog. */
   queued?: boolean;
 }
@@ -298,7 +298,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
       // No attachments → route through the LAD-Email-Comms broadcast
       // orchestrator: records a run in the Sent folder and paces sends
       // (human-like jitter + per-account daily/hourly quotas + sender
-      // warm-up) instead of blasting the provider in a tight loop — a
+      // warm-up) instead of blasting the provider in a tight loop - a
       // 344-recipient burst on the legacy path got a sender flagged as
       // spam. Attachment sends stay on the legacy direct path until the
       // orchestrator supports attachments.

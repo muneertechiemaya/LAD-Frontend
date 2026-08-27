@@ -1,5 +1,5 @@
 /**
- * Prospects feature — TypeScript types.
+ * Prospects feature - TypeScript types.
  *
  * Mirrors the Pydantic models in LAD-Master-Agent/models/prospect.py and
  * LAD-Master-Agent/models/event.py. Keep these in sync when the Python schema
@@ -79,7 +79,7 @@ export interface ProspectState {
   updated_at: string;
   last_event_seq: number;
 
-  // Fit + enrichment (migration 032) — surfaced to the CRM / Unified Prospect View
+  // Fit + enrichment (migration 032) - surfaced to the CRM / Unified Prospect View
   apollo_id?: string | null;
   fit_score?: number | null;
   fit_signals?: Record<string, number>;

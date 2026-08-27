@@ -5,7 +5,7 @@
  * The Settings → Integrations → WhatsApp page (WhatsAppIntegration.tsx) and the
  * personal-WA settings calls (accounts/status, QR, auto-assign, contacts, logout,
  * team workload, bulk-assign) all hit /api/personal-whatsapp/*. Those endpoints
- * live on the WAPA service, which VERIFIES the JWT — so when the browser only
+ * live on the WAPA service, which VERIFIES the JWT - so when the browser only
  * sends a cookie we lift it into an Authorization header (same as the media proxy).
  *
  * Without this route the status fetch 404s and the UI shows "Disconnected" even

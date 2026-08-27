@@ -1,9 +1,9 @@
 'use client';
-// /crm — Pipeline + Prospect list/board, wired to the Master Agent.
+// /crm - Pipeline + Prospect list/board, wired to the Master Agent.
 //
 // Live data: prospect_state via @lad/frontend-features/prospects. Clicking a row
 // navigates to /crm/[id] (full detail page). The dummy data in ./data is no
-// longer used for values — only its types + STAGES + the adapter.
+// longer used for values - only its types + STAGES + the adapter.
 
 import * as React from 'react';
 import { useMemo, useState } from 'react';
@@ -301,7 +301,7 @@ export default function CrmPage() {
           </div>
           <Link
             href="/crm/zoho"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
           >
             <span className="text-red-600 font-bold leading-none" aria-hidden>Z</span> Zoho CRM
           </Link>
@@ -351,7 +351,7 @@ export default function CrmPage() {
 
         <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
-              sourced from this same `pagination` object — repeating the raw
+              sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was
               active, contradicted the filtered count shown above it. Only the
               board view has no other totals indicator, so it's the only one

@@ -39,7 +39,7 @@ export default function CampaignActionsMenu({
 }: CampaignActionsMenuProps) {
   const router = useRouter();
 
-  // Zoho "Push to Zoho" — only shown when Zoho CRM is connected for this tenant.
+  // Zoho "Push to Zoho" - only shown when Zoho CRM is connected for this tenant.
   const [zohoConnected, setZohoConnected] = useState(false);
   const [pushingZoho, setPushingZoho] = useState(false);
 
