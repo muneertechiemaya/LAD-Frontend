@@ -250,6 +250,9 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
   const [audioDuration, setAudioDuration] = useState(0);
   const [isWsPlaying, setIsWsPlaying] = useState(false);
   const [cloneGender, setCloneGender] = useState("neutral");
+  // Which backend performs the clone. Cartesia remains the default so existing
+  // behaviour is unchanged; Fish returns a model id that doubles as the reference_id.
+  const [cloneProvider, setCloneProvider] = useState<'cartesia' | 'fishaudio'>('cartesia');
 
   const initWaveSurfer = () => {
     if (waveformRef.current && !wavesurferRef.current) {
@@ -616,7 +619,9 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
       return;
     }
 
-    if (cloneMode === "instant" && (trimEnd - trimStart) > 15.5) {
+    // Cartesia instant cloning caps the clip at 15s. Fish has no such ceiling — it
+    // wants ~10s or more — so this guard is deliberately Cartesia-only.
+    if (cloneProvider === 'cartesia' && cloneMode === "instant" && (trimEnd - trimStart) > 15.5) {
       toast({
         title: "Audio Too Long",
         description: "Instant Voice Cloning requires a maximum of 15 seconds of audio. Please trim your clip.",
@@ -655,6 +660,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
       formData.append("mode", cloneMode);
       formData.append("enhance", cloneEnhance ? "true" : "false");
       formData.append("gender", cloneGender);
+      formData.append("provider", cloneProvider);
       const response = await fetch(`${baseUrl}/voices/clone`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -663,7 +669,13 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
 
       if (!response.ok) {
         if (response.status === 402 || response.status === 403 || response.status === 429) {
-          throw new Error("You've exhausted your Cartesia voice cloning quota. Please upgrade your Cartesia account.");
+          // The backend already distinguishes these; keep the message provider-accurate
+          // rather than blaming Cartesia for a Fish rate limit.
+          throw new Error(
+            cloneProvider === 'fishaudio'
+              ? "Fish Audio refused the request — free accounts are capped at 5 concurrent clones. Try again shortly."
+              : "You've exhausted your Cartesia voice cloning quota. Please upgrade your Cartesia account."
+          );
         }
         const errText = await response.text();
         throw new Error(errText || "Failed to clone voice");
@@ -677,7 +689,9 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
         description: newVoiceData.description,
         gender: cloneGender,
         accent: newVoiceData.language || cloneLanguage,
-        provider: "cartesia",
+        // Trust the backend's echoed provider; falling back to the chosen one keeps
+        // the library correct even against an older API that does not echo it.
+        provider: newVoiceData.provider || cloneProvider,
         provider_voice_id: newVoiceData.provider_voice_id
       };
       
@@ -740,6 +754,38 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
                   </DialogDescription>
                 </DialogHeader>
                 <div ref={dialogScrollContainerRef} className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-2 custom-scrollbar">
+                  {/* Cloning backend. Cartesia is the default; Fish returns a model id
+                      that doubles as the reference_id, so a Fish clone becomes an ordinary
+                      voice row usable by any agent. */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="clone-provider">Cloning Provider</Label>
+                    <div className="flex bg-muted/50 rounded-lg p-1 border border-border dark:bg-slate-900/80 dark:border-blue-900/40">
+                      {([
+                        { value: 'cartesia', label: 'Cartesia' },
+                        { value: 'fishaudio', label: 'Fish Audio' },
+                      ] as const).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setCloneProvider(option.value)}
+                          className={cn(
+                            "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
+                            cloneProvider === option.value
+                              ? "bg-background shadow-sm text-foreground dark:bg-blue-600 dark:text-white dark:shadow-sm"
+                              : "text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white"
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground dark:text-slate-400">
+                      {cloneProvider === 'fishaudio'
+                        ? 'Fish Audio works best with about 10 seconds or more of clear, single-speaker audio.'
+                        : 'Cartesia instant cloning accepts up to 15 seconds of audio.'}
+                    </p>
+                  </div>
+
                   <div className="grid gap-2">
                     <Label htmlFor="name">Voice Name</Label>
                     <Input 
