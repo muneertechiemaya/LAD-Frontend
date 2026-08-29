@@ -42,13 +42,13 @@ import {
   useMemberRelationships,
   useMemberReferrals,
   useMemberRecentActivity,
-  useMemberActivityHistory
+  useMemberActivityHistory,
+  type UUID
 } from '@lad/frontend-features/community-roi'
 import { OutreachAnalysis } from './OutreachAnalysis'
 import { EngagementFeed } from './EngagementFeed'
 import { ActivityHeatmap } from './ActivityHeatmap'
 import { MemberMessageStatusCard } from './MemberMessageStatusCard'
-import { UUID } from '@lad/frontend-features/community-roi/types'
 import { formatDistanceToNow, format, parseISO } from 'date-fns'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 

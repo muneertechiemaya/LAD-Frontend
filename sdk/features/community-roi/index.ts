@@ -94,27 +94,7 @@ export {
 // ============================================================================
 // TYPES
 // ============================================================================
-export type {
-  Member,
-  CreateMemberRequest,
-  UpdateMemberRequest,
-  Interaction,
-  LogInteractionRequest,
-  Referral,
-  LogReferralRequest,
-  RelationshipScoreWithScores,
-  ContributionScoreWithScores,
-  ListMembersParams,
-  ListReferralsParams,
-  ListInteractionsParams,
-  PaginatedResponse,
-  ApiResponse,
-  HeatmapDataPoint,
-  HeatmapColorLegend,
-  RelationshipHeatmapResponse,
-  UpdateRelationshipScoresResponse,
-  UUID,
-} from './types';
+export * from './types';
 export type { NewMembersResponse, UseNewMembersReturn } from './hooks';
 export type {
   CommunicationTemplate,

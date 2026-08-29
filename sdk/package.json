@@ -10,6 +10,10 @@
       "types": "./index.ts",
       "default": "./index.ts"
     },
+    "./shared/*": {
+      "types": "./shared/*.ts",
+      "default": "./shared/*.ts"
+    },
     "./ai-icp-assistant": {
       "types": "./features/ai-icp-assistant/index.ts",
       "default": "./features/ai-icp-assistant/index.ts"
@@ -37,10 +41,6 @@
     "./community-roi": {
       "types": "./features/community-roi/index.ts",
       "default": "./features/community-roi/index.ts"
-    },
-    "./community-roi/types": {
-      "types": "./features/community-roi/types.ts",
-      "default": "./features/community-roi/types.ts"
     },    
     "./conversations": {
       "types": "./features/conversations/index.ts",
@@ -104,7 +104,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "echo 'JIT package: skipped'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

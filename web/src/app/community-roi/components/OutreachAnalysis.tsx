@@ -13,8 +13,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { useMemberActivityHistory } from '@lad/frontend-features/community-roi';
-import { UUID } from '@lad/frontend-features/community-roi/types';
+import { useMemberActivityHistory, type UUID } from '@lad/frontend-features/community-roi';
 import { format, parseISO, subDays, startOfDay } from 'date-fns';
 
 interface OutreachAnalysisProps {
