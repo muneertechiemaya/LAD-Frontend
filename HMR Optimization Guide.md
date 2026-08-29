@@ -42,12 +42,13 @@ npm run build
 | Switch dev script to `next dev --turbo` | `web/package.json` | Enables Turbopack bundler for local development. Turbopack is Rust-based and significantly faster than Webpack for HMR — typically **3–5× faster**, with updates in under 500ms. |
 | Retain build script as `next build --webpack` | `web/package.json` | Keeps Webpack for production builds (`RUN npm run build` in Dockerfile), eliminating any operational risk for deployed environments while providing Turbopack HMR locally. |
 | Remove redundant tsconfig path mappings | `web/tsconfig.json` | The 21 `@lad/frontend-features/*` paths were forcing TypeScript to read raw SDK source files directly. With `transpilePackages` and the SDK's `exports` map in place, Node/TypeScript module resolution handles these correctly without explicit path overrides. |
-| Add `dependsOn: ["^build"]` and exclude `!.next/cache/**` | `turbo.json` | Enforces topological build order so `@lad/frontend-features:build` completes before `frontend:build` starts, and avoids multi-gigabyte Turborepo cache bloat by ignoring Webpack's internal cache. |
+| Adopt pure Just-in-Time (JIT) packaging model | `turbo.json` & `sdk/package.json` | Removes `dependsOn: ["^build"]` and switches `sdk` build to `echo 'JIT package: skipped'`. Next.js compiles SDK directly from TypeScript source via `transpilePackages`, cutting out dead `sdk/dist/` compilation overhead. |
 | Add `persistent: true` to dev task | `turbo.json` | Tells Turborepo that `dev` is a long-running watch process, not a task that should "finish." Prevents task deadlocks in `turbo run dev`. |
-| Add `.` root export to SDK exports map | `sdk/package.json` | Exposes `./index.ts` for root package imports (e.g. `import { apiErrorStatus } from '@lad/frontend-features'`) required by `web` after removing explicit tsconfig paths. |
-| Add `./community-roi/types` to SDK exports | `sdk/package.json` | Two files (`OutreachAnalysis.tsx`, `MemberProfileView.tsx`) import `@lad/frontend-features/community-roi/types` directly. Added to SDK's exports map so TypeScript and the bundler can resolve it. |
-| Expand `include` array in SDK tsconfig | `sdk/tsconfig.json` | Added `index.ts` and `shared/**/*` to `include` array so `tsc` type-checks and compiles the entire SDK package surface. |
+| Add `.` root and `./shared/*` to SDK exports map | `sdk/package.json` | Exposes `./index.ts` and `./shared/*.ts` for root package and utility imports without needing fragile bundler aliases. |
+| Re-export all types from feature barrels | `sdk/features/community-roi/index.ts` | Eliminates deep subpath imports (`@lad/frontend-features/community-roi/types`) by re-exporting all types from the primary feature barrel. |
+| Expand `include` array in SDK tsconfig | `sdk/tsconfig.json` | Added `index.ts` and `shared/**/*` to `include` array so `tsc` type-checks the entire SDK package surface. |
 | Resolve ambiguous `CallLog` re-export | `sdk/index.ts` | Disambiguated `TS2308` collision caused by both `voice-agent` and `call-logs` exporting `CallLog` by explicitly re-exporting `export type { CallLog } from "./features/call-logs"`. |
+| Re-export shared utilities from SDK root | `sdk/index.ts` | Exports `safeStorage`, `cookieStorage`, `apiClient`, and `ApiError` utilities from the package root. |
 | Remove duplicate interface declarations | `sdk/features/billing/api.ts` | Removed duplicate `RecurringPlan` and `RecurringStatus` interface declarations that collided with imported types on line 7 (`TS2440`). |
 | Fix TypeScript return type bug | `sdk/features/lad-monitor/api.ts` | `getMigrationStatus()` was returning `res.data` (the full `{ success, data }` wrapper) instead of `res.data.data` (the actual `MigrationStatusData`). |
 | Simplify escaped Tailwind class variant | `web/src/components/conversations/WABusinessView.tsx` | The original deeply-escaped arbitrary variant (`[&_.dark\:bg-\[\\#111b21\]]`) causes the Rust CSS parser (LightningCSS) inside Turbopack to panic. The simplified form (`[&_[class*='111b21']]`) is functionally identical and parser-safe. |
@@ -174,11 +175,8 @@ Kept:
 ```diff
    "tasks": {
      "build": {
--      "outputs": [".next/**", "dist/**", "lib/**"],
--      "cache": true
-+      "dependsOn": ["^build"],
-+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "lib/**"],
-+      "cache": true
+       "outputs": [".next/**", "!.next/cache/**", "dist/**", "lib/**"],
+       "cache": true
      },
      "dev": {
        "cache": false,
@@ -186,22 +184,28 @@ Kept:
      },
 ```
 
+> **Pure JIT Model:** `dependsOn: ["^build"]` was removed from `build`. Next.js compiles `sdk` TypeScript source directly via `transpilePackages`, so standalone `tsc` file emission to `sdk/dist/` is completely skipped.
+
 ---
 
 ### `sdk/package.json`
 
-Added root `"."` and `./community-roi/types` exports:
+Exposes root `"."` and `./shared/*` native subpaths, and switches build task to JIT mode:
 ```json
 "exports": {
   ".": {
     "types": "./index.ts",
     "default": "./index.ts"
   },
-  "./community-roi/types": {
-    "types": "./features/community-roi/types.ts",
-    "default": "./features/community-roi/types.ts"
+  "./shared/*": {
+    "types": "./shared/*.ts",
+    "default": "./shared/*.ts"
   },
   ...
+},
+"scripts": {
+  "build": "echo 'JIT package: skipped'",
+  "typecheck": "tsc --noEmit"
 }
 ```
 
@@ -224,9 +228,26 @@ Added root `"."` and `./community-roi/types` exports:
  export * from "./features/call-logs";
  export * from "./features/community-roi";
 +export type { CallLog } from "./features/call-logs";
++export { safeStorage } from "./shared/storage";
++export { cookieStorage } from "./shared/cookieStorage";
++export { apiClient, apiGet, apiPost, apiPut, apiDelete, apiPatch } from "./shared/apiClient";
++export { ApiError, isApiError, apiErrorCode, apiErrorStatus, apiErrorFromResponse } from "./shared/apiError";
 ```
 
-Disambiguates `TS2308` caused by both `voice-agent` and `call-logs` exporting `CallLog`.
+Disambiguates `TS2308` caused by both `voice-agent` and `call-logs` exporting `CallLog`, and re-exports shared utilities from the package root.
+
+---
+
+### `sdk/features/community-roi/index.ts`
+
+```diff
+-// Selective type exports (which forced deep ./types subpath imports)
+-export type { Member, ... } from './types';
++// Clean feature barrel re-export
++export * from './types';
+```
+
+Allows consumers in `web` (`OutreachAnalysis.tsx`, `MemberProfileView.tsx`) to import types directly from `@lad/frontend-features/community-roi`.
 
 ---
 
