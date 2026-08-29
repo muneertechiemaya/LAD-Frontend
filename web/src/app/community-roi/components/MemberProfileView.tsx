@@ -497,7 +497,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
               <TrendingUp className="w-6 h-6" />
             </div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Business Value</span>
-            <span className="text-4xl font-bold text-slate-900">AED {(kpis?.businessValue).toLocaleString()}</span>
+            <span className="text-4xl font-bold text-slate-900">AED {(kpis?.businessValue ?? 0).toLocaleString()}</span>
             <span className="text-[11px] font-medium text-slate-400 italic">Net Generated Impact</span>
           </div>
         ) : (
