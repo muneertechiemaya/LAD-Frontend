@@ -165,24 +165,6 @@ export async function rechargeWallet(params: {
   const response = await apiClient.post('/api/wallet/recharge', params);
   return response.data;
 }
-/**
- * Recurring billing - monthly subscription + low-balance auto-recharge
- */
-export interface RecurringPlan {
-  kind: 'monthly' | 'auto_recharge';
-  packageId: string;
-  priceUsd: number;
-  credits: number;
-  status: 'incomplete' | 'active' | 'past_due' | 'canceled';
-  thresholdCredits?: number | null;
-  currentPeriodEnd?: string | null;
-  lastChargedAt?: string | null;
-  lastError?: string | null;
-}
-export interface RecurringStatus {
-  monthly: RecurringPlan | null;
-  autoRecharge: RecurringPlan | null;
-}
 /** Start a hosted Checkout for a fixed MONTHLY subscription. */
 export async function subscribeMonthly(params: {
   packageId: string;

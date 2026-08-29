@@ -4,7 +4,7 @@
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -18,12 +18,9 @@
     "baseUrl": ".",
     "noImplicitAny": false,
     "paths": {
-      "@maya/*": ["./features/*"],
-      "@/*": ["../web/src/*"],
-      "@sdk/*": ["./"],
       "@lad/shared/*": ["./shared/*"]
     }
   },
-  "include": ["features/**/*"],
+  "include": ["index.ts", "features/**/*", "shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }

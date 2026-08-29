@@ -61,13 +61,13 @@ const nextConfig = {
     root: path.resolve(__dirname, '..'),
     resolveAlias: {
       // Force all @tanstack/react-query imports to use root node_modules (monorepo setup)
-      '@tanstack/react-query': '../node_modules/@tanstack/react-query',
-      '@tanstack/query-core': '../node_modules/@tanstack/query-core',
-      '@lad/shared': '../sdk/shared',
-      'chart.js': './node_modules/chart.js/dist/chart.js',
-      '@livekit/components-react': '../node_modules/@livekit/components-react',
-      '@livekit/components-styles': '../node_modules/@livekit/components-styles',
-      'livekit-client': '../node_modules/livekit-client',
+      '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
+      '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
+      '@lad/shared': path.resolve(__dirname, '../sdk/shared'),
+      'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
+      '@livekit/components-react': path.resolve(__dirname, '../node_modules/@livekit/components-react'),
+      '@livekit/components-styles': path.resolve(__dirname, '../node_modules/@livekit/components-styles'),
+      'livekit-client': path.resolve(__dirname, '../node_modules/livekit-client'),
     },
   },
 

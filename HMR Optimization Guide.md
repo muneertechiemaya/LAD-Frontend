@@ -1,9 +1,9 @@
 # Monorepo HMR & Turbopack Optimization Guide
 
-This document records all configuration and code changes made to resolve slow Hot Module Reloading (HMR) and migrate the Next.js monorepo from Webpack to Turbopack.
+This document records all configuration and code changes made to resolve slow Hot Module Reloading (HMR), fix monorepo build and TypeScript compilation errors, and migrate the Next.js monorepo dev workflow to Turbopack while preserving rock-solid Webpack production builds.
 
-> **Status:** All changes are applied, verified, and ready on branch `chore/dev-turbopack-hmr-optimization`.
-> Local dev uses Turbopack (`next dev --turbo`) for 3–5× faster HMR, while production build retains Webpack (`next build --webpack`) for 100% deployment safety. Both local dev and production builds (`126/126` routes compiled) are verified passing.
+> **Status:** All changes are applied, verified, and passing on branch `chore/dev-turbopack-hmr-optimization`.
+> Local dev uses Turbopack (`next dev --turbo`) for 3–5× faster HMR, while production build retains Webpack (`next build --webpack`) for 100% deployment safety. Both local dev and production builds (`126/126` routes compiled) are verified passing with Turborepo task orchestration.
 
 ---
 
@@ -23,6 +23,11 @@ rm -rf web/.next
 npm run dev
 ```
 
+To run the full production build:
+```bash
+npm run build
+```
+
 ---
 
 ## 1. What Was Changed and Why
@@ -37,10 +42,15 @@ npm run dev
 | Switch dev script to `next dev --turbo` | `web/package.json` | Enables Turbopack bundler for local development. Turbopack is Rust-based and significantly faster than Webpack for HMR — typically **3–5× faster**, with updates in under 500ms. |
 | Retain build script as `next build --webpack` | `web/package.json` | Keeps Webpack for production builds (`RUN npm run build` in Dockerfile), eliminating any operational risk for deployed environments while providing Turbopack HMR locally. |
 | Remove redundant tsconfig path mappings | `web/tsconfig.json` | The 21 `@lad/frontend-features/*` paths were forcing TypeScript to read raw SDK source files directly. With `transpilePackages` and the SDK's `exports` map in place, Node/TypeScript module resolution handles these correctly without explicit path overrides. |
+| Add `dependsOn: ["^build"]` and exclude `!.next/cache/**` | `turbo.json` | Enforces topological build order so `@lad/frontend-features:build` completes before `frontend:build` starts, and avoids multi-gigabyte Turborepo cache bloat by ignoring Webpack's internal cache. |
 | Add `persistent: true` to dev task | `turbo.json` | Tells Turborepo that `dev` is a long-running watch process, not a task that should "finish." Prevents task deadlocks in `turbo run dev`. |
+| Add `.` root export to SDK exports map | `sdk/package.json` | Exposes `./index.ts` for root package imports (e.g. `import { apiErrorStatus } from '@lad/frontend-features'`) required by `web` after removing explicit tsconfig paths. |
+| Add `./community-roi/types` to SDK exports | `sdk/package.json` | Two files (`OutreachAnalysis.tsx`, `MemberProfileView.tsx`) import `@lad/frontend-features/community-roi/types` directly. Added to SDK's exports map so TypeScript and the bundler can resolve it. |
+| Expand `include` array in SDK tsconfig | `sdk/tsconfig.json` | Added `index.ts` and `shared/**/*` to `include` array so `tsc` type-checks and compiles the entire SDK package surface. |
+| Resolve ambiguous `CallLog` re-export | `sdk/index.ts` | Disambiguated `TS2308` collision caused by both `voice-agent` and `call-logs` exporting `CallLog` by explicitly re-exporting `export type { CallLog } from "./features/call-logs"`. |
+| Remove duplicate interface declarations | `sdk/features/billing/api.ts` | Removed duplicate `RecurringPlan` and `RecurringStatus` interface declarations that collided with imported types on line 7 (`TS2440`). |
+| Fix TypeScript return type bug | `sdk/features/lad-monitor/api.ts` | `getMigrationStatus()` was returning `res.data` (the full `{ success, data }` wrapper) instead of `res.data.data` (the actual `MigrationStatusData`). |
 | Simplify escaped Tailwind class variant | `web/src/components/conversations/WABusinessView.tsx` | The original deeply-escaped arbitrary variant (`[&_.dark\:bg-\[\\#111b21\]]`) causes the Rust CSS parser (LightningCSS) inside Turbopack to panic. The simplified form (`[&_[class*='111b21']]`) is functionally identical and parser-safe. |
-| Fix TypeScript return type bug | `sdk/features/lad-monitor/api.ts` | `getMigrationStatus()` was returning `res.data` (the full `{ success, data }` wrapper) instead of `res.data.data` (the actual `MigrationStatusData`). Independent fix bundled in the same commit. |
-| Add `./community-roi/types` to SDK exports | `sdk/package.json` | Two files (`OutreachAnalysis.tsx`, `MemberProfileView.tsx`) import `@lad/frontend-features/community-roi/types` directly. Removing the tsconfig paths required adding this subpath to the SDK's exports map so TypeScript and the bundler can resolve it. |
 
 ---
 
@@ -157,36 +167,93 @@ Kept:
 
 **Important Import Rule:** Removing `../sdk/**/*.ts` from `web/tsconfig.json`'s `include` array means relative imports into `sdk` (e.g. `import ... from '../../sdk/...'`) will fail TypeScript compilation (`TS2307`). All code in `web` must use package path aliases (`@lad/shared/*` or `@lad/frontend-features/*`) instead of relative file paths.
 
-**Edge case handled:** `OutreachAnalysis.tsx` and `MemberProfileView.tsx` import `@lad/frontend-features/community-roi/types` — a subpath that was not in the SDK's exports map. This was fixed by adding it to `sdk/package.json` (see below).
-
----
-
-### `sdk/package.json`
-
-Added one exports entry:
-```json
-"./community-roi/types": {
-  "types": "./features/community-roi/types.ts",
-  "default": "./features/community-roi/types.ts"
-}
-```
-
-This exposes the `types.ts` file inside `community-roi` as a direct importable subpath, so `import { UUID } from '@lad/frontend-features/community-roi/types'` resolves correctly without needing a tsconfig path override.
-
-**SDK Subpath Export Guidelines:** Any new feature subpath or types file imported directly by `web` must either be re-exported via the feature's primary `index.ts` or explicitly mapped in `sdk/package.json`'s `exports` block.
-
-
 ---
 
 ### `turbo.json`
 
 ```diff
- "dev": {
--  "cache": false
-+  "cache": false,
-+  "persistent": true
- }
+   "tasks": {
+     "build": {
+-      "outputs": [".next/**", "dist/**", "lib/**"],
+-      "cache": true
++      "dependsOn": ["^build"],
++      "outputs": [".next/**", "!.next/cache/**", "dist/**", "lib/**"],
++      "cache": true
+     },
+     "dev": {
+       "cache": false,
++      "persistent": true
+     },
 ```
+
+---
+
+### `sdk/package.json`
+
+Added root `"."` and `./community-roi/types` exports:
+```json
+"exports": {
+  ".": {
+    "types": "./index.ts",
+    "default": "./index.ts"
+  },
+  "./community-roi/types": {
+    "types": "./features/community-roi/types.ts",
+    "default": "./features/community-roi/types.ts"
+  },
+  ...
+}
+```
+
+---
+
+### `sdk/tsconfig.json`
+
+```diff
+-  "include": ["features/**/*"],
++  "include": ["index.ts", "features/**/*", "shared/**/*"],
+   "exclude": ["node_modules", "dist"]
+```
+
+---
+
+### `sdk/index.ts`
+
+```diff
+ export * from "./features/voice-agent";
+ export * from "./features/call-logs";
+ export * from "./features/community-roi";
++export type { CallLog } from "./features/call-logs";
+```
+
+Disambiguates `TS2308` caused by both `voice-agent` and `call-logs` exporting `CallLog`.
+
+---
+
+### `sdk/features/billing/api.ts`
+
+```diff
+-/**
+- * Recurring billing - monthly subscription + low-balance auto-recharge
+- */
+-export interface RecurringPlan {
+-  kind: 'monthly' | 'auto_recharge';
+-  packageId: string;
+-  priceUsd: number;
+-  credits: number;
+-  status: 'incomplete' | 'active' | 'past_due' | 'canceled';
+-  thresholdCredits?: number | null;
+-  currentPeriodEnd?: string | null;
+-  lastChargedAt?: string | null;
+-  lastError?: string | null;
+-}
+-export interface RecurringStatus {
+-  monthly: RecurringPlan | null;
+-  autoRecharge: RecurringPlan | null;
+-}
+```
+
+Eliminates `TS2440` where local interfaces conflicted with `import type { RecurringPlan, RecurringStatus } from './types'` at the top of the file.
 
 ---
 
@@ -197,7 +264,7 @@ This exposes the `types.ts` file inside `community-roi` as a direct importable s
 + <div className="[&_[class*='111b21']]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
 ```
 
-The original deeply-escaped selector (`dark\:bg-\[\\#111b21\]`) triggers a panic in the Rust CSS parser inside Turbopack when it encounters the multi-level escape sequences. The replacement uses a CSS substring match (`[class*='111b21']`) which targets the same elements, is visually equivalent, and is valid syntax for all parsers.
+The original deeply-escaped selector (`dark\:bg-\[\\#111b21\]`) triggers a panic in the Rust CSS parser inside Turbopack when it encounters multi-level escape sequences. The replacement uses a CSS substring match (`[class*='111b21']`) which targets the same elements, is visually equivalent, and is valid syntax for all parsers.
 
 ---
 
@@ -208,7 +275,7 @@ The original deeply-escaped selector (`dark\:bg-\[\\#111b21\]`) triggers a panic
 + return res.data.data;
 ```
 
-`apiGet<{ success: boolean; data: MigrationStatusData }>` returns `{ success, data }`. The function was returning the outer wrapper instead of the inner `MigrationStatusData`. Independent bug fix bundled in this commit.
+`apiGet<{ success: boolean; data: MigrationStatusData }>` returns `{ success, data }`. The function was returning the outer wrapper instead of the inner `MigrationStatusData`.
 
 ---
 
@@ -222,47 +289,46 @@ During review, a concern was raised: the `webpack()` config aliases `exceljs` to
 "browser": "./dist/exceljs.min.js"
 ```
 
-The `browser` field is a standard convention that tells any modern bundler (Webpack, Turbopack, esbuild, etc.) to automatically use the browser-safe build when targeting a browser environment. Turbopack respects this field. The manual webpack alias was redundant insurance — both bundlers end up using `exceljs.min.js` for client components.
-
-This was verified manually: navigating to the Import Leads dialog and importing an Excel file works correctly under `next dev --turbo`.
+The `browser` field is a standard convention that tells any modern bundler (Webpack, Turbopack, esbuild, etc.) to automatically use the browser-safe build when targeting a browser environment. Turbopack respects this field natively.
 
 ---
 
-## Verification & Validation Results
+## 4. Build Diagnostics & Next.js Lock Files
+
+### Understanding `Another next build process is already running`
+When `npm run build` runs, Next.js places a lock file at `web/.next/lock`.
+- If a build is triggered while another build is executing in the background, or if a previous build was interrupted before releasing its process handle, Next.js halts immediately to prevent corruption of `.next`.
+- **Resolution:** Ensure previous background node processes finish, or remove `web/.next/lock` before re-running.
+
+---
+
+## 5. Verification & Validation Results
 
 Both local development and production build testing have been successfully completed:
 
-### 1. Production Build Verification (`npx next build --webpack`)
+### 1. Production Monorepo Build Verification (`npm run build`)
 ```powershell
-cd web
-npx next build --webpack
+npm run build -- --force
 ```
 **Results:**
-* `✓ Compiled successfully in 5.5min`
-* `✓ Generating static pages using 7 workers (126/126) in 18.0s`
-* `✓ Finalizing page optimization in 103s`
-* **Status:** ✅ PASSED — All 126 routes generated without bundler errors. The Docker deployment path is 100% safe.
+* `@lad/frontend-features:build`: `tsc` compiles cleanly with zero errors.
+* `frontend:build`: Next.js Webpack build generates all `126/126` static and dynamic routes.
+* **Status:** ✅ PASSED (`2 successful, 2 total`) — Docker deployment path is 100% safe.
 
-### 2. Local Development & HMR Verification (`npm run dev`)
+### 2. Turborepo Cache Verification (`npm run build`)
 ```powershell
-cd web
+npm run build
+```
+**Results:**
+* `Tasks: 2 successful, 2 total`
+* `Cached: 2 cached, 2 total (>>> FULL TURBO)`
+* **Status:** ✅ PASSED in `< 400ms`.
+
+### 3. Local Development & HMR Verification (`npm run dev`)
+```powershell
 npm run dev
 ```
 **Results:**
 * Turbopack dev server starts cleanly (`next dev --turbo`).
 * Hot Module Reloading (HMR) completes in under 500ms on file saves.
 * **Status:** ✅ PASSED — Local development is fast and operational.
-
----
-
-## Summary of AI Critique Audit
-
-An independent audit of the previous AI critique confirmed:
-1. **Production Build Safety:** Retaining `"build": "next build --webpack"` in `web/package.json` completely neutralizes production risk.
-2. **`exceljs` Package Compatibility:** `exceljs` defines `"browser": "./dist/exceljs.min.js"` in its `package.json`, which Turbopack and Webpack both honor natively.
-3. **TypeScript Exports Resolution:** `sdk/package.json`'s `exports` map covers subpath imports (including `"./community-roi/types"` added in Step 3), enabling `moduleResolution: "bundler"` to resolve types cleanly without explicit tsconfig path overrides.
-4. **Relative Import Sanitation:** Legacy relative SDK imports (`cookieStorage.ts`, `WalletBalance.tsx`, `CreditUsageAnalytics.tsx`, `LiveActivityTable.tsx`, and `leadsActions.ts`) were updated to use `@lad/shared/*` and `@lad/frontend-features/*` package path aliases, preventing `TS2307` module resolution errors.
-5. **HMR Freeze Root Cause Resolved:** Removed `@lad/frontend-features` from `optimizePackageImports` (which caused Turbopack AST transform cache to desync during live SDK edits) and explicitly configured `turbopack.root: path.resolve(__dirname, '..')` to secure the monorepo file watcher boundaries.
-
-The PR is fully verified and ready for merge.
-

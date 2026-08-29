@@ -6,6 +6,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
     "./ai-icp-assistant": {
       "types": "./features/ai-icp-assistant/index.ts",
       "default": "./features/ai-icp-assistant/index.ts"
