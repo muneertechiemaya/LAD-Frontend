@@ -1,12 +1,13 @@
+import { safeStorage } from '@lad/shared/storage';
+
 /**
  * Tenant-aware fetch utility.
  *
- * Ensures every request to the conversation proxy includes:
- *  - Authorization header (from localStorage token)
- *  - X-Tenant-ID header (from localStorage selectedTenantId or user profile)
+ * Ensures every request includes:
+ *  - Authorization header (from cookie, safeStorage, or localStorage token)
+ *  - X-Tenant-Id header (from options.headers, safeStorage/localStorage selectedTenantId or user profile)
  *
- * Use this instead of bare `fetch()` for any call to
- * `/api/whatsapp-conversations/…` endpoints.
+ * Use this instead of bare `fetch()` for any call to backend services requiring tenant context.
  */
 
 function getAuthToken(): string | null {
@@ -21,7 +22,10 @@ function getAuthToken(): string | null {
     if (name === 'token') return decodeURIComponent(value || '');
   }
 
-  // Fallback: localStorage (for backwards compatibility)
+  // Fallback: safeStorage & localStorage (for backwards compatibility)
+  const safeStored = safeStorage.getItem('token');
+  if (safeStored) return safeStored;
+
   const stored = localStorage.getItem('token');
   if (stored) return stored;
 
@@ -30,14 +34,18 @@ function getAuthToken(): string | null {
 
 function getEffectiveTenantId(): string | null {
   if (typeof window === 'undefined') return null;
+  const safeSelected = safeStorage.getItem('selectedTenantId');
+  if (safeSelected && safeSelected !== 'default') return safeSelected;
+
   const selected = localStorage.getItem('selectedTenantId');
   if (selected && selected !== 'default') return selected;
+
   // Fallback: extract from cached user profile
   try {
-    const raw = localStorage.getItem('user');
+    const raw = safeStorage.getItem('user') || localStorage.getItem('user');
     if (raw) {
       const user = JSON.parse(raw);
-      return user?.tenantId || user?.organizationId || null;
+      return user?.tenantId || user?.organizationId || (Array.isArray(user?.tenants) && user.tenants.length > 0 ? user.tenants[0]?.id : null);
     }
   } catch { /* ignore */ }
   return null;
@@ -73,10 +81,16 @@ export async function fetchWithTenant(
   }
 
   const token = getAuthToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const tenantId = getEffectiveTenantId();
-  if (tenantId) headers['X-Tenant-ID'] = tenantId;
+  const existingTenantId = headers['X-Tenant-Id'] || headers['X-Tenant-ID'] || headers['x-tenant-id'];
+  const finalTenantId = existingTenantId || tenantId;
+  if (finalTenantId) {
+    headers['X-Tenant-Id'] = finalTenantId;
+  }
 
   return fetch(url, { ...options, headers });
 }

@@ -38,6 +38,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { getApiBaseUrl, getApiBaseUrlForLocal } from '@/lib/api-utils';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { logger } from '@/lib/logger';
 
 type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'chat' | 'api' | 'billing' | 'credits' | 'proposal_settings';
@@ -121,7 +122,7 @@ const SettingsPage: React.FC = () => {
   // Preserved Email Templates API Handlers (Dead Code)
   const fetchEmailTemplates = async (targetTenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${targetTenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${targetTenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch email templates: HTTP ${res.status}`);
         setEmailTemplates([]);
@@ -145,7 +146,7 @@ const SettingsPage: React.FC = () => {
       formData.append('subject_line', subjectLine);
       formData.append('file', file);
 
-      const response = await fetch(`${getApiBaseUrlForLocal()}/api/email-templates/upload/${targetTenantId}`, {
+      const response = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/email-templates/upload/${targetTenantId}`, {
         method: 'POST',
         body: formData
       });
@@ -165,7 +166,7 @@ const SettingsPage: React.FC = () => {
 
   const handlePreviewTemplate = async (template: Template) => {
     try {
-      const response = await fetch(`${getApiBaseUrlForLocal()}/api/email-templates/${template.id}/preview`);
+      const response = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/email-templates/${template.id}/preview`);
       if (!response.ok) throw new Error("Failed to fetch preview");
 
       const blob = await response.blob();
@@ -188,9 +189,8 @@ const SettingsPage: React.FC = () => {
     const targetTenantId = tenant?.id;
     if (!targetTenantId) return;
     try {
-      await fetch(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${targetTenantId}/set-default/${id}`, {
+      await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${targetTenantId}/set-default/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_default: true })
       });
 
@@ -206,7 +206,9 @@ const SettingsPage: React.FC = () => {
     if (!targetTenantId) return;
     if (!confirm('Are you sure you want to delete this email template?')) return;
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${id}`, { method: 'DELETE' });
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${id}`, {
+        method: 'DELETE',
+      });
       if (res.ok) {
         toast.success('Email template deleted');
         fetchEmailTemplates(targetTenantId);

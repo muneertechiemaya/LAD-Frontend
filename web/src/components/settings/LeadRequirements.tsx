@@ -5,6 +5,7 @@ import { RequirementConfig } from '../../types/requirement_config';
 import { PricingModel } from '../../types/pricing_model';
 import { useTenant } from '@/contexts/TenantContext';
 import { getApiBaseUrlForLocal } from '@/lib/api-utils';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { logger } from '@/lib/logger';
@@ -19,7 +20,7 @@ export const LeadRequirements: React.FC = () => {
 
   const fetchConfigs = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch lead requirement configs: HTTP ${res.status}`);
         setRequirementConfigs([]);
@@ -35,7 +36,7 @@ export const LeadRequirements: React.FC = () => {
 
   const fetchPricingModels = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/pricing-models/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/pricing-models/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch pricing models: HTTP ${res.status}`);
         setPricingModels([]);
@@ -62,7 +63,9 @@ export const LeadRequirements: React.FC = () => {
     if (!tenant?.id) return;
     if (confirm('Are you sure you want to delete this configuration?')) {
       try {
-        const res = await fetch(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${id}`, { method: 'DELETE' });
+        const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${id}`, {
+          method: 'DELETE',
+        });
         if (res.ok) {
           toast.success('Configuration deleted');
           fetchConfigs(tenant.id);
@@ -96,9 +99,8 @@ export const LeadRequirements: React.FC = () => {
     const method = editingConfig ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTenant(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(configData),
       });
 

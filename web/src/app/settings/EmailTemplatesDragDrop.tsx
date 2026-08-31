@@ -31,6 +31,7 @@ import { CreateEmailTemplateFlow } from './CreateEmailTemplateFlow';
 import { useRouter } from 'next/navigation';
 import QuotationEmailTemplateEditor, { Template } from './QuotationEmailTemplateEditor';
 import { getApiBaseUrlForLocal } from '@/lib/api-utils';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 
 interface EmailTemplatesDragDropProps {
@@ -89,7 +90,7 @@ export const EmailTemplatesDragDrop: React.FC<EmailTemplatesDragDropProps> = ({
     setAiSuggestions(null);
     setSelectedSuggestions([]);
     try {
-      const suggestions = await fetch(`${getApiBaseUrlForLocal()}/api/ai-response/suggest-email-templates/${tenantId}`);
+      const suggestions = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/ai-response/suggest-email-templates/${tenantId}`);
       const resp = await suggestions.json();
       setAiSuggestions(resp.suggestions || []);
       setSelectedSuggestions([]);
@@ -111,9 +112,8 @@ export const EmailTemplatesDragDrop: React.FC<EmailTemplatesDragDropProps> = ({
           ...suggestion,
           tenant_id: tenantId,
         });
-        await fetch(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${tenantId}`, {
+        await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-email-template/${tenantId}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: body,
         });

@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Dropzone, DropzoneContent, DropzoneEmptyState } from '@/components/ui/dropzone';
 import { getApiBaseUrlForLocal } from '@/lib/api-utils';
 import { useTenant } from '@/contexts/TenantContext';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { logger } from '@/lib/logger';
 
 interface Template {
@@ -56,7 +57,7 @@ export const QuotationTemplates: React.FC = () => {
 
   const fetchQuotationTemplates = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-templates/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-templates/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch quotation templates: HTTP ${res.status}`);
         setTemplates([]);
@@ -72,7 +73,7 @@ export const QuotationTemplates: React.FC = () => {
 
   const fetchPlaceholders = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/template-placeholder/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/template-placeholder/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch placeholders: HTTP ${res.status}`);
         setPlaceholderList([]);
@@ -113,7 +114,7 @@ export const QuotationTemplates: React.FC = () => {
       formData.append('is_default', String(isDefaultFlag));
       formData.append('file', file);
 
-      const response = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-templates/upload/${tenant.id}`, {
+      const response = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-templates/upload/${tenant.id}`, {
         method: 'POST',
         body: formData
       });
@@ -136,7 +137,9 @@ export const QuotationTemplates: React.FC = () => {
     if (!tenant?.id) return;
     if (!confirm('Are you sure you want to delete this quotation template?')) return;
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-templates/${id}`, { method: 'DELETE' });
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-templates/${id}`, {
+        method: 'DELETE',
+      });
       if (res.ok) {
         toast.success('Quotation template deleted');
         fetchQuotationTemplates(tenant.id);
@@ -152,9 +155,8 @@ export const QuotationTemplates: React.FC = () => {
   const handleSetDefaultQuotationTemplate = async (id: string) => {
     if (!tenant?.id) return;
     try {
-      await fetch(`${getApiBaseUrlForLocal()}/api/quotation-templates/${tenant.id}/set-default/${id}`, {
+      await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-templates/${tenant.id}/set-default/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_default: true })
       });
 
@@ -168,7 +170,7 @@ export const QuotationTemplates: React.FC = () => {
 
   const handlePreviewQuotationTemplate = async (template: Template) => {
     try {
-      const response = await fetch(`${getApiBaseUrlForLocal()}/api/quotation-templates/${template.id}/preview`);
+      const response = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/quotation-templates/${template.id}/preview`);
       if (!response.ok) throw new Error("Failed to fetch Quotation preview");
 
       const blob = await response.blob();

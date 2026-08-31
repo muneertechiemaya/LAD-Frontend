@@ -13,6 +13,7 @@ import QuotationHtmlEmailEditor from './QuotationHtmlEmailEditor';
 import QuotationDragDropEmailEditor from './QuotationDragDropEmailEditor';
 import QuotationEmailPreview from './QuotationEmailPreview';
 import { getApiBaseUrlForLocal } from '@/lib/api-utils';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { Placeholder } from './EmailTemplatesDragDrop';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -232,9 +233,8 @@ export default function QuotationEmailTemplateEditor({ mode, initialTemplate, te
         media_alt_text: template.media_alt_text || null,
       });
       console.log("emaile template body : " + body)
-      const res = await fetch(url, {
+      const res = await fetchWithTenant(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: body,
       });

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { getApiBaseUrlForLocal } from '@/lib/api-utils';
 import { useTenant } from '@/contexts/TenantContext';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { logger } from '@/lib/logger';
 
 export const ConceptManagement: React.FC = () => {
@@ -23,7 +24,7 @@ export const ConceptManagement: React.FC = () => {
 
   const fetchConcepts = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/concepts/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/concepts/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch concepts: HTTP ${res.status}`);
         setConcepts([]);
@@ -39,7 +40,7 @@ export const ConceptManagement: React.FC = () => {
 
   const fetchConfigs = useCallback(async (tenantId: string) => {
     try {
-      const res = await fetch(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${tenantId}`);
+      const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/lead-requirement-config/${tenantId}`);
       if (!res.ok) {
         logger.error(`Failed to fetch lead requirement configs: HTTP ${res.status}`);
         setRequirementConfigs([]);
@@ -86,9 +87,8 @@ export const ConceptManagement: React.FC = () => {
     const method = editingConcept ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTenant(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(conceptData),
       });
 
@@ -109,7 +109,9 @@ export const ConceptManagement: React.FC = () => {
     if (!tenant?.id) return;
     if (confirm('Are you sure you want to delete this concept?')) {
       try {
-        const res = await fetch(`${getApiBaseUrlForLocal()}/api/concepts/${id}`, { method: 'DELETE' });
+        const res = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/concepts/${id}`, {
+          method: 'DELETE',
+        });
         if (res.ok) {
           toast.success('Concept deleted');
           fetchConcepts(tenant.id);
@@ -127,7 +129,7 @@ export const ConceptManagement: React.FC = () => {
     if (!tenant?.id) return;
     setIsAiLoading(true);
     try {
-      const suggestions = await fetch(`${getApiBaseUrlForLocal()}/api/ai-response/suggest-concepts/${tenant.id}`);
+      const suggestions = await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/ai-response/suggest-concepts/${tenant.id}`);
       const resp = await suggestions.json();
       setAiSuggestions(resp.suggestions);
       setSelectedSuggestions([]);
@@ -151,9 +153,8 @@ export const ConceptManagement: React.FC = () => {
           tenant_id: tenant.id,
           requirement_configs: suggestion.requirement_configs.map((obj: any) => obj.id)
         });
-        await fetch(`${getApiBaseUrlForLocal()}/api/concepts`, {
+        await fetchWithTenant(`${getApiBaseUrlForLocal()}/api/concepts`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: body,
         });
       }
