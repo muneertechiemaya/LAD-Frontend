@@ -250,12 +250,13 @@ function isValidEmail(e: string): boolean {
 
 export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channel, emailGroupId, variant = 'default' }: ImportLeadsDialogProps) {
   const isWhatsApp = variant === 'whatsapp';
-  const inputBorderClass = isWhatsApp
-    ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 focus:border-emerald-500 focus-visible:outline-none"
-    : "border border-gray-300 dark:border-slate-700/80 bg-white dark:bg-[#000724] text-foreground dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none shadow-2xs";
-
   // Email mode: channel is 'gmail' or 'outlook'
   const isEmailMode = channel === 'gmail' || channel === 'outlook';
+  const inputBorderClass = isWhatsApp
+    ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 focus:border-emerald-500 focus-visible:outline-none"
+    : isEmailMode
+    ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:border-sky-500 focus:border-sky-500 focus-visible:outline-none shadow-2xs"
+    : "border border-gray-300 dark:border-slate-700/80 bg-white dark:bg-[#000724] text-foreground dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none shadow-2xs";
   const [activeTab, setActiveTab] = useState('single');
   const [leads, setLeads] = useState<LeadEntry[]>([newLead()]);
   const [groups, setGroups] = useState<ChatGroup[]>([]);
@@ -941,15 +942,20 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(
-        "sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border",
-        isWhatsApp
-          ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800"
-          : "bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800"
-      )}>
+      <DialogContent
+        overlayClassName={isEmailMode ? "dark:bg-black/75 backdrop-blur-xs" : undefined}
+        className={cn(
+          "sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border rounded-2xl overflow-hidden shadow-2xl dark:shadow-[0_25px_70px_-15px_rgba(0,0,0,0.95)] dark:ring-1 dark:ring-white/10",
+          isWhatsApp
+            ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800"
+            : isEmailMode
+            ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
+            : "bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800"
+        )}
+      >
         <DialogHeader className={cn(
           "border-b px-6 py-4",
-          isWhatsApp
+          isWhatsApp || isEmailMode
             ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
             : "bg-white dark:bg-[#081331] border-gray-100 dark:border-slate-800/80"
         )}>
@@ -958,11 +964,13 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               "p-2 rounded-full shadow-sm flex items-center justify-center w-10 h-10 border",
               isWhatsApp
                 ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                : isEmailMode
+                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-500/20"
                 : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20"
             )}>
               <UserPlus className="h-6 w-6 stroke-[2.5px]" />
             </div>
-            <span className={isWhatsApp ? "text-zinc-900 dark:text-zinc-100 font-semibold" : ""}>
+            <span className={isWhatsApp || isEmailMode ? "text-zinc-900 dark:text-zinc-100 font-semibold" : ""}>
               {isEmailMode ? 'Import Email Contacts' : 'Import Leads'}
             </span>
           </DialogTitle>
@@ -973,12 +981,18 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           onValueChange={setActiveTab}
           className={cn(
             "flex-1 flex flex-col overflow-hidden",
-            isWhatsApp ? "bg-zinc-50/50 dark:bg-zinc-900" : "bg-gray-50/30 dark:bg-[#000724]"
+            isEmailMode
+              ? "bg-zinc-50/50 dark:bg-zinc-950"
+              : isWhatsApp
+              ? "bg-zinc-50/50 dark:bg-zinc-900"
+              : "bg-gray-50/30 dark:bg-[#000724]"
           )}
         >
           <TabsList className={cn(
             "mx-3 sm:mx-8 mt-4 sm:mt-6 max-w-[calc(100%-1.5rem)] sm:max-w-full overflow-x-auto justify-start flex-nowrap shrink-0 p-1 rounded-xl h-auto gap-1 border shadow-sm dark:shadow-md dark:shadow-black/40",
-            isWhatsApp
+            isEmailMode
+              ? "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              : isWhatsApp
               ? "bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/80"
               : "bg-slate-100 dark:bg-[#071131] border-slate-200 dark:border-slate-800/70"
           )}>
@@ -988,11 +1002,13 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 "text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium transition-all shrink-0 whitespace-nowrap shadow-none data-[state=inactive]:shadow-none",
                 isWhatsApp
                   ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
+                  : isEmailMode
+                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-sky-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/40"
               )}
             >
               <UserPlus className="h-3.5 w-3.5 shrink-0" />
-              Add Leads
+              {isEmailMode ? 'Add Contacts' : 'Add Leads'}
             </TabsTrigger>
             <TabsTrigger
               value="excel"
@@ -1000,6 +1016,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 "text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium transition-all shrink-0 whitespace-nowrap shadow-none data-[state=inactive]:shadow-none",
                 isWhatsApp
                   ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
+                  : isEmailMode
+                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-sky-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/40"
               )}
             >
@@ -1027,13 +1045,15 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           <TabsContent value="excel" className="px-3 sm:px-8 py-4 sm:py-6 flex-1">
             <div className={cn(
               "border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors",
-              isWhatsApp
+              isEmailMode
+                ? "border-zinc-300 dark:border-zinc-700/80 bg-zinc-50/50 dark:bg-zinc-900/70 hover:border-sky-500/50 dark:hover:border-sky-500/60 text-zinc-700 dark:text-zinc-300 shadow-xs"
+                : isWhatsApp
                 ? "border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/40 hover:border-emerald-500/50 text-zinc-700 dark:text-zinc-300"
                 : "border-border dark:border-slate-800 bg-white dark:bg-[#071131] hover:border-blue-500/50"
             )}>
-              <Upload className={cn("h-10 w-10 mx-auto mb-3", isWhatsApp ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
-              <p className={cn("text-sm font-medium mb-1", isWhatsApp ? "text-zinc-900 dark:text-zinc-200" : "")}>Upload Excel file (.xlsx)</p>
-              <p className={cn("text-xs mb-4", isWhatsApp ? "text-zinc-500 dark:text-zinc-400" : "text-muted-foreground")}>
+              <Upload className={cn("h-10 w-10 mx-auto mb-3", (isWhatsApp || isEmailMode) ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
+              <p className={cn("text-sm font-medium mb-1", (isWhatsApp || isEmailMode) ? "text-zinc-900 dark:text-zinc-200" : "")}>Upload Excel file (.xlsx)</p>
+              <p className={cn("text-xs mb-4", (isWhatsApp || isEmailMode) ? "text-zinc-500 dark:text-zinc-400" : "text-muted-foreground")}>
                 {isEmailMode ? (
                   <>Required: <span className="font-medium">name</span>, <span className="font-medium">email</span>. Optional: company, phone, source</>
                 ) : (
@@ -1052,7 +1072,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   onClick={() => excelInputRef.current?.click()}
                   className={cn(
                     "w-full sm:w-auto justify-center",
-                    isWhatsApp && "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    (isWhatsApp || isEmailMode) && "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
                   )}
                 >
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -1064,7 +1084,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   onClick={downloadTemplate}
                   className={cn(
                     "w-full sm:w-auto justify-center",
-                    isWhatsApp && "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    (isWhatsApp || isEmailMode) && "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
                   )}
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -1201,19 +1221,26 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 "mt-2 w-full text-xs justify-center gap-1.5 border border-dashed transition-all",
                 isWhatsApp
                   ? "text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  : isEmailMode
+                  ? "text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-sky-500/50 dark:hover:border-sky-500/50 hover:bg-sky-50/50 dark:hover:bg-sky-950/30 hover:text-sky-600 dark:hover:text-sky-400"
                   : "text-blue-600 dark:text-blue-400 border-blue-400/40 dark:border-blue-500/40 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400"
               )}
               onClick={addLead}
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Another Lead
+              {isEmailMode ? 'Add Another Contact' : 'Add Another Lead'}
             </Button>
           </TabsContent>
         </Tabs>
 
         {/* ── Invalid Records Banner ──────────────── */}
         {hasValidationErrors && !importResult?.success && (
-          <div className="mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm bg-amber-50/80 dark:bg-[#071131] border-amber-200 dark:border-amber-500/25">
+          <div className={cn(
+            "mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm",
+            isWhatsApp || isEmailMode
+              ? "bg-amber-50/80 dark:bg-zinc-900 border-amber-200 dark:border-amber-500/25"
+              : "bg-amber-50/80 dark:bg-[#071131] border-amber-200 dark:border-amber-500/25"
+          )}>
             {/* Top row: summary + bulk actions */}
             <div className="px-3 py-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0 text-amber-800 dark:text-amber-200/90">
@@ -1317,11 +1344,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           <div className={cn(
             'mx-4 mb-2 p-3 rounded-lg text-sm',
             importResult.success
-              ? isWhatsApp
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20'
+              ? isWhatsApp || isEmailMode
+                ? 'bg-emerald-50 dark:bg-zinc-900 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20'
                 : 'bg-green-50 dark:bg-[#071131] text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/20'
-              : isWhatsApp
-                ? 'bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/20'
+              : isWhatsApp || isEmailMode
+                ? 'bg-red-50 dark:bg-zinc-900 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/20'
                 : 'bg-red-50 dark:bg-[#071131] text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/20'
           )}>
             {importResult.success ? (
@@ -1611,7 +1638,9 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         {/* ── Footer ─────────────────────────────── */}
         <DialogActions className={cn(
           "border-t p-4 flex items-center justify-between",
-          isWhatsApp ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90" : "border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-[#081331]"
+          isWhatsApp || isEmailMode
+            ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900"
+            : "border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-[#081331]"
         )}>
           {!importResult?.success ? (
             <div className="flex flex-col w-full space-y-4">
@@ -1625,9 +1654,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     runInBackground
                       ? isWhatsApp
                         ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        : isEmailMode
+                        ? 'border-sky-500/40 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400'
                         : 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                      : isWhatsApp
-                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/30'
+                      : isWhatsApp || isEmailMode
+                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600'
                         : 'border-border bg-muted/30 text-muted-foreground hover:border-blue-500/30 hover:bg-muted/50'
                   )}
                 >
@@ -1636,8 +1667,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     runInBackground
                       ? isWhatsApp
                         ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : isEmailMode
+                        ? 'bg-sky-600 border-sky-600 text-white'
                         : 'bg-blue-600 border-blue-600 text-white'
-                      : isWhatsApp
+                      : isWhatsApp || isEmailMode
                         ? 'border-zinc-400 dark:border-zinc-600'
                         : 'border-muted-foreground/40'
                   )}>
@@ -1653,11 +1686,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               <div className="flex items-center justify-between w-full">
                 <div className="text-sm font-medium">
                   {hasValidationErrors ? (
-                    <span className={isWhatsApp ? "text-amber-700 dark:text-amber-300/90" : "text-amber-600 dark:text-amber-300/90"}>
+                    <span className={isWhatsApp || isEmailMode ? "text-amber-700 dark:text-amber-300/90" : "text-amber-600 dark:text-amber-300/90"}>
                       Fix {invalidCount} invalid record{invalidCount !== 1 ? 's' : ''} to continue
                     </span>
                   ) : (
-                    <span className={isWhatsApp ? "text-zinc-600 dark:text-zinc-400" : "text-muted-foreground"}>
+                    <span className={isWhatsApp || isEmailMode ? "text-zinc-600 dark:text-zinc-400" : "text-muted-foreground"}>
                       {validCount} {isEmailMode ? 'contact' : 'lead'}{validCount !== 1 ? 's' : ''} ready to import
                       {!isEmailMode && selectedGroupIds.size > 0 && (
                         <span className="ml-1">
@@ -1678,6 +1711,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                       "rounded-xl px-8 py-2.5 font-bold text-white shadow-lg transition-all disabled:opacity-50",
                       isWhatsApp
                         ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/10 dark:shadow-emerald-950/30"
+                        : isEmailMode
+                        ? "bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-semibold shadow-sm"
                         : "bg-[#0B1957] hover:bg-[#0B1957]/90"
                     )}
                   >
@@ -1706,7 +1741,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               variant="outline"
               className={cn(
                 "rounded-xl px-6 py-2.5 font-semibold transition-colors",
-                isWhatsApp
+                isWhatsApp || isEmailMode
                   ? "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white"
                   : "text-gray-500 border-gray-200 hover:bg-gray-50"
               )}
@@ -1744,17 +1779,21 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
   const hasErrors = Object.keys(errors).length > 0;
   const inputBorderClass = isWhatsApp
     ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 focus:border-emerald-500 focus-visible:outline-none"
+    : isEmailMode
+    ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:border-sky-500 focus:border-sky-500 focus-visible:outline-none shadow-2xs"
     : "border border-gray-300 dark:border-slate-700/80 bg-white dark:bg-[#000724] text-foreground dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none shadow-2xs";
 
   return (
     <div
       className={cn(
         'p-2.5 sm:p-3 rounded-xl border transition-colors',
-        isWhatsApp
+        isWhatsApp || isEmailMode
           ? hasErrors
             ? isSelected
               ? 'border-red-500/60 bg-red-50 dark:bg-red-500/[0.08] ring-2 ring-red-500/20'
               : 'border-red-300 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/[0.04] hover:border-red-400 dark:hover:border-red-500/50'
+            : isEmailMode
+            ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs dark:shadow-md dark:shadow-black/20'
             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 hover:border-zinc-300 dark:hover:border-zinc-700'
           : hasErrors
             ? isSelected
@@ -1781,10 +1820,10 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
           )}
           <span className={cn(
             'text-[10px] font-semibold uppercase',
-            hasErrors ? 'text-red-500 dark:text-red-300/80' : isWhatsApp ? 'text-zinc-500 dark:text-zinc-400' : 'text-muted-foreground'
+            hasErrors ? 'text-red-500 dark:text-red-300/80' : (isWhatsApp || isEmailMode) ? 'text-zinc-500 dark:text-zinc-400' : 'text-muted-foreground'
           )}>
             {hasErrors && <TriangleAlert className="inline h-3 w-3 mr-0.5 -mt-px text-red-500 dark:text-red-300/80" />}
-            Lead #{index + 1}
+            {isEmailMode ? `Contact #${index + 1}` : `Lead #${index + 1}`}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -1806,7 +1845,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
               size="icon"
               className={cn(
                 "h-5 w-5 hover:text-destructive",
-                isWhatsApp ? "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" : "text-muted-foreground"
+                (isWhatsApp || isEmailMode) ? "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" : "text-muted-foreground"
               )}
               onClick={() => onRemove(lead.id)}
             >
@@ -1827,7 +1866,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
           />
         </div>
         <div className="relative">
-          <Building2 className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5", isWhatsApp ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
+          <Building2 className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5", (isWhatsApp || isEmailMode) ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
           <Input
             placeholder="Company"
             value={lead.company}
@@ -1844,7 +1883,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             <div className="relative">
               <Mail className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.email ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-orange-400'
+                errors.email ? 'text-red-400 dark:text-red-400/90' : 'text-zinc-400 dark:text-zinc-500'
               )} />
               <Input
                 placeholder="Email *"
