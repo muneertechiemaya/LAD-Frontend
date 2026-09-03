@@ -31,6 +31,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogClose,
   DialogActions,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -943,9 +944,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         overlayClassName={isEmailMode ? "dark:bg-black/75 backdrop-blur-xs" : undefined}
         className={cn(
-          "sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border rounded-2xl overflow-hidden shadow-2xl dark:shadow-[0_25px_70px_-15px_rgba(0,0,0,0.95)] dark:ring-1 dark:ring-white/10",
+          "w-[calc(100%-1.5rem)] sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border rounded-2xl overflow-hidden shadow-2xl dark:shadow-[0_25px_70px_-15px_rgba(0,0,0,0.95)] dark:ring-1 dark:ring-white/10",
           isWhatsApp
             ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800"
             : isEmailMode
@@ -954,26 +956,40 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         )}
       >
         <DialogHeader className={cn(
-          "border-b px-6 py-4",
+          "flex flex-row items-center justify-between border-b px-3.5 py-3 sm:px-6 sm:py-4 shrink-0",
           isWhatsApp || isEmailMode
             ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
             : "bg-white dark:bg-[#081331] border-gray-100 dark:border-slate-800/80"
         )}>
-          <DialogTitle className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className={cn(
-              "p-2 rounded-full shadow-sm flex items-center justify-center w-10 h-10 border",
+              "p-1.5 sm:p-2 rounded-full shadow-sm flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 border shrink-0",
               isWhatsApp
                 ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                 : isEmailMode
                 ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-500/20"
                 : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20"
             )}>
-              <UserPlus className="h-6 w-6 stroke-[2.5px]" />
+              <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5px]" />
             </div>
-            <span className={isWhatsApp || isEmailMode ? "text-zinc-900 dark:text-zinc-100 font-semibold" : ""}>
+            <DialogTitle className={cn(
+              "text-sm min-[390px]:text-base sm:text-xl font-bold tracking-tight whitespace-nowrap",
+              isWhatsApp || isEmailMode
+                ? "text-zinc-900 dark:text-zinc-100"
+                : "text-gray-900 dark:text-white"
+            )}>
               {isEmailMode ? 'Import Email Contacts' : 'Import Leads'}
-            </span>
-          </DialogTitle>
+            </DialogTitle>
+          </div>
+          <DialogClose className={cn(
+            "p-1 sm:p-1.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity focus:outline-none cursor-pointer shrink-0 ml-1.5 sm:ml-2",
+            isWhatsApp || isEmailMode
+              ? "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          )}>
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
         </DialogHeader>
 
         <Tabs
