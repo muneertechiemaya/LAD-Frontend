@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -58,17 +59,89 @@ export function LineFeedbackPopover({ line, anchor, onSave, onClose }: LineFeedb
     }
   };
 
-  const style: React.CSSProperties = React.useMemo(() => {
-    const width = 360;
-    const height = 240;
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const left = Math.min(Math.max(8, anchor.x), vw - width - 8);
-    const top = anchor.y + height + 8 > vh ? Math.max(8, anchor.y - height - 12) : anchor.y + 6;
-    return { position: 'fixed', left, top, width, zIndex: 60 };
-  }, [anchor]);
+  // Placed against the viewport, and re-placed once the card has been measured.
+  //
+  // Three things were wrong here and they only showed up together, as a card
+  // hanging off the right edge of the screen with its buttons unreachable:
+  //
+  //  1. `position: fixed` was NOT viewport-relative. DialogContent carries
+  //     `translate-x-[-50%] translate-y-[-50%]` (plus a zoom animation), and a
+  //     transformed ancestor becomes the containing block for its fixed
+  //     descendants. So the browser resolved left/top against the dialog's box
+  //     while this math clamped against window.innerWidth. The card is now
+  //     portalled to document.body, which is the only way to opt out of that.
+  //  2. The width was a hard 360px. Below ~376px of viewport there is no
+  //     position that fits, and the clamp's upper bound went below its lower
+  //     bound, so the card ran off the edge instead of shrinking.
+  //  3. The height was a guessed 240px, used to decide whether to flip above
+  //     the anchor. A long Telugu line wraps to three or four lines and the
+  //     card is well past 240, so it flipped the wrong way and overflowed the
+  //     bottom. It is measured now, which also means the flip is correct when
+  //     an error message appears and the card grows.
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
 
-  return (
+  React.useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const [viewport, setViewport] = React.useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    h: typeof window !== 'undefined' ? window.innerHeight : 800,
+  }));
+
+  React.useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const style: React.CSSProperties = React.useMemo(() => {
+    const GAP = 8;
+    const { w: vw, h: vh } = viewport;
+    const width = Math.min(360, Math.max(240, vw - GAP * 2));
+    // Before the first measurement, assume the card is tall rather than short:
+    // guessing short is what flipped it into the bottom edge.
+    const height = size?.h ?? 320;
+
+    // clamp() rather than min(max()): when the card is taller or wider than the
+    // viewport there is no valid range, and the lower bound has to win so the
+    // top-left corner stays reachable.
+    const clamp = (value: number, max: number) => Math.max(GAP, Math.min(value, max));
+
+    const left = clamp(anchor.x, vw - width - GAP);
+    // Prefer below the anchor; flip above only when below genuinely does not
+    // fit AND above does.
+    const below = anchor.y + 6;
+    const fitsBelow = below + height + GAP <= vh;
+    const above = anchor.y - height - 12;
+    const top = fitsBelow || above < GAP ? clamp(below, vh - height - GAP) : above;
+
+    return {
+      position: 'fixed',
+      left,
+      top,
+      width,
+      maxHeight: `calc(100vh - ${GAP * 2}px)`,
+      overflowY: 'auto',
+      // DialogContent sits at z-[100]. Portalled out of it, anything lower than
+      // that renders behind the modal this is being used from.
+      zIndex: 110,
+    };
+  }, [anchor, size, viewport]);
+
+  // Portalled to document.body so `position: fixed` means the viewport. Rendered
+  // in place it inherits DialogContent's transform as its containing block and
+  // the placement above is computed against the wrong box entirely.
+  // Guarded for SSR: document does not exist during the server render.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       ref={cardRef}
       style={style}
@@ -116,6 +189,7 @@ export function LineFeedbackPopover({ line, anchor, onSave, onClose }: LineFeedb
           {saving ? 'Saving…' : right.trim() ? 'Teach replacement' : 'Save dislike'}
         </Button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
