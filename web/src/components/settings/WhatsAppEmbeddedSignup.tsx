@@ -51,6 +51,7 @@ export function WhatsAppEmbeddedSignup() {
   const {
     accounts, isLoading: accountsLoading, refetch,
     disconnect, isDisconnecting, disconnectWarnings,
+    registerNumber, isRegistering, registerError,
   } = useWhatsAppAccounts();
 
   const [justConnected, setJustConnected] = useState<string | null>(null);
@@ -62,6 +63,31 @@ export function WhatsAppEmbeddedSignup() {
         setJustConnected(account.display_phone_number || account.display_name);
       },
     });
+
+  // Meta left this number unregistered — it shows "Offline" in WhatsApp Manager
+  // and receives NOTHING, while everything in here looks connected. Registering
+  // is the repair, but it writes a two-step-verification PIN onto a number the
+  // tenant may still be answering from the WhatsApp Business App, so it asks
+  // first and says exactly that.
+  const handleRegister = async (account: WhatsAppAccount) => {
+    const label = account.display_phone_number || account.display_name;
+    const ok = window.confirm(
+      `Register ${label} for the WhatsApp Cloud API?\n\n` +
+      'Meta reports this number as not registered, which is why it receives no ' +
+      'incoming messages.\n\n' +
+      'This sets a two-step-verification PIN on the number. If you already use ' +
+      'this number in the WhatsApp Business App, that PIN applies there too. If ' +
+      'it already has a PIN, Meta will refuse and you will need to clear it in ' +
+      'WhatsApp Manager first.'
+    );
+    if (!ok) return;
+    try {
+      await registerNumber(account.id);
+    } catch {
+      // Surfaced from registerError below — Meta's own wording is what the
+      // tenant has to act on, so it is rendered rather than swallowed here.
+    }
+  };
 
   const handleDisconnect = async (account: WhatsAppAccount) => {
     const label = account.display_phone_number || account.display_name;
@@ -227,15 +253,55 @@ export function WhatsAppEmbeddedSignup() {
                       )}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDisconnect(account)}
-                    disabled={isDisconnecting}
-                    className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    <Unplug className="h-4 w-4" />
-                    Disconnect
-                  </button>
+                  <div className="shrink-0 flex items-center gap-1">
+                    {/* Only when Meta has actually said the number is not
+                        registered. ok === null means the step was skipped on a
+                        coexistence flow and never contradicted — nothing to
+                        repair, so no button. */}
+                    {account.phone_registration?.ok === false && (
+                      <button
+                        onClick={() => handleRegister(account)}
+                        disabled={isRegistering}
+                        className="px-3 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isRegistering
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Plug className="h-4 w-4" />}
+                        {isRegistering ? 'Registering…' : 'Register number'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDisconnect(account)}
+                      disabled={isDisconnecting}
+                      className="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <Unplug className="h-4 w-4" />
+                      Disconnect
+                    </button>
+                  </div>
                 </div>
+
+                {/* Why the number is silent, stated plainly. Without this the
+                    row looks healthy and the tenant has no way to know that
+                    nothing is arriving. */}
+                {account.phone_registration?.ok === false && (
+                  <div className="mt-3 flex items-start gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p className="text-sm">
+                      Meta reports this number as <strong>not registered</strong> for the
+                      Cloud API, so it will not receive incoming messages — senders see a
+                      single tick. Outbound from the WhatsApp Business App still works,
+                      which is why the connection can look healthy.
+                    </p>
+                  </div>
+                )}
+
+                {registerError && (
+                  <div className="mt-2 flex items-start gap-2 p-3 rounded-md bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p className="text-sm">{registerError}</p>
+                  </div>
+                )}
 
                 {/* Meta refused the one-time history import - the only place the
                     tenant can be told, since it happens after the handshake. */}
