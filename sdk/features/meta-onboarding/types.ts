@@ -102,6 +102,17 @@ export interface WhatsAppAccount {
    * step was skipped on a coexistence flow and Meta never contradicted it.
    */
   phone_registration: PhoneRegistrationState | null;
+  /**
+   * Meta says this number is not registered, so it shows "Offline" in WhatsApp
+   * Manager and receives nothing.
+   *
+   * Derived server-side from BOTH shapes the refusal is recorded in, because
+   * they differ by onboarding date: `phone_registration.ok === false` on newer
+   * rows, and Meta's 133010 buried in the SMB sync errors on older ones - which
+   * is what every already-broken account actually carries. Do not re-derive
+   * this on the client from `phone_registration` alone; that misses them all.
+   */
+  needs_registration: boolean;
 }
 
 /** @see WhatsAppAccount.phone_registration */
