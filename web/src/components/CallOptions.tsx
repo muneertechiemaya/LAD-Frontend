@@ -399,7 +399,21 @@ export function CallOptions(props: CallOptionsProps) {
         voiceAgentId: agentId,
         phoneNumber: fullPhoneNumber,
         context: additionalInstructions || "Call initiated from dashboard",
-        fromNumber: fromNumber // Pass from number from call configuration
+        fromNumber: fromNumber, // Pass from number from call configuration
+        // The "Lead name (optional)" field was collected, cleared on submit and
+        // never sent, so the agent opened by asking for a name that was already
+        // on screen (call 6933a237).
+        //
+        // cleanLeadName falls back to the PHONE NUMBER for an empty or
+        // placeholder name, which is a sane display default for the batch table
+        // but must never travel as a lead name: the agent greets the lead by it,
+        // and "9133500099 గారండి" is worse than asking. So the fallback is
+        // dropped here and the name is simply absent, which is what the agent
+        // is built to handle.
+        leadName: (() => {
+          const cleaned = cleanLeadName(clientName, fullPhoneNumber);
+          return cleaned && cleaned !== fullPhoneNumber ? cleaned : undefined;
+        })()
       });
       push({ title: "Success", description: "Call initiated successfully!" });
       onDialChange("");
