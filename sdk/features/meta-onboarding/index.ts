@@ -23,6 +23,8 @@ export type {
   ExchangeSignupResponse,
   WhatsAppAccountsResponse,
   DisconnectResponse,
+  PhoneRegistrationState,
+  RegisterNumberResponse,
 } from './types';
 
 // API functions + query options
@@ -34,6 +36,7 @@ export {
   getWhatsAppAccounts,
   getWhatsAppAccountsOptions,
   disconnectWhatsAppAccount,
+  registerWhatsAppNumber,
 } from './api';
 
 // Hooks

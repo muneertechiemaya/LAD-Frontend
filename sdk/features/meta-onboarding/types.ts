@@ -93,6 +93,33 @@ export interface WhatsAppAccount {
   coexistence: boolean;
   /** Null until Meta has answered the history request, and on non-coexistence accounts. */
   coexistence_history: CoexistenceHistoryState | null;
+  /**
+   * What happened to Cloud API registration at onboarding.
+   *
+   * `ok: false` with `metaCode: 133010` is the state that matters: Meta says
+   * the number is NOT registered, so it shows "Offline" in WhatsApp Manager and
+   * receives nothing - senders see a single tick forever. `ok: null` means the
+   * step was skipped on a coexistence flow and Meta never contradicted it.
+   */
+  phone_registration: PhoneRegistrationState | null;
+}
+
+/** @see WhatsAppAccount.phone_registration */
+export interface PhoneRegistrationState {
+  /** true registered, false Meta says it is not, null skipped and unchallenged. */
+  ok: boolean | null;
+  skipped?: boolean;
+  reason?: string;
+  metaCode?: number;
+  error?: string | null;
+  registered_at?: string;
+  registered_via?: string;
+}
+
+export interface RegisterNumberResponse {
+  success: boolean;
+  registered: boolean;
+  phoneNumberId: string;
 }
 
 /** What Meta's popup hands back on a successful signup. */
