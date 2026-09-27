@@ -254,11 +254,12 @@ export function WhatsAppEmbeddedSignup() {
                     </p>
                   </div>
                   <div className="shrink-0 flex items-center gap-1">
-                    {/* Only when Meta has actually said the number is not
-                        registered. ok === null means the step was skipped on a
-                        coexistence flow and never contradicted — nothing to
-                        repair, so no button. */}
-                    {account.phone_registration?.ok === false && (
+                    {/* Server-derived: true when Meta has actually refused,
+                        in either of the two shapes the refusal is recorded in.
+                        Also requires an active row — a disconnected account can
+                        carry a historic failure, and registering it would be
+                        repairing something nobody is using. */}
+                    {account.needs_registration && account.status === 'active' && (
                       <button
                         onClick={() => handleRegister(account)}
                         disabled={isRegistering}
@@ -284,7 +285,7 @@ export function WhatsAppEmbeddedSignup() {
                 {/* Why the number is silent, stated plainly. Without this the
                     row looks healthy and the tenant has no way to know that
                     nothing is arriving. */}
-                {account.phone_registration?.ok === false && (
+                {account.needs_registration && account.status === 'active' && (
                   <div className="mt-3 flex items-start gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <p className="text-sm">
