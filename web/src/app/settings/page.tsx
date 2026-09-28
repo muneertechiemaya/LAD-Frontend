@@ -157,7 +157,7 @@ const SettingsPage: React.FC = () => {
                   sp.set('tab', tab.id);
                   router.replace(`/settings?${sp.toString()}`);
                 }}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
                     ? 'bg-white dark:bg-gray-800 text-[#0B1957] dark:text-blue-400 shadow-md font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-800/50'
                 }`}
@@ -168,7 +168,7 @@ const SettingsPage: React.FC = () => {
             ))}
             <button
               onClick={() => router.push('/settings/icp-search-strategy')}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
+              className="flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
             >
               <Crosshair className="w-4 h-4" />
               ICP Strategy

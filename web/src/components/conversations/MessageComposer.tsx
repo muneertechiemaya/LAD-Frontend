@@ -134,7 +134,7 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
             <div className="w-8 h-8 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center"><BarChart2 className="w-4 h-4 text-white"/></div>
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Create Poll</h3>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"><X className="w-5 h-5"/></button>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"><X className="w-5 h-5"/></button>
         </div>
         <div className="p-5 space-y-3">
           <div>
@@ -150,7 +150,7 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
                   <span className="w-5 h-5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center justify-center font-bold shrink-0">{i+1}</span>
                   <input value={opt} onChange={e=>updateOption(i,e.target.value)} placeholder={`Option ${i+1}`}
                     className="flex-1 px-3 py-2 border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500/50"/>
-                  {options.length>2 && <button onClick={()=>removeOption(i)}><X className="w-4 h-4 text-zinc-400 hover:text-red-500"/></button>}
+                  {options.length>2 && <button onClick={()=>removeOption(i)} aria-label="Remove option" className="max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"><X className="w-4 h-4 text-zinc-500 hover:text-red-500 dark:text-zinc-400"/></button>}
                 </div>
               ))}
             </div>
@@ -199,7 +199,7 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
             <div className="w-8 h-8 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white"/></div>
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Share Contact</h3>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"><X className="w-5 h-5"/></button>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"><X className="w-5 h-5"/></button>
         </div>
         <div className="p-5 space-y-3">
           {fields.map(f=>(
@@ -246,7 +246,7 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
             <div className="w-8 h-8 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white"/></div>
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Share Event</h3>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"><X className="w-5 h-5"/></button>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"><X className="w-5 h-5"/></button>
         </div>
         <div className="p-5 space-y-3">
           <div>
@@ -322,7 +322,7 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
             <div className="w-8 h-8 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white"/></div>
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Share Location</h3>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"><X className="w-5 h-5"/></button>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"><X className="w-5 h-5"/></button>
         </div>
         <div className="p-5 space-y-4">
           <button onClick={getLocation} disabled={gpsStatus==='loading'}
@@ -336,12 +336,12 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
               </p>
               {coords     && <p className="text-xs text-zinc-500 dark:text-zinc-400">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
               {gpsStatus==='error' && <p className="text-xs text-red-500">Location access denied</p>}
-              {gpsStatus==='idle'  && <p className="text-xs text-zinc-400 dark:text-zinc-500">Uses your device GPS</p>}
+              {gpsStatus==='idle'  && <p className="text-xs text-zinc-500 dark:text-zinc-400">Uses your device GPS</p>}
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-400 ml-auto"/>
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"/><span className="text-xs text-zinc-400 font-medium">or</span><div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"/>
+            <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"/><span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">or</span><div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"/>
           </div>
           <div>
             <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Enter address or place</label>
@@ -385,7 +385,7 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
         {/* Header */}
         <div className="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Stickers</h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -784,7 +784,7 @@ export const MessageComposer = memo(function MessageComposer({
                 </div>
               )}
               <span className="truncate text-xs text-zinc-800 dark:text-zinc-200">{pf.file.name}</span>
-              <button onClick={()=>removePendingFile(pf.id)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shrink-0">
+              <button onClick={()=>removePendingFile(pf.id)} aria-label="Remove file" className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 shrink-0 max-lg:flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center">
                 <X className="h-3.5 w-3.5"/>
               </button>
             </div>
@@ -800,7 +800,7 @@ export const MessageComposer = memo(function MessageComposer({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon"
-                className={cn('h-9 w-9 flex-shrink-0 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors',
+                className={cn('h-9 w-9 max-lg:h-11 max-lg:w-11 flex-shrink-0 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors',
                   agentType === 'human' ? 'text-amber-500 hover:text-amber-600' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300')}
                 disabled={disabled}
                 title={agentType === 'human' ? 'Human agent controls this chat' : 'AI agent controls this chat'}>
@@ -843,7 +843,7 @@ export const MessageComposer = memo(function MessageComposer({
 
           {showAttachMenu && (
             <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-3 z-40">
-              <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2 px-1">Attach</p>
+              <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2 px-1">Attach</p>
               <div className="grid grid-cols-3 gap-1">
                 {[
                   // Sticker is emoji-text (inserted into the message input), so it
@@ -873,7 +873,7 @@ export const MessageComposer = memo(function MessageComposer({
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 flex-shrink-0 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex-shrink-0 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             disabled={disabled || !conversationId}
             title="Send template message"
             onClick={() => setIsTemplatePickerOpen(true)}
@@ -918,7 +918,7 @@ export const MessageComposer = memo(function MessageComposer({
         {/* ── Sticker / Emoji button ── */}
         <div className="relative flex-shrink-0 hidden lg:block">
           <Button variant="ghost" size="icon"
-            className="h-9 w-9 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             disabled={disabled}
             onClick={()=>setShowStickers(v=>!v)}>
             <Smile className="h-5 w-5"/>
@@ -936,7 +936,7 @@ export const MessageComposer = memo(function MessageComposer({
           onClick={handleSend}
           disabled={!canSend}
           size="icon"
-          className="h-9 w-9 flex-shrink-0 bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white disabled:opacity-40 transition-colors shadow-xs">
+          className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex-shrink-0 bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white disabled:opacity-40 transition-colors shadow-xs">
           <Send className="h-4 w-4"/>
         </Button>
       </div>

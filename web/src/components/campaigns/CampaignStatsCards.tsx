@@ -177,7 +177,7 @@ export default function CampaignStatsCards({ stats, loading = false }: CampaignS
         const yesterday = stats.connections_yesterday ?? 0;
         const diff = today - yesterday;
         const TrendIcon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
-        const trendColor = diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+        const trendColor = diff > 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-slate-600';
         const trendBg = diff > 0 ? 'bg-green-50' : diff < 0 ? 'bg-red-50' : 'bg-slate-50';
         const displayValue = networkSize != null ? networkSize : (stats.total_connected || 0);
         const displayLabel = networkSize != null ? '1st Connections' : 'Connections Accepted';

@@ -20,14 +20,14 @@ const Footer = memo(function Footer() {
           {/* Product */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Product</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-lg:space-y-0">
               <li>
-                <Link href="/#features" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/#features" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/pricing" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Pricing
                 </Link>
               </li>
@@ -37,14 +37,14 @@ const Footer = memo(function Footer() {
           {/* Company */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Company</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-lg:space-y-0">
               <li>
-                <Link href="/blog" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/blog" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Contact
                 </Link>
               </li>
@@ -54,24 +54,24 @@ const Footer = memo(function Footer() {
           {/* Legal */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Legal</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-lg:space-y-0">
               <li>
-                <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms-of-service" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/terms-of-service" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/cookies-policy" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/cookies-policy" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Cookies Policy
                 </Link>
               </li>
               <li>
-                <Link href="/account-deletion-policy" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/account-deletion-policy" className="text-gray-300 hover:text-white transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center">
                   Account Deletion Policy
                 </Link>
               </li>

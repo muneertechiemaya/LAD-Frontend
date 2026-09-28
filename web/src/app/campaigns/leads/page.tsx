@@ -328,7 +328,7 @@ export default function CampaignLeadsPage() {
   const filteredLeads = leads;
   if (loading && leads.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#000724]">
+      <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-[#000724]">
         <div className="flex flex-col gap-4 items-center">
           <Loader2 className="w-8 h-8 animate-spin dark:text-white" />
           <p className="dark:text-white">Loading leads...</p>
@@ -337,7 +337,7 @@ export default function CampaignLeadsPage() {
     );
   }
   return (
-    <div className="w-full h-screen overflow-auto bg-slate-50 dark:bg-[#000724]">
+    <div className="w-full h-full overflow-auto bg-slate-50 dark:bg-[#000724]">
       <div className="p-6 pb-12">
         {/* Header */}
 
@@ -346,7 +346,7 @@ export default function CampaignLeadsPage() {
             <h1 className="text-2xl sm:text-4xl font-bold text-[#1E293B] dark:text-white mb-1">
               Campaign Leads
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-300">
               {filteredLeads.length} leads
             </p>
           </div>
@@ -375,10 +375,10 @@ export default function CampaignLeadsPage() {
           <Card className="rounded-2xl border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] shadow-sm">
             <CardContent className="text-center py-12">
               <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h6 className="text-lg font-semibold text-slate-500 mb-2">
+              <h6 className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
                 {searchTerm ? "No leads match your search" : "No leads found"}
               </h6>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 {searchTerm
                   ? "Try adjusting your search terms"
                   : "Leads will appear here once the campaign starts generating them"}

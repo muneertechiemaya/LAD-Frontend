@@ -12,7 +12,10 @@ export default function AuthLayout({
 }) {
   // Public pages (landing, login, pricing, etc.) get full width layout
   return (
-    <div className="flex h-screen bg-background dark:bg-[#000724]">
+    // h-dvh, not h-screen: on iOS Safari 100vh includes the area under the
+    // browser toolbar, so the bottom of every scrolling page sat behind it.
+    // Desktop browsers have no dynamic toolbar, so dvh === vh there.
+    <div className="flex h-dvh bg-background dark:bg-[#000724]">
       <Sidebar />
       <HeaderLoader />
       <main className="flex-1 overflow-y-auto overflow-x-hidden ml-0 md:ml-16 pt-14 md:pt-0">

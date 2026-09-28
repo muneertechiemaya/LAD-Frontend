@@ -73,9 +73,9 @@ export default function ChatInputClaude({
         className={cn(
           'relative flex items-center justify-center gap-3 px-6 py-3 border transition-all rounded-[32px]',
           isFocused
-            ? 'border-[#172560]/40 shadow-md bg-white ring-2 ring-[#172560]/20'
-            : 'border-gray-300 hover:border-gray-400 bg-white shadow-[0_4px_14px_rgba(0,0,0,0.03)]',
-          disabled && 'opacity-60 bg-gray-50'
+            ? 'border-[#172560]/40 shadow-md bg-white dark:bg-[#0C162F] dark:border-[#1c2c4e] ring-2 ring-[#172560]/20'
+            : 'border-gray-300 hover:border-gray-400 bg-white dark:bg-[#0C162F] dark:border-[#1c2c4e] shadow-[0_4px_14px_rgba(0,0,0,0.03)]',
+          disabled && 'opacity-60 bg-gray-50 dark:bg-[#0C162F]'
         )}
         style={{ zIndex: 1 }}
       >
@@ -89,8 +89,9 @@ export default function ChatInputClaude({
                 e.stopPropagation();
                 onShowWorkflowLibrary();
               }}
-              className="p-1.5 text-[#172560] hover:text-[#0f1840] hover:bg-[#172560]/5 rounded-lg transition-colors"
+              className="p-1.5 max-lg:p-3.5 text-[#172560] dark:text-blue-300 hover:text-[#0f1840] dark:hover:text-blue-200 hover:bg-[#172560]/5 rounded-lg transition-colors"
               title="Workflow Library"
+              aria-label="Workflow Library"
             >
               <Library className="w-4 h-4" />
             </button>
@@ -121,7 +122,7 @@ export default function ChatInputClaude({
           disabled={disabled}
           rows={1}
           className={cn(
-            "flex-1 resize-none border-0 outline-none bg-transparent text-gray-900 placeholder:text-gray-400 text-base leading-6 min-h-[24px] max-h-[200px] overflow-y-auto",
+            "flex-1 resize-none border-0 outline-none bg-transparent text-gray-900 placeholder:text-gray-500 text-base leading-6 min-h-[24px] max-lg:min-h-11 max-lg:py-2.5 max-h-[200px] overflow-y-auto",
             disabled && "cursor-not-allowed opacity-50"
           )}
           style={{
@@ -136,12 +137,13 @@ export default function ChatInputClaude({
             type="submit"
             disabled={!input.trim() || disabled}
             className={cn(
-              'p-2.5 rounded-full transition-colors ml-1 flex items-center justify-center',
+              'p-2.5 max-lg:p-3.5 rounded-full transition-colors ml-1 flex items-center justify-center',
               input.trim() && !disabled
                 ? 'bg-[#172560] text-white hover:bg-[#0f1840] shadow-md hover:shadow-lg hover:-translate-y-0.5 transform transition-all'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             )}
             title="Send message"
+            aria-label="Send message"
           >
             <Send className="w-4 h-4" />
           </button>

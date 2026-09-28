@@ -2300,7 +2300,7 @@ When complete, present the comprehensive ICP profile focused on the TARGET CUSTO
                 </div>
               )}
               {limits && limits.total === 0 && (
-                <div className="absolute -top-3 -right-3 bg-amber-500 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow-lg z-10 flex items-center gap-1">
+                <div className="absolute -top-3 -right-3 bg-amber-800 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow-lg z-10 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   NO ACCOUNT
                 </div>
@@ -2334,7 +2334,7 @@ When complete, present the comprehensive ICP profile focused on the TARGET CUSTO
                 </div>
               )}
               {limits && limits.total === 0 && (
-                <div className="absolute -top-3 -right-3 bg-amber-500 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow-lg z-10 flex items-center gap-1">
+                <div className="absolute -top-3 -right-3 bg-amber-800 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow-lg z-10 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   NO ACCOUNT
                 </div>

@@ -430,7 +430,7 @@ export default function CampaignAnalyticsPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3 ml-11 flex-wrap">
-            <Badge className={`capitalize dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!shadow-none dark:!font-extrabold dark:tracking-wide ${analytics.campaign.status === 'running' ? 'dark:!text-emerald-400' : 'dark:!text-amber-300'}`} style={{ backgroundColor: analytics.campaign.status === 'running' ? '#dbfce7' : '#FEF3C7', color: analytics.campaign.status === 'running' ? 'green' : '#D97706' }}>
+            <Badge className={`capitalize dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!shadow-none dark:!font-extrabold dark:tracking-wide ${analytics.campaign.status === 'running' ? 'dark:!text-emerald-400' : 'dark:!text-amber-300'}`} style={{ backgroundColor: analytics.campaign.status === 'running' ? '#dbfce7' : '#FEF3C7', color: analytics.campaign.status === 'running' ? '#15803D' : '#92400E' }}>
               <div className="w-2 h-2 rounded-full mr-2 dark:!hidden" style={{ backgroundColor: analytics.campaign.status === 'running' ? '#10B981' : '#F59E0B' }} />
               {analytics.campaign.status}
             </Badge>

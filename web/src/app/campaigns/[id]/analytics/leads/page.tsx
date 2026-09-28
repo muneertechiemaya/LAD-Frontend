@@ -454,7 +454,7 @@ export default function CampaignLeadsPage() {
   const filteredLeads = leads;
   if (loading && leads.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#000724]">
+      <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-[#000724]">
         <div className="flex flex-col gap-4 items-center">
           <Loader2 className="w-8 h-8 animate-spin dark:text-white" />
           <p className="dark:text-white">Loading leads...</p>
@@ -463,7 +463,7 @@ export default function CampaignLeadsPage() {
     );
   }
   return (
-    <div className="w-full h-screen overflow-auto bg-slate-50 dark:bg-[#000724]">
+    <div className="w-full h-full overflow-auto bg-slate-50 dark:bg-[#000724]">
       <div className="p-6 pb-12">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center">
@@ -498,7 +498,7 @@ export default function CampaignLeadsPage() {
             <button
               key={tab.key}
               onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=${tab.key}`)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+              className={`px-4 py-1.5 max-lg:min-h-11 rounded-full text-sm font-semibold border transition-all ${
                 filterParams === tab.key
                   ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-sm'
                   : 'bg-white dark:bg-[#071131] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-[#1e293b]/60 hover:border-[#0b1957] hover:text-[#0b1957] dark:hover:border-blue-500 dark:hover:text-white dark:hover:bg-[#0e1d4d]'
@@ -530,7 +530,7 @@ export default function CampaignLeadsPage() {
               <h6 className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
                 {searchQuery ? 'No leads match your search' : 'No leads found'}
               </h6>
-              <p className="text-sm text-slate-400 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 {searchQuery ? 'Try adjusting your search terms' : 'Leads will appear here once the campaign starts generating them'}
               </p>
             </CardContent>
@@ -581,7 +581,7 @@ export default function CampaignLeadsPage() {
                     <div className="flex gap-1.5 mt-2 px-1">
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'linkedin')}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#0b1957] dark:bg-blue-600 text-white text-xs font-semibold hover:bg-[#1a2d8f] dark:hover:bg-blue-500 active:scale-95 transition-all shadow-sm cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 max-lg:min-h-11 rounded-xl bg-[#0b1957] dark:bg-blue-600 text-white text-xs font-semibold hover:bg-[#1a2d8f] dark:hover:bg-blue-500 active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <Linkedin className="w-3.5 h-3.5" />
                         Follow-up
@@ -589,14 +589,16 @@ export default function CampaignLeadsPage() {
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'email')}
                         title="Email follow-up"
-                        className="flex items-center justify-center w-9 rounded-xl bg-slate-100 dark:bg-[#071131] dark:border dark:border-[#1e293b]/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1e293b] active:scale-95 transition-all shadow-sm cursor-pointer"
+                        aria-label="Email follow-up"
+                        className="flex items-center justify-center w-9 max-lg:w-11 max-lg:min-h-11 rounded-xl bg-slate-100 dark:bg-[#071131] dark:border dark:border-[#1e293b]/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1e293b] active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <Mail className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'whatsapp')}
                         title="WhatsApp follow-up"
-                        className="flex items-center justify-center w-9 rounded-xl bg-green-50 dark:bg-emerald-950/30 dark:border dark:border-emerald-800/40 text-green-600 dark:text-emerald-400 hover:bg-green-100 dark:hover:bg-emerald-950/60 active:scale-95 transition-all shadow-sm cursor-pointer"
+                        aria-label="WhatsApp follow-up"
+                        className="flex items-center justify-center w-9 max-lg:w-11 max-lg:min-h-11 rounded-xl bg-green-50 dark:bg-emerald-950/30 dark:border dark:border-emerald-800/40 text-green-600 dark:text-emerald-400 hover:bg-green-100 dark:hover:bg-emerald-950/60 active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>
@@ -652,7 +654,7 @@ export default function CampaignLeadsPage() {
                       if (followupLead) openFollowupDialog(followupLead, ch.key);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-1.5 max-lg:min-h-11 rounded-full text-sm font-semibold border transition-all ${
                     followupChannel === ch.key
                       ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-sm'
                       : 'bg-white dark:bg-[#071131] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-[#1e293b]/60 hover:border-[#0b1957] hover:text-[#0b1957] dark:hover:border-blue-500 dark:hover:text-white dark:hover:bg-[#0e1d4d]'

@@ -8572,7 +8572,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border dark:border-blue-950/40 bg-card dark:bg-[#071131] flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" title="Close builder">
+          <button onClick={onClose} className="inline-flex items-center gap-1 max-lg:min-h-11 max-lg:min-w-11 text-sm text-muted-foreground hover:text-foreground" title="Close builder">
             <X className="h-4 w-4" /> Close
           </button>
           <span className="text-sm font-semibold text-foreground hidden sm:block">Custom Accelerator</span>
@@ -8650,7 +8650,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-[#030a21]/60 border border-transparent dark:border-blue-950/40">
             {([['templates', 'Templates'], ['ai', 'Build with AI'], ['steps', 'From steps']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setPaletteTab(k)}
-                className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[12px] font-semibold transition-all ${
+                className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-2 max-lg:min-h-11 rounded-lg text-[12px] font-semibold transition-all ${
                   paletteTab === k
                     ? 'bg-card dark:bg-[#071131] text-foreground shadow-sm border border-transparent dark:border-blue-950/40'
                     : 'text-muted-foreground hover:text-foreground'
@@ -8925,7 +8925,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…"
-                className="w-full rounded-xl border border-input dark:border-slate-700/80 bg-muted/40 dark:bg-slate-800/50 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 dark:focus:border-sky-400 transition-colors" />
+                className="w-full rounded-xl border border-input dark:border-slate-700/80 bg-muted/40 dark:bg-slate-800/50 pl-9 pr-3 py-2.5 max-lg:min-h-11 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 dark:focus:border-sky-400 transition-colors" />
             </div>
 
             <div>
@@ -8983,8 +8983,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                               {t.chain.map((c, i) => (
                                 <Fragment key={i}>
                                   {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
-                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap"
-                                    style={{ background: `${t.accent}12`, color: t.accent }}>{c}</span>
+                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap dark:![color:color-mix(in_srgb,var(--chip-accent)_40%,white)]"
+                                    style={{ background: `${t.accent}12`, color: t.accent, ['--chip-accent' as string]: t.accent } as React.CSSProperties}>{c}</span>
                                 </Fragment>
                               ))}
                             </div>
@@ -9003,12 +9003,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                                 {t.category === 'strategy' && (
                                   <button type="button"
                                     onClick={(e) => { e.stopPropagation(); setPublishingId(strategyIdFromKey(t.key)); }}
-                                    className="flex-1 px-3 py-1.5 rounded-xl border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 transition-colors text-center truncate">
+                                    className="flex-1 px-3 py-1.5 max-lg:min-h-11 rounded-xl border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 transition-colors text-center truncate">
                                     Share
                                   </button>
                                 )}
                                 <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
-                                  className="flex-1 px-3 py-1.5 rounded-xl bg-primary text-white text-[12px] font-semibold hover:bg-primary/90 transition-colors text-center truncate">
+                                  className="flex-1 px-3 py-1.5 max-lg:min-h-11 rounded-xl bg-primary text-white text-[12px] font-semibold hover:bg-primary/90 transition-colors text-center truncate">
                                   {t.category === 'community' ? 'Import' : 'Use template'}
                                 </button>
                               </div>
