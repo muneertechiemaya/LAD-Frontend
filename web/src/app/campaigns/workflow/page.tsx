@@ -61,7 +61,7 @@ function WorkflowRoute() {
           : undefined;
 
   return (
-    <div className="h-screen">
+    <div className="h-full">
       <CustomWorkflowBuilder
         onClose={() => router.push(fromStudio ? '/studio' : '/campaigns')}
         initialAiTemplate={template}
@@ -76,7 +76,7 @@ function WorkflowRoute() {
 
 export default function CustomWorkflowPage() {
   return (
-    <React.Suspense fallback={<div className="h-screen" />}>
+    <React.Suspense fallback={<div className="h-full" />}>
       <WorkflowRoute />
     </React.Suspense>
   );

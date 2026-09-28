@@ -53,7 +53,7 @@ function OutreachMockUI() {
         <div className="p-3 rounded-lg bg-background border border-border">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Template</span>
-            <span className="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">AI Personalized</span>
+            <span className="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold">AI Personalized</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">&quot;Hi [Name], noticed your sales team is using [Platform]...&quot;</p>
         </div>
@@ -76,7 +76,7 @@ function AITakeoverMockUI() {
         </div>
         <div className="flex justify-start">
           <div className="px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground max-w-[70%] flex items-center gap-2">
-            <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-700 font-semibold">Mr LAD</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-semibold">Mr LAD</span>
             <span>We use HubSpot...</span>
           </div>
         </div>
@@ -103,7 +103,7 @@ function DealsMockUI() {
             <p className="text-xs text-muted-foreground">Deal Value</p>
             <p className="text-lg font-bold text-foreground">$45,000</p>
           </div>
-          <div className="px-2 py-1 rounded-full bg-green-500/10 text-green-700 flex items-center gap-1 text-xs font-semibold">
+          <div className="px-2 py-1 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 flex items-center gap-1 text-xs font-semibold">
             <Check className="w-3 h-3" /> Qualified
           </div>
         </div>
@@ -369,21 +369,29 @@ export default function HowItWorksSection() {
             </div>
 
             {/* Mobile Step Indicator Dots */}
-            <div className="md:hidden flex justify-center gap-2">
+            <div className="md:hidden flex justify-center gap-2 max-lg:gap-0">
               {steps.map((_, i) => (
-                <motion.button
+                // The button is the 44px touch target; the animated dot inside is the visual.
+                <button
                   key={i}
+                  type="button"
+                  aria-label={`Step ${i + 1}`}
+                  aria-current={activeStep === i ? 'step' : undefined}
                   onClick={() => {
                     setActiveStep(i);
                     setCompletedSteps((c) => [...new Set([...c, i])]);
                   }}
-                  animate={{
-                    width: activeStep === i ? 28 : 10,
-                    backgroundColor: activeStep === i ? '#0B1957' : '#CBD5E1'
-                  }}
-                  className="h-2.5 rounded-full"
-                  transition={{ type: 'spring', stiffness: 300 }}
-                />
+                  className="flex items-center justify-center max-lg:h-11 max-lg:min-w-11"
+                >
+                  <motion.span
+                    animate={{
+                      width: activeStep === i ? 28 : 10,
+                      backgroundColor: activeStep === i ? '#0B1957' : '#CBD5E1'
+                    }}
+                    className="block h-2.5 rounded-full"
+                    transition={{ type: 'spring', stiffness: 300 }}
+                  />
+                </button>
               ))}
             </div>
           </motion.div>
@@ -400,7 +408,7 @@ export default function HowItWorksSection() {
             >
               {/* Left: Step content */}
               <div>
-                <span className="text-6xl md:text-7xl font-black text-primary/10 leading-none">{steps[activeStep].step}</span>
+                <span aria-hidden="true" className="text-6xl md:text-7xl font-black text-primary/10 leading-none">{steps[activeStep].step}</span>
                 <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${steps[activeStep].color} flex items-center justify-center shadow-lg -mt-4 mb-4 text-white`}>
                   {steps[activeStep].icon}
                 </div>
@@ -425,18 +433,25 @@ export default function HowItWorksSection() {
         </div>
 
         {/* Progress indicator dots below */}
-        <motion.div className="flex justify-center gap-2 mb-12" variants={stepBubbleVariants} custom={3}>
+        <motion.div className="flex justify-center gap-2 max-lg:gap-0 mb-12" variants={stepBubbleVariants} custom={3}>
           {steps.map((_, i) => (
-            <motion.button
+            <button
               key={i}
+              type="button"
+              aria-label={`Step ${i + 1}`}
+              aria-current={activeStep === i ? 'step' : undefined}
               onClick={() => setActiveStep(i)}
-              animate={{
-                width: activeStep === i ? 28 : 10,
-                backgroundColor: activeStep === i ? '#0B1957' : '#CBD5E1'
-              }}
-              className="h-2.5 rounded-full"
-              transition={{ type: 'spring', stiffness: 300 }}
-            />
+              className="flex items-center justify-center max-lg:h-11 max-lg:min-w-11"
+            >
+              <motion.span
+                animate={{
+                  width: activeStep === i ? 28 : 10,
+                  backgroundColor: activeStep === i ? '#0B1957' : '#CBD5E1'
+                }}
+                className="block h-2.5 rounded-full"
+                transition={{ type: 'spring', stiffness: 300 }}
+              />
+            </button>
           ))}
         </motion.div>
 

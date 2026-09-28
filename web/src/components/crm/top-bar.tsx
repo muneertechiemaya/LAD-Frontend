@@ -67,7 +67,7 @@ export default function TopBar({
           )}
           <button
             disabled
-            className="w-8 h-8 grid place-items-center rounded-md text-slate-600 dark:text-slate-300 opacity-50 cursor-not-allowed"
+            className="w-8 h-8 max-lg:w-11 max-lg:h-11 grid place-items-center rounded-md text-slate-600 dark:text-slate-300 opacity-50 cursor-not-allowed"
             aria-label="Notifications"
             title="Not available yet"
           >

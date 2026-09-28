@@ -41,7 +41,7 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
               <button
                 key={v.k}
                 onClick={() => onChange(v.k)}
-                className={`h-7 px-2.5 rounded-full text-[11.5px] font-medium inline-flex items-center gap-1 transition-colors ${
+                className={`h-7 max-lg:h-11 max-lg:min-w-11 px-2.5 rounded-full text-[11.5px] font-medium inline-flex items-center gap-1 transition-colors ${
                   active
                     ? 'text-white bg-[#0B1957] dark:bg-[#2563eb]'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#0e1d4d]'

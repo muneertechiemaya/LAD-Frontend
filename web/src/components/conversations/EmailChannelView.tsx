@@ -840,7 +840,7 @@ function ComposeWindow({
                 type="button"
                 title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
                 className={cn(
-                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] flex-shrink-0',
+                  'h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] flex-shrink-0',
                   agentType === 'human' && 'text-orange-500'
                 )}
               >
@@ -1557,7 +1557,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
       {/* Header */}
       <div className="px-4 py-3 flex items-start gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
         <button onClick={onBack} title="Back to inbox" aria-label="Back to inbox"
-          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] flex-shrink-0 mt-1">
+          className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] flex-shrink-0 mt-1">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
@@ -1575,16 +1575,16 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
         <div className="flex items-center gap-0.5 flex-shrink-0">
           <button title="Print" aria-label="Print email"
             onClick={() => window.print()}
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            className="hidden sm:flex h-9 w-9 max-lg:h-11 max-lg:w-11 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <Printer className="h-4 w-4" />
           </button>
           <button title="Open in new window" aria-label="Open in new window"
             onClick={() => window.open(window.location.href, '_blank')}
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            className="hidden sm:flex h-9 w-9 max-lg:h-11 max-lg:w-11 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <ExternalLink className="h-4 w-4" />
           </button>
           <button onClick={loadThread} title="Refresh" aria-label="Refresh thread"
-            className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <RefreshCw className={cn('h-4 w-4', loadingThread && 'animate-spin')} />
           </button>
           <button onClick={onShowDetails} title={showDetails ? 'Hide details' : 'Show details'} aria-label={showDetails ? 'Hide contact details' : 'Show contact details'}
@@ -1954,7 +1954,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
     <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-[#2d2d2d]">
       <div className="h-14 px-4 flex items-center gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
         <button onClick={onBack} title="Back" aria-label="Back to email list"
-          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+          className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
           <ArrowLeft className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
         </button>
         <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: group.color }}>
@@ -1981,7 +1981,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
           onClick={() => loadGroupDetails()}
           title="Refresh group members"
           aria-label="Refresh group members"
-          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+          className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </button>
       </div>
@@ -2596,7 +2596,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             onClick={() => setSidebarOpen(v => !v)}
             title="Main menu"
             aria-label="Toggle main menu"
-            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]"
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]"
           >
             <Menu className="h-4 w-4 md:h-5 md:w-5 text-[#444746] dark:text-[#9aa0a6]" />
           </button>
@@ -2775,21 +2775,21 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             onClick={() => setShowImport(true)}
             title="Import leads"
             aria-label="Import leads"
-            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
             <UserPlus className="h-4 w-4 md:h-5 md:w-5" />
           </button>
           <button
             title="Help"
             aria-label="Help"
-            className="hidden sm:flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="hidden sm:flex h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
             <HelpCircle className="h-4 w-4 md:h-5 md:w-5" />
           </button>
           <button
             title="Settings"
             aria-label="Settings"
-            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
             <Settings className="h-4 w-4 md:h-5 md:w-5" />
           </button>
@@ -3119,7 +3119,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   /> */}
                   <button onClick={() => { loadContacts(contactSearch); loadGroups(); }}
                     title="Refresh" aria-label="Refresh email list"
-                    className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+                    className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
                     <RefreshCw className="h-4 w-4" />
                   </button>
 
@@ -3139,13 +3139,13 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                           exitSelection();
                         }}
                         title="Delete selected" aria-label="Delete selected emails"
-                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] hover:text-[#d93025]">
+                        className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] hover:text-[#d93025]">
                         <Trash2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => { selectedIds.forEach(id => toggleStar(id)); setActiveFolder('starred'); exitSelection(); }}
                         title="Star selected" aria-label="Star selected emails"
-                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+                        className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
                         <Star className="h-4 w-4" />
                       </button>
                       <button onClick={exitSelection} aria-label="Cancel selection"
@@ -3161,7 +3161,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                         aria-label="More options"
                         aria-haspopup="true"
                         aria-expanded={showMoreMenu}
-                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+                        className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>

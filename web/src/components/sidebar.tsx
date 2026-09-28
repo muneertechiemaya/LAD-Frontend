@@ -412,7 +412,7 @@ export function Sidebar() {
       >
         <button
           aria-label="Open menu"
-          className="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition"
+          className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-white/10 active:scale-95 transition"
           onClick={() => setIsMobileMenuOpen(true)}
         >
           <Menu className="h-6 w-6 text-sidebar-foreground" />
@@ -426,16 +426,16 @@ export function Sidebar() {
             decoding="async"
             className="w-8 h-8 object-contain"
           />
-          <span className="text-sm font-medium text-sidebar-foreground/90">
+          <span className="text-sm font-medium text-sidebar-foreground/90 truncate max-w-[45vw]">
             {displayName}
           </span>
         </div>
-        <div className="w-10" />
+        <div className="w-11" />
       </div>
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-[70] flex flex-col transition-colors duration-300",
+          "md:hidden fixed inset-y-0 left-0 w-[80%] max-w-[300px] pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl border-r shadow-2xl z-[70] flex flex-col transition-colors duration-300",
           isBlackGrayChannel
             ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#171717]"
             : "border-sidebar-border bg-sidebar/95",
@@ -460,7 +460,7 @@ export function Sidebar() {
           <button
             aria-label="Close menu"
             onClick={() => setIsMobileMenuOpen(false)}
-            className="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition"
+            className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-white/10 active:scale-95 transition"
           >
             <X className="h-5 w-5 text-sidebar-foreground" />
           </button>
@@ -535,7 +535,7 @@ export function Sidebar() {
                           key={child.href}
                           href={child.href}
                           className={cn(
-                            "relative flex items-center rounded-xl px-3 h-10 transition-all ml-1",
+                            "relative flex items-center rounded-xl px-3 h-11 transition-all ml-1",
                             childActive
                               ? "bg-primary/80 text-white shadow-md before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[18px] before:h-5 before:w-0.5 before:bg-primary before:rounded-full"
                               : "hover:bg-white/10 text-sidebar-foreground/70",
@@ -558,7 +558,7 @@ export function Sidebar() {
         <div className={cn("border-t p-3 space-y-2 mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Tenant Selector */}
           <div className="mb-2">
-            <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-bold px-3">Tenant</span>
+            <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/75 font-bold px-3">Tenant</span>
             <div className="mt-1 space-y-1">
               {tenants.map((t) => (
                 <button
@@ -568,7 +568,7 @@ export function Sidebar() {
                     setIsMobileMenuOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition active:scale-95",
+                    "w-full flex items-center justify-between px-3 min-h-11 rounded-lg text-xs transition active:scale-95",
                     tenant.id === t.id
                       ? "bg-primary/20 text-primary font-bold"
                       : "text-sidebar-foreground/70 hover:bg-white/5"
@@ -597,7 +597,7 @@ export function Sidebar() {
               <span className="text-sm font-semibold text-sidebar-foreground truncate">
                 {displayName}
               </span>
-              <span className="text-xs text-sidebar-foreground/60">
+              <span className="text-xs text-sidebar-foreground/75">
                 {user?.role || "admin"}
               </span>
             </div>
@@ -605,7 +605,7 @@ export function Sidebar() {
           <div className="space-y-1">
             <NavLink
               href="/settings"
-              className="w-full flex items-center gap-2 rounded-xl px-4 py-2 hover:bg-white/10 text-sm text-sidebar-foreground"
+              className="w-full flex items-center gap-2 rounded-xl px-4 min-h-11 hover:bg-white/10 text-sm text-sidebar-foreground"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <Settings className="h-4 w-4" />
@@ -622,7 +622,7 @@ export function Sidebar() {
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-start gap-2 rounded-xl px-4 py-2 text-red-500 hover:bg-red-500/10 active:scale-95 transition text-sm"
+              className="w-full flex items-center justify-start gap-2 rounded-xl px-4 min-h-11 text-red-600 dark:text-red-400 hover:bg-red-500/10 active:scale-95 transition text-sm"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -956,7 +956,7 @@ export function Sidebar() {
                     aria-expanded={isTenantListOpen}
                     // The current tenant is the label, so the closed state still
                     // answers "which workspace am I in?" without opening it.
-                    className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs
+                    className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1 max-lg:min-h-11 rounded-lg text-xs
                                text-foreground/90 hover:bg-white/5 transition active:scale-95 select-none"
                   >
                     <span className="truncate font-semibold">{tenant.name}</span>
@@ -979,7 +979,7 @@ export function Sidebar() {
                             setIsTenantListOpen(false);
                           }}
                           className={cn(
-                            "w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs transition active:scale-95 select-none",
+                            "w-full flex items-center justify-between px-2 py-1 max-lg:min-h-11 rounded-lg text-xs transition active:scale-95 select-none",
                             tenant.id === t.id
                               ? "bg-primary/20 text-primary font-semibold"
                               : "text-muted-foreground hover:bg-white/5",
@@ -1002,9 +1002,9 @@ export function Sidebar() {
                 aria-label="Settings"
                 title={!isExpanded ? "Settings" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 h-10 text-sm font-medium transition-all",
+                  "flex items-center gap-3 rounded-xl px-3 h-10 max-lg:h-11 text-sm font-medium transition-all",
                   "text-gray-700 dark:text-gray-300 hover:bg-white/5 dark:hover:bg-white/10 active:scale-95 select-none",
-                  isExpanded ? "w-full" : "w-10 mx-auto justify-center",
+                  isExpanded ? "w-full" : "w-10 max-lg:w-11 mx-auto justify-center",
                 )}
               >
                 <Settings className="h-4 w-4 flex-shrink-0" />
@@ -1039,7 +1039,7 @@ export function Sidebar() {
                 aria-label="Logout"
                 title="Logout"
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 h-10 text-sm font-medium transition-all w-full",
+                  "flex items-center gap-3 rounded-xl px-3 h-10 max-lg:h-11 text-sm font-medium transition-all w-full",
                   "text-red-500 hover:bg-red-500/10 active:scale-95 select-none",
                   !isExpanded && "justify-center",
                 )}

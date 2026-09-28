@@ -659,8 +659,10 @@
   --color-base-300: oklch(20% 0.016 258);
   --color-base-content: oklch(95% 0.01 260);
 
-  /* Primary - Electric Blue (CTA) */
-  --primary: #2B7CFF;
+  /* Primary - Electric Blue (CTA). #2563EB, not #2B7CFF: white on the fill must
+     clear 4.5:1 (5.17 vs 3.87). No single blue can also clear 4.5:1 as text on
+     the #000724 background, so .text-primary gets a lighter ink below. */
+  --primary: #2563EB;
   --primary-foreground: #FFFFFF;
 
   /* Secondary */
@@ -848,9 +850,29 @@ body {
   border-color: #2563eb !important;
 }
 
+/* Placeholder text must clear 4.5:1 like any text. #64748b was ~3.9:1 on the
+   dark inputs; #94a3b8 is 5.8:1+ on every dark field background in the app. */
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #64748b !important;
+  color: #94a3b8 !important;
+}
+/* Light mode: unlayered, so it wins over the placeholder:text-slate-400 /
+   gray-400 utilities (2.6:1) used across the app. #5B6780 is 5.1:1+ on every
+   light field background (white through slate-100). */
+input::placeholder,
+textarea::placeholder {
+  color: #5b6780;
+}
+
+/* iOS Safari zooms into any focused field whose text is under 16px, which
+   leaves the page zoomed after the keyboard closes. Below the desktop
+   breakpoint every text-entry field renders at 16px; desktop is unchanged. */
+@media (max-width: 1023.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Invert number input spin buttons in dark mode */
@@ -967,4 +989,11 @@ textarea.adv-chat-ta:focus-within,
 
 .dark .react-flow__controls-button svg {
   fill: currentColor !important;
+}
+
+/* Dark-mode primary as TEXT: --primary is tuned as a fill (white on it = 5.17:1)
+   and is only 3.85:1 as text on the #000724 background. Unlayered, so it wins
+   over the text-primary utility. */
+.dark .text-primary:not([class*="dark:text-"]) {
+  color: #60A5FA;
 }

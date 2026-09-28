@@ -1050,7 +1050,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/campaigns/${campaignId}/analytics/leads`}
-                          className="text-sm font-medium text-cyan-700 hover:text-cyan-800 hover:underline transition-colors dark:text-cyan-400 dark:hover:text-cyan-300 dark:hover:underline"
+                          className="text-sm font-medium text-cyan-700 hover:text-cyan-800 hover:underline transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:items-center dark:text-cyan-400 dark:hover:text-cyan-300 dark:hover:underline"
                           title={`View ${lead.leadName}'s profile`}
                         >
                           {lead.leadName || 'Unknown'}
@@ -1260,7 +1260,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <p
-                              className="text-sm text-[#64748B] max-w-[170px] overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="text-sm text-[#64748B] dark:text-slate-300 max-w-[170px] overflow-hidden text-ellipsis whitespace-nowrap"
                             >
                               {lead.latestMessage || '-'}
                             </p>

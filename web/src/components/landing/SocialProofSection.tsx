@@ -131,7 +131,7 @@ export default function SocialProofSection() {
                   whileInView={{ scale: [1, 1.05, 1] }}
                   transition={{ duration: 0.6 }}
                 >
-                  <p className="text-sm font-bold text-primary dark:text-blue-400">
+                  <p className="text-sm font-bold text-primary dark:text-blue-300">
                     📊 {testimonial.metric}
                   </p>
                 </motion.div>

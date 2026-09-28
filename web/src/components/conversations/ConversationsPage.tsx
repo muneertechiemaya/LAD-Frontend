@@ -156,13 +156,15 @@ const ALL_TABS: { id: WaTab; label: string; sublabel: string }[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 function getTabColor(tabId: WaTab): string {
   switch (tabId) {
-    case 'personal':  return '#25D366'; // WhatsApp green
-    case 'waba':      return '#128C7E'; // WhatsApp Business teal
-    case 'instagram': return '#E1306C'; // Instagram pink - pulled from the official gradient mid-stop
-    case 'linkedin':  return '#0077B5'; // LinkedIn blue
-    case 'gmail':     return '#EA4335'; // Gmail red
-    case 'outlook':   return '#0078D4'; // Outlook blue
-    case 'custom':    return '#059669'; // Emerald - matches integration tile
+    // Each is the brand hue darkened just enough for its white label to clear
+    // 4.5:1 (the pure brand greens/red/pink sat at 1.98-4.34:1).
+    case 'personal':  return '#0A7C3E'; // WhatsApp green (5.30:1)
+    case 'waba':      return '#0E7065'; // WhatsApp Business teal (5.96:1)
+    case 'instagram': return '#C13584'; // Instagram magenta (5.11:1)
+    case 'linkedin':  return '#0077B5'; // LinkedIn blue (4.88:1)
+    case 'gmail':     return '#C5221F'; // Gmail red (5.80:1)
+    case 'outlook':   return '#0067B8'; // Outlook blue (5.78:1)
+    case 'custom':    return '#047857'; // Emerald (5.48:1)
   }
 }
 
@@ -217,7 +219,7 @@ export function ConversationsPage() {
       {/* Top bar: WA channel tabs + AI toggle - now always visible */}
       <div
         className={cn(
-          "h-10 flex items-center justify-between px-3 border-b shrink-0 gap-2 transition-colors duration-300",
+          "h-10 max-lg:h-auto max-lg:min-h-12 flex items-center justify-between px-3 border-b shrink-0 gap-2 transition-colors duration-300",
           "bg-card border-border",
           isBlackGrayDarkTheme
             ? "dark:bg-zinc-900 dark:border-zinc-800"
@@ -238,7 +240,7 @@ export function ConversationsPage() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'group flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
+                'group flex items-center gap-1.5 px-3 h-7 max-lg:h-11 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'

@@ -301,7 +301,7 @@ export default function CrmPage() {
           </div>
           <Link
             href="/crm/zoho"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 max-lg:h-11 px-3 rounded-full border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
           >
             <span className="text-red-600 font-bold leading-none" aria-hidden>Z</span> Zoho CRM
           </Link>
@@ -349,7 +349,7 @@ export default function CrmPage() {
           renderMain()
         )}
 
-        <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
+        <footer className="pt-6 pb-2 text-[11.5px] text-slate-500 dark:text-slate-300 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
               sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was

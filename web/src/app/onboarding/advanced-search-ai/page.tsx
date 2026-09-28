@@ -8051,7 +8051,7 @@ export default function AdvancedSearchAIPage() {
                                                 cursor: 'pointer', fontSize: '11px', fontWeight: 600,
                                                 transition: 'all 0.15s',
                                                 background: useSalesNav ? '#0a66c2' : '#f1f5f9',
-                                                color: useSalesNav ? '#fff' : '#64748b',
+                                                color: useSalesNav ? '#fff' : '#475569', // slate-600: #64748b on #f1f5f9 was 4.34:1
                                                 boxShadow: useSalesNav ? '0 1px 4px rgba(10,102,194,.35)' : 'none',
                                             }}
                                         >
@@ -16848,5 +16848,39 @@ const css = `
                 .adv-chat-input-box.has-extension {
                     border-radius: 16px !important;
                 }
+            }
+            /* Touch targets: 44px minimum below the desktop breakpoint. Last in the
+               sheet (and min-* rather than width/height) so it wins over the compact
+               sizes set by the rules above without changing anything at >=1024px. */
+            @media (max-width: 1023.98px) {
+                .adv-chat-back,
+                .adv-chat-attach-btn,
+                .adv-mic-btn,
+                .adv-send-circle,
+                .adv-send-sm { min-width: 44px !important; min-height: 44px !important; }
+                .adv-premium-btn { min-width: 44px !important; min-height: 44px !important; }
+                .adv-roles-btn { min-height: 44px; }
+                .adv-icp-discover-btn { min-height: 44px; }
+                /* the <=768px rule above pins the prompt to 11px / 24px tall with
+                   !important: 11px makes iOS zoom on focus, 24px is under the target size */
+                .adv-chat-ta, textarea.adv-chat-ta { font-size: 16px !important; min-height: 44px !important; height: auto !important; line-height: 24px !important; padding: 10px 0 !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
+                /* Empty state is vertically centred in an overflow:hidden column; on a
+                   short phone the content is taller than the column, so centring pushed
+                   the greeting and back button up under the app's top bar. safe center
+                   falls back to top alignment when it would overflow; the column scrolls. */
+                .adv-chat-left-empty { justify-content: safe center !important; overflow-y: auto !important; }
+            }
+            /* Phones (app shell shows its fixed 56px top bar below md). The <=768px
+               rules above zero <main>'s padding-top and size the chat to 100vh-64px,
+               so the column started UNDER the top bar and hand-placed offsets tried to
+               compensate. Keep main's padding, fill it exactly, and shift those offsets
+               up by the same 56px so everything stays where it was on screen. */
+            @media (max-width: 767.98px) {
+                main { padding-top: 3.5rem !important; }
+                .adv-chat-root, .adv-chat-left { height: 100% !important; min-height: 0 !important; }
+                .adv-chat-back { top: 26px !important; }
+                .adv-mobile-icp-box { top: 34px !important; } /* effective value above is 90px */
+                .adv-chat-msgs { padding-top: 16px !important; }
             }
             `;

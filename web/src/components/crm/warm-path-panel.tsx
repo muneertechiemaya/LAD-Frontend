@@ -238,7 +238,7 @@ export default function WarmPathPanel({
             {open && Object.keys(positions).length > 0 && (
               <button
                 onClick={() => setPositions({})}
-                className="h-7 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
+                className="h-7 max-lg:h-11 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Reset
               </button>

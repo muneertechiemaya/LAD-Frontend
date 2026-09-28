@@ -2212,7 +2212,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
+                className={cn('h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
@@ -3169,7 +3169,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => {
                     setIsGroupsPanelOpen(true);
                     setSelectedGroupsPanelIds(new Set());
@@ -3189,7 +3189,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   aria-label="Refresh conversations"
@@ -3206,7 +3206,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => setIsNewChatOpen(true)}
                   aria-label="New Chat"
                 >
@@ -3224,7 +3224,7 @@ function WABASidebar({
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                      className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                       aria-label="More options"
                     >
                       <MoreVertical className="w-5 h-5" />
@@ -3300,9 +3300,9 @@ function WABASidebar({
             key={tab}
             onClick={() => setFilterTab(tab)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
+              'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
               filterTab === tab
-                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
@@ -3316,9 +3316,9 @@ function WABASidebar({
             type="button"
             onClick={() => onHideEmptyChange(!hideEmpty)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+              'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
               hideEmpty
-                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
@@ -3332,9 +3332,9 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 selectedLabelIds.length > 0
-                  ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                  ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                   : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <Tag className="h-3.5 w-3.5" />
@@ -3375,7 +3375,7 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 contextStatusFilter && contextStatusFilter !== 'all'
                   ? 'bg-[#00a884] text-white border-transparent'
                   : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
@@ -3428,7 +3428,7 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <ArrowDownUp className="h-3.5 w-3.5" />
@@ -3474,7 +3474,7 @@ function WABASidebar({
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="px-3 py-1.5 rounded-full bg-muted/50 dark:bg-[#161717] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
+              <button className="px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full bg-muted/50 dark:bg-[#161717] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>

@@ -392,6 +392,7 @@ export default function EmployeeCard({
                   </Tooltip>
                 </TooltipProvider>
                 <span
+                  aria-hidden="true"
                   className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500 tracking-wide blur-[3px] select-none"
                 >
                   official@company.com
@@ -455,6 +456,7 @@ export default function EmployeeCard({
                 </a>
               ) : (
                 <span
+                  aria-hidden="true"
                   className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-300 tracking-wide blur-[3px] select-none"
                 >
                   linkedin.com/in/...
@@ -543,7 +545,7 @@ export default function EmployeeCard({
                   e.stopPropagation();
                   onViewSummary(employee);
                 }}
-                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#2b7cff] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
+                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#5b9bf5] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Generate Summary

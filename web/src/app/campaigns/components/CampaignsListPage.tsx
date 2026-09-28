@@ -351,7 +351,7 @@ export default function CampaignsListPage() {
                 Weekly connection limits and usage tracking
               </p>
             </div>
-            <Badge className="font-semibold bg-[#0A66C2]/10 text-[#0A66C2] text-xs">
+            <Badge className="font-semibold bg-[#0A66C2]/10 text-[#0A66C2] dark:text-sky-300 text-xs">
               {linkedinStats.usage.weekly_percentage}% Used
             </Badge>
           </div>
@@ -514,7 +514,7 @@ export default function CampaignsListPage() {
                 <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-blue-950/40 grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">Total Sent</p>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                       {linkedinStats?.usage?.sent_last_7_days ??
                         0}
                     </p>
@@ -535,15 +535,15 @@ export default function CampaignsListPage() {
                               ?.weekly_percentage ?? 0,
                           ),
                         ) > 90
-                          ? "text-red-600"
+                          ? "text-red-700 dark:text-red-400"
                           : parseInt(
                                 String(
                                   linkedinStats?.usage
                                     ?.weekly_percentage ?? 0,
                                 ),
                               ) > 70
-                            ? "text-amber-600"
-                            : "text-green-600"
+                            ? "text-amber-700 dark:text-amber-400"
+                            : "text-green-700 dark:text-green-400"
                       }`}
                     >
                       {linkedinStats?.usage?.weekly_percentage ??

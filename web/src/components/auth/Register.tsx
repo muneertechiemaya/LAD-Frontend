@@ -203,7 +203,7 @@ const Register: React.FC = () => {
     }
   };
 
-  const inputCls = "w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/80 dark:bg-gray-800/40 px-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const inputCls = "w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/80 dark:bg-gray-800/40 px-3 py-2.5 text-sm max-lg:text-base text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
     <div className="w-full max-w-[400px] sm:max-w-[420px] p-6 sm:p-7 rounded-2xl shadow-2xl border backdrop-blur-xl bg-gradient-to-b from-white to-gray-50 dark:from-[#071131] dark:to-[#071131] border-gray-200 dark:border-gray-700 mx-auto">
@@ -235,11 +235,11 @@ const Register: React.FC = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Google sign-in is not available on this environment.</p>
             )}
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-400">
+          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />or<span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           </div>
           <Button type="button" onClick={() => { setMethod('whatsapp'); setError(null); }} disabled={busy}
-            className="w-full p-2.5 sm:p-3 rounded-full text-sm font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white transition-all cursor-pointer">
+            className="w-full p-2.5 sm:p-3 max-lg:min-h-11 rounded-full text-sm font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-[#111B21] transition-all cursor-pointer">
             <MessageCircle size={18} className="mr-2" /> Continue with WhatsApp
           </Button>
           {busy && <p className="text-center text-xs text-gray-500"><Loader2 size={14} className="inline animate-spin mr-1" />Checking with Google…</p>}
@@ -248,7 +248,7 @@ const Register: React.FC = () => {
 
       {method === 'whatsapp' && (
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (sentTo) verifyCode(); else requestCode(); }}>
-          <button type="button" onClick={() => { setMethod('choose'); setSentTo(null); setError(null); }} className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1">
+          <button type="button" onClick={() => { setMethod('choose'); setSentTo(null); setError(null); }} className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1 max-lg:min-h-11">
             <ArrowLeft size={12} /> Other options
           </button>
           {!sentTo ? (
@@ -257,14 +257,14 @@ const Register: React.FC = () => {
                 <label htmlFor="wa-phone" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">WhatsApp number</label>
                 <input id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" className={inputCls} placeholder="+971 50 123 4567"
                   value={phone} onChange={(e) => setPhone(e.target.value)} required />
-                <p className="text-[11px] text-gray-500 mt-1">Include the country code. We&apos;ll send a 6-digit code to this number.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Include the country code. We&apos;ll send a 6-digit code to this number.</p>
               </div>
               <div>
-                <label htmlFor="wa-name" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Your name <span className="text-gray-400">(optional)</span></label>
+                <label htmlFor="wa-name" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Your name <span className="text-gray-500 dark:text-gray-400">(optional)</span></label>
                 <input id="wa-name" type="text" autoComplete="name" className={inputCls} placeholder="Ana Lopez" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <Button type="submit" disabled={busy || !phone.trim() || resendIn > 0}
-                className="w-full p-2.5 sm:p-3 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 dark:hover:bg-blue-500 text-white cursor-pointer">
+                className="w-full p-2.5 sm:p-3 max-lg:min-h-11 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 dark:hover:bg-blue-500 text-white cursor-pointer">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : resendIn > 0 ? `Try again in ${resendIn}s` : 'Send code'}
               </Button>
             </>
@@ -279,18 +279,18 @@ const Register: React.FC = () => {
               </div>
               {needNewCode ? (
                 <Button type="button" onClick={requestCode} disabled={busy || resendIn > 0}
-                  className="w-full p-2.5 sm:p-3 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 text-white cursor-pointer">
+                  className="w-full p-2.5 sm:p-3 max-lg:min-h-11 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 text-white cursor-pointer">
                   {resendIn > 0 ? `Resend in ${resendIn}s` : 'Send a new code'}
                 </Button>
               ) : (
                 <Button type="submit" disabled={busy || code.replace(/\s/g, '').length !== 6}
-                  className="w-full p-2.5 sm:p-3 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 dark:hover:bg-blue-500 text-white cursor-pointer">
+                  className="w-full p-2.5 sm:p-3 max-lg:min-h-11 rounded-lg text-sm font-semibold bg-primary dark:bg-blue-600 dark:hover:bg-blue-500 text-white cursor-pointer">
                   {busy ? <Loader2 size={16} className="animate-spin" /> : 'Verify'}
                 </Button>
               )}
-              <div className="flex justify-between text-xs text-gray-500">
-                <button type="button" onClick={() => { setSentTo(null); setCode(''); setError(null); setNeedNewCode(false); }} className="hover:text-gray-700 dark:hover:text-gray-300">Change number</button>
-                <button type="button" onClick={requestCode} disabled={busy || resendIn > 0} className="hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <button type="button" onClick={() => { setSentTo(null); setCode(''); setError(null); setNeedNewCode(false); }} className="hover:text-gray-700 dark:hover:text-gray-300 max-lg:min-h-11">Change number</button>
+                <button type="button" onClick={requestCode} disabled={busy || resendIn > 0} className="hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 max-lg:min-h-11">
                   {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
                 </button>
               </div>
@@ -301,7 +301,7 @@ const Register: React.FC = () => {
 
       <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-5">
         Already have a password?{' '}
-        <a href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">Sign in</a>
+        <a href="/login" className="text-blue-600 dark:text-blue-400 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center">Sign in</a>
       </p>
     </div>
   );

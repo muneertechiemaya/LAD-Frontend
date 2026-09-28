@@ -47,7 +47,7 @@ export default function StudioLaunchBanner({ className = '' }: { className?: str
           {blocking.length} thing{blocking.length === 1 ? '' : 's'} before your first campaign can send: {titles.join(', ')} (about 1 min each).
         </span>
       </span>
-      <Link href="/studio" className={`inline-flex shrink-0 items-center gap-1 ${LINK}`}>
+      <Link href="/studio" className={`inline-flex shrink-0 items-center gap-1 max-lg:min-h-11 ${LINK}`}>
         Finish setup<ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>

@@ -180,7 +180,7 @@ const Login: React.FC = () => {
               />
             </div>
             {formErrors.email && (
-              <p className="text-xs text-red-500 mt-1">⚠️ {formErrors.email}</p>
+              <p className="text-xs text-red-700 dark:text-red-400 mt-1">⚠️ {formErrors.email}</p>
             )}
           </div>
           {/* Password Input */}
@@ -212,13 +212,14 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 max-lg:right-0 max-lg:flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
             {formErrors.password && (
-              <p className="text-xs text-red-500 mt-1">
+              <p className="text-xs text-red-700 dark:text-red-400 mt-1">
                 🔐 {formErrors.password}
               </p>
             )}
@@ -243,7 +244,7 @@ const Login: React.FC = () => {
             />
             <label
               htmlFor="rememberMe"
-              className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer select-none"
+              className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer select-none max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:pr-2"
             >
               Remember
             </label>
@@ -252,7 +253,7 @@ const Login: React.FC = () => {
           <Button
             type="submit"
             className="
-              w-full p-2.5 sm:p-3 rounded-lg text-sm sm:text-base font-semibold
+              w-full p-2.5 sm:p-3 max-lg:min-h-11 rounded-lg text-sm sm:text-base font-semibold
               bg-primary dark:bg-blue-600 dark:hover:bg-blue-500 text-[#ffffff]
               hover:shadow-lg hover:shadow-primary/50 transition-all duration-300
               transform hover:scale-105 active:scale-95
@@ -265,7 +266,7 @@ const Login: React.FC = () => {
         {/* Footer */}
         <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-5">
           New to Mr LAD?{' '}
-          <Link href="/register" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <Link href="/register" className="text-blue-600 dark:text-blue-400 hover:underline font-medium max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
             Create an account
           </Link>
         </p>

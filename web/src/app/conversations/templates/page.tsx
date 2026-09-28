@@ -239,15 +239,15 @@ function MessageTemplateCard({
       <div className="px-4 py-2.5 border-t border-[#E2E8F0] dark:border-blue-950/40 bg-[#F8FAFC] dark:bg-[#071131] flex items-center justify-between">
         <div className="flex items-center gap-2">
           {status}
-          {footerRight && <div className="text-[10px] text-[#94A3B8] dark:text-[#7a8ba3]">{footerRight}</div>}
+          {footerRight && <div className="text-[10px] text-[#5B6780] dark:text-[#9AA8BD]">{footerRight}</div>}
         </div>
         <div className="flex items-center gap-2">
           {editLink ? (
-            <Link href={editLink} className="flex items-center gap-1 text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
+            <Link href={editLink} className="flex items-center gap-1 max-lg:min-h-11 max-lg:min-w-11 max-lg:justify-center text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
               <Pencil className="w-3 h-3" /> Edit
             </Link>
           ) : onEdit ? (
-            <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
+            <button onClick={onEdit} className="flex items-center gap-1 max-lg:min-h-11 max-lg:min-w-11 max-lg:justify-center text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
               <Pencil className="w-3 h-3" /> Edit
             </button>
           ) : null}
@@ -496,7 +496,7 @@ export default function TemplatesPage() {
           </div>
           <button
             onClick={createButton.onClick}
-            className="px-4 py-2 bg-[#0b1957] dark:bg-[#071131] dark:border dark:border-blue-950/40 text-white rounded-xl hover:bg-[#0a1540] dark:hover:bg-[#0f1b3e] font-semibold shadow-[0_4px_20px_rgba(11,25,87,0.3)] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] w-full sm:w-auto flex items-center justify-center gap-2"
+            className="px-4 py-2 max-lg:min-h-11 bg-[#0b1957] dark:bg-[#071131] dark:border dark:border-blue-950/40 text-white rounded-xl hover:bg-[#0a1540] dark:hover:bg-[#0f1b3e] font-semibold shadow-[0_4px_20px_rgba(11,25,87,0.3)] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] w-full sm:w-auto flex items-center justify-center gap-2"
           >
             {createButton.icon}
             {createButton.label}
@@ -556,7 +556,7 @@ export default function TemplatesPage() {
                     name={template.name}
                     preview={template.subject || 'No subject'}
                     status={
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold ${template.is_active ? 'bg-green-100 text-green-700 dark:!text-emerald-400' : 'bg-gray-100 text-gray-500 dark:!text-slate-300'}`}>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold ${template.is_active ? 'bg-green-100 text-green-800 dark:!text-emerald-400' : 'bg-gray-100 text-gray-600 dark:!text-slate-300'}`}>
                         {template.is_active ? 'Active' : 'Inactive'}
                       </span>
                     }

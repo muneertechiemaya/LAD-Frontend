@@ -127,7 +127,7 @@ export default function CTASection() {
               variants={itemVariants}
               whileHover={{ scale: 1.05, y: -10 }}
             >
-              <Link href={cta.action}>
+              <Link href={cta.action} className="block">
                 <motion.button
                   className={`w-full p-6 rounded-2xl font-semibold transition-all relative group ${
                     cta.highlight
@@ -199,7 +199,7 @@ export default function CTASection() {
             className="inline-block p-4 rounded-lg bg-white/10 backdrop-blur border border-white/20"
           >
             <p className="text-white/80 text-sm mb-2">
-              ✨ <span className="font-bold text-white">500+ businesses</span> already saved on average <span className="font-bold text-blue-400">$50,000/year</span>
+              ✨ <span className="font-bold text-white">500+ businesses</span> already saved on average <span className="font-bold text-blue-200">$50,000/year</span>
             </p>
           </motion.div>
         </motion.div>
