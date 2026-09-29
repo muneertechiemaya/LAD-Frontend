@@ -11555,9 +11555,37 @@ function CheckpointFormInline({
             ? (inboundLeadIds.filter(id => selectedLeadIds.has(id)).length || inboundLeadIds.length || inboundLeads.length)
             : (inboundLeadIds.length || inboundLeads.length))
         : null;
+
+    // What the user actually enrolls: checked, minus thumbs-down - the same set
+    // launchCampaign sends as goodMatchLeads. Declared here because the daily
+    // lead target is derived from it (below) as well as the credit gate.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+
+    // Leads whose ICP verdict is IN and clears the threshold.
+    // `(l.icp_score ?? 0)` was wrong here: a lead still being scored has
+    // `undefined` ("Scoring..." / defer_icp) and one the model gave no answer for
+    // has `null` - neither is a verdict of zero, but both were counted as a miss,
+    // so launching before the panel finished scoring deflated this number.
+    // Three states, not two - see the ICP contract in LAD-Backend#777.
+    const thresholdMatchCount = leads.filter(
+        l => typeof l.icp_score === 'number' && l.icp_score >= (parseInt(icpThreshold) || 0)
+    ).length;
+
+    // The per-day fetch target the backend will use FOREVER (leads_per_day,
+    // daily_lead_limit, leadGenerationLimit). It follows the user's SELECTION,
+    // not a threshold-filtered snapshot of one search.
+    //
+    // Incident 2026-09-22 (Dot2Design, campaign 3b229edc): a search returned 29
+    // leads and the user enrolled 12, but only 2 carried a scored verdict >= the
+    // 75 threshold at that instant, so the campaign was sized at 2 leads/day and
+    // ran a week at 6% of the LinkedIn allowance - 12 connections against a 190
+    // weekly cap. A strict threshold was being charged twice: it shrank the
+    // snapshot AND made each day's search paginate ~100 profiles to find those 2.
+    // The selection is what the user decided; fall back to the threshold match
+    // only when nothing is checked yet.
     const qualifiedLeadCount = inboundSelectedCount != null && inboundSelectedCount > 0
         ? inboundSelectedCount
-        : leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
+        : (enrolledCount || thresholdMatchCount);
 
     // Compute LinkedIn capacity based on campaign duration
     const campaignDays = parseInt(days) || 30;
@@ -11576,9 +11604,9 @@ function CheckpointFormInline({
 
     // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down - mirrors
     // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // (`enrolledCount` is declared above, with the daily-target computation.)
     // creditBalance === null (billing fetch failed) fails OPEN - never block launch
     // on a billing-fetch error.
-    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
     const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
     const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
@@ -12392,7 +12420,14 @@ function CheckpointFormInline({
                                 { value: '0', label: 'All Leads - Within the LinkedIn Account Limits', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day based on your account limit` : 'No filtering - include everyone' },
                             ].map((opt, i) => {
                                 const selected = icpThreshold === opt.value;
-                                const count = leads.filter(l => (l.icp_score ?? 0) >= parseInt(opt.value)).length;
+                                // Same three-state rule as the daily target above: a lead still
+                                // being scored (`undefined`) or with no verdict (`null`) is not a
+                                // zero, so it must not be counted as a miss at 25/50/75. It DOES
+                                // belong to "All Leads" (threshold 0), which is everyone.
+                                const optMin = parseInt(opt.value);
+                                const count = leads.filter(
+                                    l => (typeof l.icp_score === 'number' ? l.icp_score >= optMin : optMin === 0)
+                                ).length;
                                 const displayCount = opt.value === '0' && linkedInDailyLimit && count > linkedInDailyLimit
                                     ? linkedInDailyLimit
                                     : count;
@@ -14044,7 +14079,7 @@ function CheckpointFormInline({
                                   : (inboundMode
                                       ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
                                       : capped
-                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount} selected; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
                                           : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
                               return (
                                 <div
@@ -14086,7 +14121,7 @@ function CheckpointFormInline({
                                 padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
                                 background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
                             }}>
-                                <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                <strong>LinkedIn safe-limit cap:</strong> You selected {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
                                 The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                             </div>
                           )}
