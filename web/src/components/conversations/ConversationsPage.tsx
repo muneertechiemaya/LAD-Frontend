@@ -238,7 +238,7 @@ export function ConversationsPage() {
         )}
       >
         {/* Channel tabs - only connected channels are rendered */}
-        <div className="flex items-center gap-1 overflow-x-auto min-w-0 no-scrollbar">
+        <div className="flex items-center gap-1 overflow-x-auto min-w-0 no-scrollbar scroll-fade-x">
           {/* Loading skeleton while connection status is being resolved */}
           {channelStatus === null && (
             <>
@@ -250,8 +250,13 @@ export function ConversationsPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              // Icon-only below lg, so every connected channel fits on a phone;
+              // the name stays as the accessible label and the hover title.
+              aria-label={label}
+              title={label}
+              aria-pressed={activeTab === id}
               className={cn(
-                'group flex items-center gap-1.5 px-3 h-7 max-lg:h-11 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
+                'group flex items-center gap-1.5 px-3 h-7 max-lg:h-11 max-lg:w-11 max-lg:px-0 max-lg:justify-center rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'
@@ -264,13 +269,13 @@ export function ConversationsPage() {
             >
               <ChannelIcon
                 channel={sublabel as any}
-                size={16}
+                size={18}
                 overrideColor={activeTab === id ? '#ffffff' : undefined}
                 // className={cn(
                 //   id === 'linkedin' && activeTab !== id && 'dark:group-hover:[&_svg]:!text-white'
                 // )}
               />
-              {label}
+              <span className="max-lg:sr-only">{label}</span>
             </button>
           ))}
         </div>
@@ -281,7 +286,7 @@ export function ConversationsPage() {
             variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
             size="sm"
             className={cn(
-              'gap-1.5 text-xs h-7 shrink-0',
+              'gap-1.5 text-xs h-7 shrink-0 max-lg:size-11 max-lg:p-0',
               isPlaygroundOpen && 'text-primary',
               isBlackGrayDarkTheme
                 ? 'dark:hover:bg-black dark:hover:text-white'
@@ -291,7 +296,8 @@ export function ConversationsPage() {
             title="Open AI Playground to test your system prompt"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            Test AI
+            {/* Icon-only below lg: the channel tabs need this row on a phone. */}
+            <span className="max-lg:sr-only">Test AI</span>
           </Button>
 
           {/* AI Learnings - what the agent has been taught from thumbs-down
@@ -301,12 +307,12 @@ export function ConversationsPage() {
           <Button
             variant={isLearningsOpen ? "secondary" : "ghost"}
             size="sm"
-            className={`gap-1.5 text-xs h-7 shrink-0 ${isLearningsOpen ? "text-primary" : ""}`}
+            className={`gap-1.5 text-xs h-7 shrink-0 max-lg:size-11 max-lg:p-0 ${isLearningsOpen ? "text-primary" : ""}`}
             onClick={() => setIsLearningsOpen((v) => !v)}
             title="View and manage what the AI has learned from feedback"
           >
             <GraduationCap className="h-3.5 w-3.5" />
-            AI Learnings
+            <span className="max-lg:sr-only">AI Learnings</span>
           </Button>
 
           <AILearningsPanel
