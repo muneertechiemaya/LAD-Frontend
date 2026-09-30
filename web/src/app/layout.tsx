@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import PwaBootstrap from "@/components/pwa/PwaBootstrap";
 import "./globals.css";
 import { AppToasterProvider } from "@/components/ui/app-toaster";
 import { LoadingProvider } from "@/components/providers/loading-provider";
@@ -37,6 +38,17 @@ export const metadata: Metadata = {
       "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice.",
     images: ["/og-image.png"],
   },
+  // Installed app (Add to Home Screen). The manifest itself is app/manifest.ts.
+  appleWebApp: {
+    capable: true,
+    title: "Mr LAD",
+    statusBarStyle: "default",
+  },
+};
+
+// Browser chrome / status bar colour for the installed app and mobile browsers.
+export const viewport: Viewport = {
+  themeColor: "#0B1957",
 };
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +63,8 @@ export default function RootLayout({
       <head>
         {/* Favicon - MrLAD square mark */}
         <link rel="icon" href="/MrLad-code.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/MrLad-code.svg" />
+        {/* iOS ignores SVG touch icons — this PNG is the home-screen icon. */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         
         <Script
           id="theme-init"
@@ -110,6 +123,7 @@ export default function RootLayout({
       </head>
       <body className={`antialiased`}>
         <Providers>
+          <PwaBootstrap />
           <LoadingProvider>
             <AppToasterProvider>
               {/* <PageLoader /> */}

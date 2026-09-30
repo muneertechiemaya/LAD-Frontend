@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIPlayground } from './AIPlayground';
@@ -180,6 +181,10 @@ export function ConversationsPage() {
   // null = still loading; once resolved, only connected channels are shown
   const [channelStatus, setChannelStatus] = useState<ChannelConnectionStatus | null>(null);
 
+  // `?channel=` deep link (a tapped push notification) picks the tab once the
+  // channel is known to be connected; otherwise the usual default applies.
+  const channelParam = useSearchParams().get('channel');
+
   // Check which channels are connected on mount - all parallel requests
   useEffect(() => {
     getConnectedChannels().then((status) => {
@@ -187,6 +192,12 @@ export function ConversationsPage() {
       setActiveTab(getDefaultTab(status));
     });
   }, []);
+
+  useEffect(() => {
+    if (!channelStatus || !channelParam) return;
+    const wanted = channelParam as WaTab;
+    if (ALL_TABS.some((t) => t.id === wanted) && channelStatus[wanted]) setActiveTab(wanted);
+  }, [channelStatus, channelParam]);
 
   // Broadcast active tab change to sidebar and other components for dynamic theme adjustments
   useEffect(() => {

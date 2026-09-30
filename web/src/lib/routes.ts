@@ -23,7 +23,11 @@ export const OPEN_ROUTES = {
     // Founding-group landing page, its short /apply entry point, and the route
     // handler the form posts to. All must be open: the whole point is that a
     // stranger clicking a link in an InMail can reach them.
-    '/community', '/apply', '/api/community-signup'],
+    '/community', '/apply', '/api/community-signup',
+    // Installable app: the "get the app" page and what the browser fetches to
+    // install it and receive push (manifest, service worker, icons). The
+    // browser fetches these without the user's cookie.
+    '/install', '/manifest.webmanifest', '/sw.js', '/icons'],
   
   // Health checks & public APIs
   health: ['/api/health'],
