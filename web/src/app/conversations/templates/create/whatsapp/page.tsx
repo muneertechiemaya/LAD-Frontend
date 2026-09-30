@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Bold, Italic, Strikethrough, Code, Plus, Trash2,
   Upload, FileIcon, CheckCircle2, AlertCircle, Loader2,
-  ChevronDown, Phone, Globe, MessageSquare, Play,
+  ChevronDown, Phone, Globe, MessageSquare, Play, ShieldCheck, Copy,
 } from 'lucide-react';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { useWhatsAppAccounts } from '@lad/frontend-features/meta-onboarding';
@@ -16,6 +16,29 @@ type Category  = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
 type MediaType = 'NONE' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
 type ButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
 type MobileTab = 'details' | 'content' | 'preview';
+
+/**
+ * How the customer gets the code out of WhatsApp and into your app.
+ *
+ * COPY_CODE is the only one that needs nothing from the tenant, which is why it
+ * is the default — the other two hand the code straight to an Android app and
+ * are dead ends without one.
+ */
+type OtpType = 'COPY_CODE' | 'ONE_TAP' | 'ZERO_TAP';
+
+interface SupportedApp {
+  id:            string;
+  packageName:   string;
+  signatureHash: string;
+}
+
+/** The OTP button exactly as Meta's create-template API takes it. */
+interface OtpButtonPayload {
+  type:                     'OTP';
+  otp_type:                 OtpType;
+  supported_apps?:          { package_name: string; signature_hash: string }[];
+  zero_tap_terms_accepted?: true;
+}
 
 interface TemplateButton {
   id:      string;
@@ -45,6 +68,47 @@ const CATEGORIES: { value: Category; label: string; color: string }[] = [
   { value: 'MARKETING',      label: 'Marketing',      color: 'bg-purple-100 text-purple-700 border-purple-200  dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60' },
   { value: 'UTILITY',        label: 'Utility',        color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'       },
   { value: 'AUTHENTICATION', label: 'Authentication', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/60' },
+];
+
+/**
+ * Meta writes and localises every word of an authentication template, so these
+ * are the exact strings the customer sees — reproduced here only so the preview
+ * is honest. Editing them does not change the message; the template has no text
+ * fields to send.
+ *
+ * https://developers.facebook.com/docs/whatsapp/business-management-api/authentication-templates
+ */
+const AUTH_BODY_COPY     = '{{1}} is your verification code.';
+const AUTH_SECURITY_COPY = 'For your security, do not share this code.';
+const authExpiryCopy = (mins: number) => `This code expires in ${mins} minutes.`;
+
+const OTP_OPTIONS: { value: OtpType; label: string; desc: string; needsApp: boolean }[] = [
+  { value: 'COPY_CODE', label: 'Copy code',
+    desc: 'The customer taps to copy the code, then pastes it into your app or site. Works everywhere.',
+    needsApp: false },
+  { value: 'ONE_TAP',   label: 'One-tap autofill',
+    desc: 'The customer taps once and WhatsApp hands the code to your Android app.',
+    needsApp: true },
+  { value: 'ZERO_TAP',  label: 'Zero-tap autofill',
+    desc: 'Your Android app reads the code with no tap at all.',
+    needsApp: true },
+];
+
+/**
+ * Message validity — how long Meta keeps trying before it gives up.
+ *
+ * Meta's range for authentication templates is 30–900 seconds. A code that
+ * arrives after it has expired is worse than one that never arrives, which is
+ * why this is a short list of sane values rather than a free number field.
+ */
+const AUTH_TTL_OPTIONS: { value: string; label: string }[] = [
+  { value: '',    label: "Meta's default (10 minutes)" },
+  { value: '30',  label: '30 seconds' },
+  { value: '60',  label: '1 minute' },
+  { value: '120', label: '2 minutes' },
+  { value: '300', label: '5 minutes' },
+  { value: '600', label: '10 minutes' },
+  { value: '900', label: '15 minutes' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,6 +229,238 @@ function ButtonRow({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+/**
+ * The whole editable surface of an authentication template.
+ *
+ * Deliberately NOT a variant of the body editor beside it. Meta writes and
+ * localises every word of an authentication message, so there is no text to
+ * type: what the tenant chooses is how the code is delivered, whether the
+ * security line is appended, and how long the code lasts. Offering a body
+ * textarea here — which is what this form did before — collects work Meta
+ * discards and then rejects the submission for it.
+ */
+function AuthenticationFields({
+  otpType, onOtpType,
+  addSecurityRec, onAddSecurityRec,
+  useCodeExpiry, onUseCodeExpiry,
+  codeExpiryMins, onCodeExpiryMins,
+  ttl, onTtl,
+  apps, onApps,
+}: {
+  otpType: OtpType;
+  onOtpType: (v: OtpType) => void;
+  addSecurityRec: boolean;
+  onAddSecurityRec: (v: boolean) => void;
+  useCodeExpiry: boolean;
+  onUseCodeExpiry: (v: boolean) => void;
+  codeExpiryMins: number;
+  onCodeExpiryMins: (v: number) => void;
+  ttl: string;
+  onTtl: (v: string) => void;
+  apps: SupportedApp[];
+  onApps: (v: SupportedApp[]) => void;
+}) {
+  const needsApp = OTP_OPTIONS.find(o => o.value === otpType)?.needsApp ?? false;
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── What Meta will send, so nobody goes looking for the body field ── */}
+      <div className="flex gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/20">
+        <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Meta writes this message</p>
+          <p className="text-xs text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed">
+            Authentication templates use fixed wording that Meta translates into every language you
+            get approved — so there is no body, footer or button text to write. Approval is usually
+            quick for the same reason.
+          </p>
+          <div className="mt-3 rounded-lg bg-white dark:bg-[#000724] border border-blue-100 dark:border-blue-900/40 px-3 py-2.5">
+            <p className="text-sm text-[#1E293B] dark:text-gray-200 leading-relaxed">
+              {AUTH_BODY_COPY}{addSecurityRec ? ` ${AUTH_SECURITY_COPY}` : ''}
+            </p>
+            {useCodeExpiry && (
+              <p className="text-xs text-slate-400 dark:text-gray-500 mt-1.5">{authExpiryCopy(codeExpiryMins)}</p>
+            )}
+          </div>
+          <p className="text-[11px] text-blue-700/70 dark:text-blue-400/70 mt-2">
+            <code className="font-mono">{'{{1}}'}</code> is the code, which your app supplies when it sends the message.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Code delivery ── */}
+      <div>
+        <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+          How the customer gets the code <span className="text-red-500">*</span>
+        </label>
+        <div className="space-y-2">
+          {OTP_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onOtpType(opt.value)}
+              aria-pressed={otpType === opt.value}
+              className={`w-full text-left p-3 rounded-lg border transition-colors cursor-pointer ${
+                otpType === opt.value
+                  ? 'border-[#0b1957] dark:border-blue-500 bg-[#F0F4FF] dark:bg-blue-950/20'
+                  : 'border-[#E2E8F0] dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-[#0b1957]/40 dark:hover:border-blue-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${
+                  otpType === opt.value
+                    ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-500'
+                    : 'border-[#CBD5E1] dark:border-gray-600'
+                }`} />
+                <span className="text-sm font-semibold text-[#1E293B] dark:text-white">{opt.label}</span>
+                {!opt.needsApp && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                    No app needed
+                  </span>
+                )}
+                {opt.needsApp && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                    Android app required
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[#64748B] dark:text-gray-400 mt-1 ml-5.5">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Registered apps, for the two autofill types only ── */}
+      {needsApp && (
+        <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/10">
+          <p className="text-sm font-semibold text-[#1E293B] dark:text-white">Your Android app</p>
+          <p className="text-xs text-[#64748B] dark:text-gray-400 mt-1">
+            Autofill hands the code straight to your app, so Meta has to know which app to trust.
+            Both values come from your Android build — the package name from the manifest, the hash
+            from the signing key.
+            {otpType === 'ZERO_TAP' && ' Submitting also accepts Meta’s zero-tap terms on your behalf.'}
+          </p>
+
+          <div className="mt-3 space-y-2">
+            {apps.map(app => (
+              <div key={app.id} className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
+                <input
+                  value={app.packageName}
+                  onChange={e => onApps(apps.map(a => a.id === app.id ? { ...a, packageName: e.target.value } : a))}
+                  placeholder="com.example.app"
+                  className="flex-1 min-w-0 px-2.5 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
+                />
+                <input
+                  value={app.signatureHash}
+                  onChange={e => onApps(apps.map(a => a.id === app.id ? { ...a, signatureHash: e.target.value } : a))}
+                  placeholder="Signature hash (11 chars)"
+                  className="flex-1 min-w-0 px-2.5 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => onApps(apps.filter(a => a.id !== app.id))}
+                  title="Remove app"
+                  className="p-2 text-[#94A3B8] hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {apps.length === 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Add at least one app, or choose <strong>Copy code</strong> — autofill cannot deliver a
+                code without one.
+              </p>
+            )}
+            {apps.length < 5 && (
+              <button
+                type="button"
+                onClick={() => onApps([...apps, { id: uid(), packageName: '', signatureHash: '' }])}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-xs font-medium text-[#1E293B] dark:text-gray-300 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 transition-colors cursor-pointer bg-white dark:bg-[#000724]"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add app
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── The two flags ── */}
+      <div className="space-y-3">
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={addSecurityRec}
+            onChange={e => onAddSecurityRec(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-[#CBD5E1] dark:border-gray-700 text-[#0b1957] focus:ring-[#0b1957]/30 cursor-pointer"
+          />
+          <span>
+            <span className="text-sm font-medium text-[#1E293B] dark:text-white">Add the security recommendation</span>
+            <span className="block text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
+              Appends “{AUTH_SECURITY_COPY}”
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={useCodeExpiry}
+            onChange={e => onUseCodeExpiry(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-[#CBD5E1] dark:border-gray-700 text-[#0b1957] focus:ring-[#0b1957]/30 cursor-pointer"
+          />
+          <span className="min-w-0">
+            <span className="text-sm font-medium text-[#1E293B] dark:text-white">Show when the code expires</span>
+            <span className="block text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
+              Adds a footer line. This is wording only — it does not enforce the expiry, which stays
+              your app’s job.
+            </span>
+          </span>
+        </label>
+
+        {useCodeExpiry && (
+          <div className="ml-6.5 flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={90}
+              value={codeExpiryMins}
+              onChange={e => onCodeExpiryMins(Number(e.target.value))}
+              className="w-20 px-2.5 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
+            />
+            <span className="text-sm text-[#64748B] dark:text-gray-400">minutes</span>
+            {!(codeExpiryMins >= 1 && codeExpiryMins <= 90) && (
+              <span className="text-xs text-red-600 dark:text-red-400">Meta allows 1–90 minutes.</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Validity period ── */}
+      <div>
+        <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+          Message validity period
+          <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+        </label>
+        <select
+          value={ttl}
+          onChange={e => onTtl(e.target.value)}
+          className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+        >
+          {AUTH_TTL_OPTIONS.map(o => (
+            <option key={o.value || 'default'} value={o.value} className="dark:bg-[#000724]">{o.label}</option>
+          ))}
+        </select>
+        <p className="text-xs text-[#64748B] dark:text-gray-400 mt-1.5">
+          How long Meta keeps trying to deliver before giving up. Keep it short — a code that arrives
+          after it has expired is worse than one that never arrives.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function WhatsAppTemplateCreatePage() {
   const router = useRouter();
 
@@ -206,6 +502,15 @@ export default function WhatsAppTemplateCreatePage() {
   const [buttons,        setButtons]        = useState<TemplateButton[]>([]);
   const [showBtnMenu,    setShowBtnMenu]    = useState(false);
 
+  // Authentication templates — a separate, much smaller set of controls, because
+  // Meta supplies the copy and only these choices are ours to make.
+  const [otpType,        setOtpType]        = useState<OtpType>('COPY_CODE');
+  const [addSecurityRec, setAddSecurityRec] = useState(true);
+  const [useCodeExpiry,  setUseCodeExpiry]  = useState(true);
+  const [codeExpiryMins, setCodeExpiryMins] = useState(10);
+  const [authTtl,        setAuthTtl]        = useState('');   // '' = Meta's default
+  const [supportedApps,  setSupportedApps]  = useState<SupportedApp[]>([]);
+
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [result,     setResult]     = useState<{ success: boolean; message: string } | null>(null);
@@ -220,8 +525,13 @@ export default function WhatsAppTemplateCreatePage() {
 
   const bodyVars      = useMemo(() => extractVars(bodyText),  [bodyText]);
   const headerVars    = useMemo(() => extractVars(headerText), [headerText]);
-  const isMediaHeader = mediaType !== 'NONE';
   const categoryInfo  = CATEGORIES.find(c => c.value === category)!;
+  const isAuth        = category === 'AUTHENTICATION';
+  const otpNeedsApp   = OTP_OPTIONS.find(o => o.value === otpType)?.needsApp ?? false;
+  // Authentication templates support no header of any kind, so a media type
+  // chosen before the category was switched must stop counting — otherwise the
+  // preview keeps rendering an image block for a message that cannot have one.
+  const isMediaHeader = !isAuth && mediaType !== 'NONE';
 
   const varDensityWarning = useMemo(() => {
     if (bodyVars.length === 0) return null;
@@ -306,6 +616,32 @@ export default function WhatsAppTemplateCreatePage() {
   const buildComponents = useCallback(() => {
     const comps: object[] = [];
 
+    /**
+     * Authentication templates take a DIFFERENT grammar, not a subset of this
+     * one. No text in the body, none in the footer, none on the button — Meta
+     * writes all three and translates them into every approved language. What
+     * we send is three flags and one OTP button.
+     *
+     * Falling through to the code below and merely omitting `text` would still
+     * emit a HEADER when a media handle was uploaded earlier, and authentication
+     * templates support no header at all. So this returns early.
+     */
+    if (isAuth) {
+      comps.push({ type: 'BODY', add_security_recommendation: addSecurityRec });
+      if (useCodeExpiry) {
+        comps.push({ type: 'FOOTER', code_expiration_minutes: codeExpiryMins });
+      }
+      const otpButton: OtpButtonPayload = { type: 'OTP', otp_type: otpType };
+      if (otpNeedsApp) {
+        otpButton.supported_apps = supportedApps
+          .filter(a => a.packageName.trim() && a.signatureHash.trim())
+          .map(a => ({ package_name: a.packageName.trim(), signature_hash: a.signatureHash.trim() }));
+      }
+      if (otpType === 'ZERO_TAP') otpButton.zero_tap_terms_accepted = true;
+      comps.push({ type: 'BUTTONS', buttons: [otpButton] });
+      return comps;
+    }
+
     // Header
     if (isMediaHeader && mediaHandle) {
       comps.push({ type: 'HEADER', format: mediaType, example: { header_handle: [mediaHandle] } });
@@ -338,12 +674,31 @@ export default function WhatsAppTemplateCreatePage() {
       });
     }
     return comps;
-  }, [isMediaHeader, mediaType, mediaHandle, headerText, headerVars, headerVarExample,
+  }, [isAuth, addSecurityRec, useCodeExpiry, codeExpiryMins, otpType, otpNeedsApp, supportedApps,
+      isMediaHeader, mediaType, mediaHandle, headerText, headerVars, headerVarExample,
       bodyText, bodyVars, bodyExamples, footerText, buttons]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const canSubmit = useMemo(() => {
-    if (!safeName || !bodyText.trim()) return false;
+    if (!safeName) return false;
+
+    // Authentication templates have no body to check — Meta writes it. Running
+    // them through the checks below would block every submission on an empty
+    // body the tenant is not allowed to fill.
+    if (isAuth) {
+      if (otpNeedsApp) {
+        // An autofill button with no registered app cannot deliver a code.
+        const usable = supportedApps.filter(a => a.packageName.trim() && a.signatureHash.trim());
+        if (usable.length === 0) return false;
+        // A half-filled row is a typo, not an intent — Meta rejects the whole
+        // submission for it, so catch it before the round trip.
+        if (supportedApps.some(a => Boolean(a.packageName.trim()) !== Boolean(a.signatureHash.trim()))) return false;
+      }
+      if (useCodeExpiry && !(codeExpiryMins >= 1 && codeExpiryMins <= 90)) return false;
+      return true;
+    }
+
+    if (!bodyText.trim()) return false;
     if (bodyVars.some(v => !bodyExamples[v]?.trim())) return false;
     if (isMediaHeader && !mediaHandle) return false;
     if (uploadStatus === 'uploading') return false;
@@ -352,7 +707,8 @@ export default function WhatsAppTemplateCreatePage() {
     if (buttons.some(b => b.type === 'PHONE_NUMBER' && !b.phone.trim())) return false;
     if (varDensityWarning) return false;
     return true;
-  }, [safeName, bodyText, bodyVars, bodyExamples, isMediaHeader, mediaHandle, uploadStatus,
+  }, [safeName, isAuth, otpNeedsApp, supportedApps, useCodeExpiry, codeExpiryMins,
+      bodyText, bodyVars, bodyExamples, isMediaHeader, mediaHandle, uploadStatus,
       headerText, headerVars, headerVarExample, buttons, varDensityWarning]);
 
   // ── Submit ──────────────────────────────────────────────────────────────────
@@ -366,7 +722,13 @@ export default function WhatsAppTemplateCreatePage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: safeName, language, category, components: buildComponents(), account_id: effectiveAccountId }),
+          body: JSON.stringify({
+            name: safeName, language, category,
+            components: buildComponents(), account_id: effectiveAccountId,
+            // Top level, not a component — and only meaningful for the category
+            // whose form actually offers it.
+            ...(isAuth && authTtl ? { message_send_ttl_seconds: Number(authTtl) } : {}),
+          }),
         }
       );
       const data = await res.json();
@@ -383,18 +745,48 @@ export default function WhatsAppTemplateCreatePage() {
   };
 
   // ── Preview derived ─────────────────────────────────────────────────────────
+  // The preview is the only place a tenant sees what Meta will actually send, so
+  // for authentication templates it must show Meta's copy — not the empty body
+  // that the form (correctly) refuses to let them fill.
   const previewBody = useMemo(() => {
+    if (isAuth) return AUTH_BODY_COPY.replace('{{1}}', '123456')
+      + (addSecurityRec ? ` ${AUTH_SECURITY_COPY}` : '');
     let text = bodyText;
     bodyVars.forEach(v => {
       text = text.replace(new RegExp(`\\{\\{${v}\\}\\}`, 'g'), bodyExamples[v] || `[example${v}]`);
     });
     return text;
-  }, [bodyText, bodyVars, bodyExamples]);
+  }, [isAuth, addSecurityRec, bodyText, bodyVars, bodyExamples]);
 
   const previewHeaderText = useMemo(() => {
-    if (isMediaHeader) return null;
+    if (isAuth || isMediaHeader) return null;
     return headerText.replace(/\{\{1\}\}/g, headerVarExample || '[example]');
-  }, [isMediaHeader, headerText, headerVarExample]);
+  }, [isAuth, isMediaHeader, headerText, headerVarExample]);
+
+  const previewFooterText = useMemo(() => {
+    if (isAuth) return useCodeExpiry ? authExpiryCopy(codeExpiryMins) : '';
+    return footerText;
+  }, [isAuth, useCodeExpiry, codeExpiryMins, footerText]);
+
+  /**
+   * What the bubble shows under the message.
+   *
+   * Authentication templates have exactly one button and its label is chosen by
+   * Meta per language, so the label here is the English one — indicative, not a
+   * value we send.
+   */
+  const previewButtons = useMemo(() => {
+    if (isAuth) {
+      return [{
+        id:   'otp',
+        kind: 'OTP' as const,
+        text: otpType === 'COPY_CODE' ? 'Copy code' : 'Autofill',
+      }];
+    }
+    return buttons
+      .filter(b => b.text.trim())
+      .map(b => ({ id: b.id, kind: b.type, text: b.text }));
+  }, [isAuth, otpType, buttons]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -566,11 +958,25 @@ export default function WhatsAppTemplateCreatePage() {
             <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Content</h2>
               <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
-                Add a header, body and footer for your template. Cloud API hosted by Meta will review variables and content.
+                {isAuth
+                  ? 'Meta supplies the wording for authentication templates. Choose how the code reaches your customer.'
+                  : 'Add a header, body and footer for your template. Cloud API hosted by Meta will review variables and content.'}
               </p>
             </div>
 
             <div className="p-6 space-y-6">
+
+              {isAuth ? (
+                <AuthenticationFields
+                  otpType={otpType}               onOtpType={setOtpType}
+                  addSecurityRec={addSecurityRec} onAddSecurityRec={setAddSecurityRec}
+                  useCodeExpiry={useCodeExpiry}   onUseCodeExpiry={setUseCodeExpiry}
+                  codeExpiryMins={codeExpiryMins} onCodeExpiryMins={setCodeExpiryMins}
+                  ttl={authTtl}                   onTtl={setAuthTtl}
+                  apps={supportedApps}            onApps={setSupportedApps}
+                />
+              ) : (
+                <>
 
               {/* Variable type + Media sample row */}
               <div className="grid grid-cols-2 gap-4">
@@ -802,11 +1208,17 @@ export default function WhatsAppTemplateCreatePage() {
                   </span>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* ── Buttons section ── */}
-      {(mobileTab === 'content' || typeof window === 'undefined' || window.innerWidth >= 768) && (
+          {/* Hidden for authentication templates: Meta accepts exactly one button
+              there, the OTP button, and it is configured above. Leaving this open
+              would let a tenant add a quick reply that makes the whole submission
+              invalid for a reason the error message does not explain. */}
+      {!isAuth && (mobileTab === 'content' || typeof window === 'undefined' || window.innerWidth >= 768) && (
           <div className="bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm">
             <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">
@@ -930,9 +1342,9 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
 
                   {/* Footer */}
-                  {footerText && (
+                  {previewFooterText && (
                       <div className="px-4 pb-2">
-                        <p className="text-sm text-slate-400 dark:text-gray-500">{footerText}</p>
+                        <p className="text-sm text-slate-400 dark:text-gray-500">{previewFooterText}</p>
                       </div>
                   )}
 
@@ -942,15 +1354,16 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
 
                   {/* Buttons */}
-                  {buttons.filter(b => b.text.trim()).length > 0 && (
+                  {previewButtons.length > 0 && (
                       <div className="border-t border-slate-100 dark:border-gray-800">
-                        {buttons.filter(b => b.text.trim()).map(b => (
+                        {previewButtons.map(b => (
                             <div
                                 key={b.id}
                                 className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm text-[#0b85eb] dark:text-blue-400 font-semibold border-b border-slate-100 dark:border-gray-800 last:border-0"
                             >
-                              {b.type === 'URL'          && <Globe  className="w-3 h-3.5" />}
-                              {b.type === 'PHONE_NUMBER' && <Phone  className="w-3 h-3.5" />}
+                              {b.kind === 'URL'          && <Globe  className="w-3 h-3.5" />}
+                              {b.kind === 'PHONE_NUMBER' && <Phone  className="w-3 h-3.5" />}
+                              {b.kind === 'OTP'          && <Copy   className="w-3 h-3.5" />}
                               {b.text}
                             </div>
                         ))}
@@ -1059,9 +1472,9 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
 
                   {/* Footer */}
-                  {footerText && (
+                  {previewFooterText && (
                     <div className="px-3 pb-2">
-                      <p className="text-xs text-slate-400 dark:text-gray-500">{footerText}</p>
+                      <p className="text-xs text-slate-400 dark:text-gray-500">{previewFooterText}</p>
                     </div>
                   )}
 
@@ -1071,15 +1484,16 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
 
                   {/* Buttons */}
-                  {buttons.filter(b => b.text.trim()).length > 0 && (
+                  {previewButtons.length > 0 && (
                     <div className="border-t border-slate-100 dark:border-gray-800">
-                      {buttons.filter(b => b.text.trim()).map(b => (
+                      {previewButtons.map(b => (
                         <div
                           key={b.id}
                           className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs text-[#0b85eb] dark:text-blue-400 font-semibold border-b border-slate-100 dark:border-gray-800 last:border-0"
                         >
-                          {b.type === 'URL'          && <Globe  className="w-3 h-3" />}
-                          {b.type === 'PHONE_NUMBER' && <Phone  className="w-3 h-3" />}
+                          {b.kind === 'URL'          && <Globe  className="w-3 h-3" />}
+                          {b.kind === 'PHONE_NUMBER' && <Phone  className="w-3 h-3" />}
+                          {b.kind === 'OTP'          && <Copy   className="w-3 h-3" />}
                           {b.text}
                         </div>
                       ))}
