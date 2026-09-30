@@ -26,7 +26,11 @@ const Login: React.FC = () => {
   // Mobile entry points can arrive with the legacy `/onboarding` redirect.
   // Keep genuine deep links intact, but route that legacy destination to the
   // mobile-ready advanced search experience.
-  const requestedRedirectUrl = searchParams.get('redirect_url') || '/onboarding/advanced-search-ai';
+  // Same-site paths only: `?redirect_url=https://evil` (or `//evil`, `/\\evil`)
+  // must not turn the login page into an open redirect. Control characters
+  // are rejected too — browsers strip a tab from '/\t/evil', leaving '//evil'.
+  const rawRedirect = searchParams.get('redirect_url') || '';
+  const requestedRedirectUrl = /^\/(?![/\\])[^\x00-\x20]*$/.test(rawRedirect) ? rawRedirect : '/onboarding/advanced-search-ai';
   const [isMobile, setIsMobile] = useState(false);
   const isLegacyOnboardingRedirect = requestedRedirectUrl === '/onboarding' || requestedRedirectUrl.startsWith('/onboarding?');
   const redirectUrl = isMobile && isLegacyOnboardingRedirect

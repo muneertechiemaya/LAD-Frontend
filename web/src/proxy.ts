@@ -68,6 +68,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Keep the query on the way back from /login: deep links from a tapped push
+  // notification or a home-screen shortcut (?conversation=, ?tab=) live there.
+  const returnTo = `${pathname}${req.nextUrl.search}`;
+
   // 4. For protected routes, check if user has token
   if (!token) {
     logger.warn('[Middleware] No authentication token for protected route - Redirecting to login', { 
@@ -76,7 +80,7 @@ export async function proxy(req: NextRequest) {
     });
     if (!isOpenRoute(pathname)) {
       const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('redirect_url', pathname);
+      loginUrl.searchParams.set('redirect_url', returnTo);
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -102,7 +106,7 @@ export async function proxy(req: NextRequest) {
       });
 
       const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('redirect_url', pathname);
+      loginUrl.searchParams.set('redirect_url', returnTo);
 
       const response = NextResponse.redirect(loginUrl);
       response.cookies.delete('token');

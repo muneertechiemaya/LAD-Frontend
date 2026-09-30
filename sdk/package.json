@@ -34,6 +34,10 @@
       "types": "./features/calendar/index.ts",
       "default": "./features/calendar/index.ts"
     },
+    "./notifications": {
+      "types": "./features/notifications/index.ts",
+      "default": "./features/notifications/index.ts"
+    },
     "./campaigns": {
       "types": "./features/campaigns/index.ts",
       "default": "./features/campaigns/index.ts"
