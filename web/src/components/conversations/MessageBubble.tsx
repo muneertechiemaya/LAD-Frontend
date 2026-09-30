@@ -601,7 +601,7 @@ export const MessageBubble = memo(function MessageBubble({
           )}
           <span
             className={cn(
-             'wa-msg-time text-[#667781] dark:text-white/60'
+             'wa-msg-time text-[#54656f] dark:text-white/60'
             )}
           >
             {format(timestamp, 'h:mm a')}
@@ -614,7 +614,7 @@ export const MessageBubble = memo(function MessageBubble({
                    ? 'text-[#53bdeb]'
                   : status === 'failed'
                   ? 'text-red-400'
-                  : 'text-[#667781] dark:text-[#8696a0]'
+                  : 'text-[#54656f] dark:text-[#8696a0]'
               )}
             />
           )}

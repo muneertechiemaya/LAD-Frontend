@@ -833,12 +833,14 @@ body {
    GLOBAL DARK MODE INPUT / TEXTAREA / DROPDOWN & MODAL FIELD STYLES
    Ensures all input, textarea, select, combobox, and modal fields use
    slate-900/50 (rgba(15, 23, 42, 0.5)) background and subtle #1c2c4e border.
+   `.field-bare` opts out: a field drawn inside its own styled container (the
+   chat composer pill) would otherwise show a second box inside it.
 ----------------------------------------------------------------- */
-.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.media-builder-prompt),
-.dark textarea,
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.media-builder-prompt):not(.field-bare),
+.dark textarea:not(.field-bare),
 .dark select,
-.dark [data-slot="input"],
-.dark [data-slot="textarea"],
+.dark [data-slot="input"]:not(.field-bare),
+.dark [data-slot="textarea"]:not(.field-bare),
 .dark [data-slot="select-trigger"],
 .dark [role="combobox"],
 .dark button[role="combobox"],

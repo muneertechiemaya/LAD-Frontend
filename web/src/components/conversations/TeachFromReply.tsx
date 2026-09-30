@@ -84,7 +84,7 @@ export function TeachFromReply({
         <Check className="h-3 w-3" />
         <span>Agent learned this</span>
         {insteadOf && (
-          <span className="text-[#667781] dark:text-white/50">
+          <span className="text-[#54656f] dark:text-white/50">
             · instead of its earlier reply
           </span>
         )}
@@ -108,20 +108,25 @@ export function TeachFromReply({
             setOpen(true);
             setError(null);
           }}
+          aria-label="Teach the agent this"
+          title="Teach the agent this"
           className={cn(
-            'flex items-center gap-1 rounded p-1 text-[11px] transition-colors',
-            'text-[#667781] hover:text-emerald-600',
+            // Phones: icon only, with a 44px hit area that doesn't grow the
+            // bubble (padding + equal negative margin). The label wrapped to two
+            // lines under every agent reply at 320px.
+            'flex items-center gap-1 rounded p-1 max-sm:p-[15px] max-sm:-m-[11px] text-[11px] transition-colors',
+            'text-[#54656f] hover:text-emerald-600',
             'dark:text-white/50 dark:hover:text-emerald-400'
           )}
         >
-          <GraduationCap className="h-3.5 w-3.5" />
-          Teach the agent this
+          <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="max-sm:sr-only">Teach the agent this</span>
         </button>
       )}
 
       {open && (
         <div className="mt-2 w-full max-w-md rounded-lg border border-black/10 bg-white p-3 text-xs dark:border-white/10 dark:bg-[#202c33]">
-          <label className="mb-1 block font-medium text-[#667781] dark:text-white/60">
+          <label className="mb-1 block font-medium text-[#54656f] dark:text-white/60">
             Teach the agent to answer like this
           </label>
           <textarea
@@ -131,7 +136,7 @@ export function TeachFromReply({
             onChange={(e) => setText(e.target.value)}
             className="w-full rounded border border-black/10 bg-white p-2 text-[#111b21] outline-none focus:border-emerald-500 dark:border-white/10 dark:bg-[#2a3942] dark:text-white/90"
           />
-          <p className="mt-1 text-[11px] text-[#667781] dark:text-white/50">
+          <p className="mt-1 text-[11px] text-[#54656f] dark:text-white/50">
             Trim anything specific to this customer — greetings, names, or a
             date that won&apos;t apply next time. It shapes similar replies from
             the next message onward.
@@ -145,7 +150,7 @@ export function TeachFromReply({
                 setText(content);
                 setError(null);
               }}
-              className="rounded px-2 py-1 text-[#667781] hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
+              className="rounded px-2 py-1 text-[#54656f] hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
             >
               Cancel
             </button>
