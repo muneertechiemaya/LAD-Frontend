@@ -3857,6 +3857,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               template: c.ai_write === false ? ((c.template || '').trim() || undefined) : undefined,
               voiceConfirmed: c.voiceConfirmed === true,
               cancel_on_reply: c.cancel_on_reply !== false,
+              // The approved template a Business API number sends instead when
+              // the lead is outside WhatsApp's 24h window. WhatsApp only.
+              ...((c.channel || 'whatsapp') === 'whatsapp' && c.whatsapp_template_name ? {
+                whatsapp_template_name: c.whatsapp_template_name,
+                whatsapp_template_language: c.whatsapp_template_language || 'en',
+              } : {}),
               ...delay,
             },
           });
@@ -6864,6 +6870,37 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       }`}>{c.label}</button>
                   ))}
                 </div></div>
+
+              {channel === 'whatsapp' && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Approved template (if they haven&apos;t messaged you in 24h)</label>
+                  {res.waTemplates.length > 0 ? (
+                    <CustomSelect className={field}
+                      value={cfg.whatsapp_template_name ? `${cfg.whatsapp_template_name}|${cfg.whatsapp_template_language || 'en'}` : ''}
+                      onValueChange={(val) => {
+                        const t = findWaTemplate(res.waTemplates, val);
+                        setCfg(eid, {
+                          whatsapp_template_name: t?.name || undefined,
+                          whatsapp_template_language: t ? (t.language || t.language_code || 'en') : undefined,
+                        });
+                      }}>
+                      <option value="">— None (only reaches people who wrote in the last 24h) —</option>
+                      {res.waTemplates.map((t: any) => (
+                        <option key={waTemplateKey(t)} value={waTemplateKey(t)}>{waTemplateLabel(t)}</option>
+                      ))}
+                    </CustomSelect>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                      {res.waTemplatesDegraded
+                        ? <>Couldn&apos;t load approved templates — {res.waTemplatesDegraded}.</>
+                        : <>No approved WhatsApp templates yet. Without one, a reminder only reaches someone who has written to you in the last 24 hours — create one in Templates and get it approved.</>}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    WhatsApp Business numbers can only send your own words inside the 24-hour window.
+                    Outside it Mr LAD sends this template instead, with the lead&apos;s name as {'{{1}}'}.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">How long before the meeting</label>
                 <div className="flex flex-wrap gap-1.5">
