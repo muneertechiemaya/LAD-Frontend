@@ -368,7 +368,7 @@ function TBtn({ icon: Icon, label, onClick, active }: { icon: React.ElementType;
       aria-label={label}
       onClick={onClick}
       className={cn(
-        'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+        'h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors',
         active
           ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
           : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
@@ -877,7 +877,7 @@ function ComposeWindow({
               aria-label="Insert template"
               onClick={() => setShowTemplate(v => !v)}
               className={cn(
-                'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+                'h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors',
                 showTemplate
                   ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
                   : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
@@ -994,13 +994,13 @@ function ComposeWindow({
               )}
             </div>
             <button type="button" title="Toggle confidential mode" aria-label="Toggle confidential mode"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+              className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                 <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" fill="currentColor" />
               </svg>
             </button>
             <button type="button" title="More options" aria-label="More options"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+              className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <MoreVertical className="h-4 w-4" />
             </button>
           </div>
@@ -1016,7 +1016,7 @@ function ComposeWindow({
             title="Discard draft"
             aria-label="Discard this draft"
             onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025] transition-colors"
+            className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025] transition-colors"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -1613,16 +1613,16 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <button title="Star" aria-label="Star this email"
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
                 <Star className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               </button>
               <button title="Reply" aria-label="Reply"
                 onClick={() => { setSubject(`Re: ${emailDetails.subject}`); setShowReplyBox(true); }}
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
                 <Reply className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               </button>
               <button title="More options" aria-label="More options"
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
                 <MoreHorizontal className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               </button>
             </div>
@@ -1777,7 +1777,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
                 aria-label="Insert template"
                 onClick={() => setShowTemplate(v => !v)}
                 className={cn(
-                  'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+                  'h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors',
                   showTemplate
                     ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
                     : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
@@ -2130,7 +2130,10 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const [showCreateLabel, setShowCreateLabel] = useState(false);
   const [showBulkSend, setShowBulkSend] = useState(false);
   const [groupRefreshKey, setGroupRefreshKey] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Open on desktop, closed on phones: below md the sidebar is an overlay, and
+  // starting open covered the inbox on every visit. This view mounts client-side
+  // (after the connected-channel check), so reading the width here is safe.
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
@@ -2627,7 +2630,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         </div>
         {/* Search: flex-1 so it starts right after logo, matching Gmail */}
         <div className="flex-1 min-w-0 max-w-[720px]">
-          <div className="relative h-10 md:h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
+          <div className="relative h-10 max-lg:h-11 md:h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
             <Search className="absolute left-3 md:left-4 h-4 w-4 md:h-5 md:w-5 text-[#444746] dark:text-[#9aa0a6] pointer-events-none" aria-hidden="true" />
             <input
               type="search"
@@ -2635,13 +2638,13 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               value={contactSearch}
               onChange={e => setContactSearch(e.target.value)}
               aria-label="Search in mail"
-              className="w-full h-full bg-transparent pl-9 pr-9 md:pl-12 md:pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
+              className="w-full h-full bg-transparent pl-9 pr-9 max-lg:pr-11 md:pl-12 md:pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
             />
             <button
               title="Search options"
               aria-label="Search options"
               onClick={() => setShowSearchFilter(v => !v)}
-              className="absolute right-2 md:right-3 h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+              className="absolute right-2 md:right-3 h-7 w-7 md:h-8 md:w-8 max-lg:right-0 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 md:h-4 md:w-4" />
             </button>
@@ -2789,7 +2792,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           <button
             title="Settings"
             aria-label="Settings"
-            className="h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="hidden sm:flex h-9 w-9 max-lg:h-11 max-lg:w-11 md:h-10 md:w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
             <Settings className="h-4 w-4 md:h-5 md:w-5" />
           </button>
@@ -2797,18 +2800,34 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             title="Profile"
             aria-label="View profile"
             onClick={() => setShowProfileModal(v => !v)}
-            className="ml-1 h-7 w-7 md:h-8 md:w-8 flex-shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
+            className="ml-1 h-7 w-7 md:h-8 md:w-8 max-lg:h-11 max-lg:w-11 max-lg:p-1.5 flex-shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
           >
             {userImage
-              ? <Image src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} width={32} height={32} className="h-full w-full object-cover" />
+              ? <Image src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} width={32} height={32} className="h-full w-full rounded-full object-cover" />
               : (
-                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-xs md:text-sm font-medium uppercase select-none">
+                <div className="h-full w-full rounded-full flex items-center justify-center bg-[#1a73e8] text-white text-xs md:text-sm font-medium uppercase select-none">
                   {connectedEmail?.charAt(0) ?? '?'}
                 </div>
               )}
           </button>
         </div>
       </header>
+
+      {/* Phones: Compose lives in the sidebar, which starts closed there, so
+          give it a thumb-reach button (the Gmail app pattern). Hidden while a
+          thread or a compose window is open so it never covers the reply box,
+          and with an empty list, whose empty state has its own Compose. */}
+      {!activeContact && visibleWindows.length === 0 && !sidebarOpen && filteredContacts.length > 0 && (
+        <button
+          type="button"
+          onClick={() => openCompose()}
+          aria-label="Compose new email"
+          className="md:hidden absolute right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 inline-flex h-14 items-center gap-2 rounded-2xl bg-[#c2e7ff] px-5 text-sm font-medium text-[#001d35] shadow-lg dark:bg-[#004a77] dark:text-[#c2e7ff]"
+        >
+          <Pencil className="h-5 w-5" aria-hidden="true" />
+          Compose
+        </button>
+      )}
 
       <div className="flex flex-1 min-h-0 gap-0 px-0 pb-0 relative">
 
@@ -2827,7 +2846,9 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           'absolute inset-y-0 left-0 z-40 md:static md:z-auto md:inset-auto md:flex-shrink-0',
           sidebarOpen
             ? 'w-[255px] pr-3 shadow-xl md:shadow-none'
-            : 'w-0 -translate-x-full md:translate-x-0 md:w-[72px] md:pr-0',
+            // max-md:invisible: a closed phone drawer is squeezed to w-0, but its
+            // buttons were still reachable by keyboard and screen readers.
+            : 'w-0 -translate-x-full md:translate-x-0 md:w-[72px] md:pr-0 max-md:invisible',
         )} aria-label="Mail navigation">
 
           {/* Compose Button */}
@@ -2864,7 +2885,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     aria-label={`${f.label}${f.count > 0 ? `, ${f.count} unread` : ''}`}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center w-full h-8 text-sm transition-colors text-left flex-shrink-0',
+                      'flex items-center w-full h-8 max-lg:h-11 text-sm transition-colors text-left flex-shrink-0',
                       sidebarOpen
                         ? 'rounded-r-full justify-between pl-6 pr-4'
                         : 'rounded-full justify-center',
@@ -2898,7 +2919,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Labels</span>
                     <button onClick={() => { setCreateLabelError(''); setShowCreateLabel(true); }}
                       title="Create new label" aria-label="Create new label"
-                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      className="h-6 w-6 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <Plus className="h-4 w-4 text-[#444746] dark:text-[#9aa0a6]" />
                     </button>
                   </div>
@@ -2937,7 +2958,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       : labels.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open label: ${g.name}`}
-                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
+                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 max-lg:min-h-11 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                           <span className="flex-1 text-sm text-[#202124] dark:text-[#e8eaed] truncate">{g.name}</span>
                         </button>
@@ -2949,7 +2970,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   {labels.map(g => (
                     <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                       title={g.name} aria-label={`Open label: ${g.name}`}
-                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                     </button>
                   ))}
@@ -2965,7 +2986,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Broadcast Groups</span>
                     <button onClick={() => { setCreateGroupError(''); setShowCreateGroup(true); }}
                       title="Create new broadcast group" aria-label="Create new broadcast group"
-                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      className="h-6 w-6 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <Plus className="h-4 w-4 text-[#444746] dark:text-[#9aa0a6]" />
                     </button>
                   </div>
@@ -3003,7 +3024,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       : groups.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open group: ${g.name}, ${g.member_count} members`}
-                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
+                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 max-lg:min-h-11 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                           <span className="flex-1 text-sm text-[#202124] dark:text-[#e8eaed] truncate">{g.name}</span>
                           <span className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]" aria-hidden="true">{g.member_count}</span>
@@ -3016,7 +3037,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   {groups.map(g => (
                     <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                       title={g.name} aria-label={`Open group: ${g.name}`}
-                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                     </button>
                   ))}
@@ -3025,8 +3046,9 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             </div>
           </div>{/* end scrollable area */}
 
-          {/* Meet - pinned to bottom */}
-          <div className="mt-auto pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
+          {/* Meet - pinned to bottom. Hidden on phones: neither button has a
+              handler yet, and on a phone they cost scarce drawer space. */}
+          <div className="mt-auto pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0 max-md:hidden">
             {sidebarOpen ? (
               <>
                 <p className="text-xs font-semibold text-[#202124] dark:text-[#e8eaed] pl-6 py-1">Meet</p>
@@ -3050,14 +3072,14 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             ) : (
               <div className="flex flex-col items-center gap-1 py-1">
                 <button title="New meeting" aria-label="New meeting"
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                  className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                     <rect width="24" height="24" fill="none" />
                     <path d="M20 5h-3V3.5a1.5 1.5 0 00-3 0V5h-4V3.5a1.5 1.5 0 00-3 0V5H4C2.9 5 2 5.9 2 7v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" fill="#34A853" />
                   </svg>
                 </button>
                 <button title="Join a meeting" aria-label="Join a meeting"
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                  className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                     <rect width="24" height="24" fill="none" />
                     <path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z" fill="#1E88E5" />
@@ -3201,11 +3223,11 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     </span>
                     <div className="flex">
                       <button disabled={page === 0} onClick={() => setPage(p => p - 1)} title="Previous page" aria-label="Previous page"
-                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
+                        className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
                         <ChevronLeft className="h-4 w-4" />
                       </button>
                       <button disabled={(page + 1) * pageSize >= filteredContacts.length} onClick={() => setPage(p => p + 1)} title="Next page" aria-label="Next page"
-                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
+                        className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
                         <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
@@ -3267,11 +3289,11 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     </p>
                     <div className="flex gap-2">
                       <button onClick={() => openCompose()} aria-label="Compose new email"
-                        className="flex items-center gap-2 px-4 h-9 rounded-full text-white text-sm" style={{ backgroundColor: providerColor }}>
+                        className="flex items-center gap-2 px-4 h-9 max-lg:h-11 rounded-full text-white text-sm" style={{ backgroundColor: providerColor }}>
                         <Pencil className="h-3.5 w-3.5" />Compose
                       </button>
                       <button onClick={() => setShowImport(true)} aria-label="Import leads"
-                        className="flex items-center gap-2 px-4 h-9 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]">
+                        className="flex items-center gap-2 px-4 h-9 max-lg:h-11 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]">
                         <UserPlus className="h-3.5 w-3.5" />Import Leads
                       </button>
                     </div>
@@ -3311,14 +3333,14 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                               title={isStarred ? 'Unstar' : 'Star'}
                               aria-label={isStarred ? `Unstar ${c.contact_name}` : `Star ${c.contact_name}`}
                               aria-pressed={isStarred}
-                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                              className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
                               <Star className={cn('h-4 w-4', isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368] dark:text-[#9aa0a6]/40')} />
                             </button>
                             <button onClick={e => toggleImportant(c.id, e)}
                               title={isImportant ? 'Not important' : 'Mark important'}
                               aria-label={isImportant ? `Mark ${c.contact_name} not important` : `Mark ${c.contact_name} important`}
                               aria-pressed={isImportant}
-                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                              className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
                               <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-4 w-4', isImportant ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368] dark:text-[#9aa0a6]/40')}>
                                 <path d="M12 2L4 7l2 13h12l2-13z" />
                               </svg>
@@ -3754,7 +3776,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[#e0e0e0] dark:border-[#3c4043]">
               <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">{connectedEmail}</span>
               <button onClick={() => setShowProfileModal(false)} title="Close" aria-label="Close account menu"
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] ml-2 flex-shrink-0">
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] ml-2 flex-shrink-0">
                 <X className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               </button>
             </div>
