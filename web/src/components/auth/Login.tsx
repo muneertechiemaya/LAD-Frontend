@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,7 +21,6 @@ const Login: React.FC = () => {
   const dispatch = useDispatch();
   const { refreshUser } = useAuth();
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   // Mobile entry points can arrive with the legacy `/onboarding` redirect.
   // Keep genuine deep links intact, but route that legacy destination to the
@@ -31,25 +30,13 @@ const Login: React.FC = () => {
   // are rejected too — browsers strip a tab from '/\t/evil', leaving '//evil'.
   const rawRedirect = searchParams.get('redirect_url') || '';
   const requestedRedirectUrl = /^\/(?![/\\])[^\x00-\x20]*$/.test(rawRedirect) ? rawRedirect : '/onboarding/advanced-search-ai';
-  const [isMobile, setIsMobile] = useState(false);
   const isLegacyOnboardingRedirect = requestedRedirectUrl === '/onboarding' || requestedRedirectUrl.startsWith('/onboarding?');
-  const redirectUrl = isMobile && isLegacyOnboardingRedirect
-    ? '/onboarding/advanced-search-ai'
-    : requestedRedirectUrl;
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const auth = useSelector((state: RootState) => state.auth);
   const { loading, error } = auth || { loading: false, error: null };
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 768px)');
-    const syncMobile = () => setIsMobile(mediaQuery.matches);
-    syncMobile();
-    mediaQuery.addEventListener('change', syncMobile);
-    return () => mediaQuery.removeEventListener('change', syncMobile);
-  }, []);
 
   useEffect(() => {
     // Load saved credentials
@@ -60,12 +47,6 @@ const Login: React.FC = () => {
       setRememberMe(true);
     }
   }, []);
-
-  useEffect(() => {
-    // Start downloading the (heavy) post-login page while the user types, so
-    // router.push after auth doesn't pay the full chunk-load on click.
-    router.prefetch(redirectUrl);
-  }, [router, redirectUrl]);
 
   useEffect(() => {
     if (error) {
@@ -108,20 +89,17 @@ const Login: React.FC = () => {
       refreshUser(user);
       // Honour redirect_url param (e.g. /tenant/onboard/new for super-admin)
       // Fall back to default dashboard for all other users
-      // Read the viewport at submit time as well, so a very fast login cannot
-      // race the mobile media-query effect above.
       const destination = window.matchMedia('(max-width: 768px)').matches && isLegacyOnboardingRedirect
         ? '/onboarding/advanced-search-ai'
         : requestedRedirectUrl;
-      router.push(destination);
-      // Backfill the richer /me payload (tenants[] for the switcher,
-      // tenantFeatures[] for feature gates) WITHOUT blocking navigation.
-      authService.getCurrentUser()
-        .then((fullUser) => {
-          dispatch(loginSuccess(fullUser));
-          refreshUser(fullUser as any);
-        })
-        .catch(() => { /* non-blocking enrichment; AuthContext self-heals on next mount */ });
+      // A full navigation, not router.push. Every app page is behind the auth
+      // proxy, so anything the router fetched or cached while signed out (a
+      // prefetch, the RSC payload) is the proxy's redirect to /login. Reusing
+      // it after sign-in left users on the login screen until they refreshed.
+      // replace() also keeps Back from returning to the login form.
+      // No /me backfill here: the page is unloading, and AuthContext fetches
+      // the full /me payload (tenants, feature flags) on the next page's mount.
+      window.location.replace(destination);
     } catch (err: any) {
       console.error('[Login] Login failed:', err);
       dispatch(loginFailure(err.message));
