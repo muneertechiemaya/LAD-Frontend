@@ -131,7 +131,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
   useEffect(() => { setOpenStage(null); }, [period]);
 
   const header = (
-    <button onClick={load} title="Refresh" className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]">
+    <button onClick={load} title="Refresh" className="p-1 max-lg:p-[15px] max-lg:-m-[11px] rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]">
       <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
     </button>
   );
@@ -156,7 +156,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
             <button
               key={p.key}
               onClick={() => setPeriod(p.key)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+              className={`px-2.5 py-1 max-lg:min-h-11 max-lg:px-3.5 rounded-md text-xs font-medium border transition-colors ${
                 active
                   ? 'border-transparent bg-[#0F6E56] text-white'
                   : 'border-slate-200 text-muted-foreground hover:bg-slate-100 dark:border-blue-950/40 dark:text-[#E0E0E0]/70 dark:hover:bg-white/5'
@@ -224,7 +224,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
                   {i > 0 && (
                     <div className="flex items-center justify-center gap-2 py-0.5">
                       <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '-'}</span>
-                      {dropped > 0 && <span className="text-[10px] text-muted-foreground/70">{num(dropped)} dropped</span>}
+                      {dropped > 0 && <span className="text-[11px] text-muted-foreground/70">{num(dropped)} dropped</span>}
                     </div>
                   )}
                   <div className="flex items-center gap-3">
@@ -246,7 +246,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground text-center">Click any stage to see its leads.</p>
+          <p className="text-[11px] text-muted-foreground text-center">Click any stage to see its leads.</p>
         </div>
       ) : null}
 

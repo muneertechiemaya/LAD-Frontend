@@ -29,7 +29,9 @@ export const BroadcastPerformanceWidget: React.FC<BroadcastPerformanceWidgetProp
       icon={<MessageSquare className="h-4 w-4" />}
     >
       <div className="w-full overflow-x-auto custom-scrollbar">
-        <div className="min-w-[720px]">
+        {/* The table needs 720px from sm up; below that it lays itself out as a
+            card (BroadcastPerformance's phone CSS), so don't force the width. */}
+        <div className="sm:min-w-[720px]">
           <BroadcastPerformanceContainer chromeless />
         </div>
       </div>

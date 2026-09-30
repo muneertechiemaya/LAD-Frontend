@@ -61,7 +61,7 @@ export const LinkedInFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
     <button
       onClick={load}
       title="Refresh"
-      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]"
+      className="p-1 max-lg:p-[15px] max-lg:-m-[11px] rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]"
     >
       <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
     </button>
