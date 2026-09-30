@@ -765,6 +765,26 @@ body {
       opacity: 0.5;
     }
   }
+
+  /* Horizontal chip/tab rows: used across the app but never defined, so
+     desktop showed a scrollbar under every one of them. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A row that scrolls sideways on a phone fades out at its right edge, so a
+     cut-off chip reads as "there is more" rather than as broken layout. */
+  @media (max-width: 1023.98px) {
+    .scroll-fade-x {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+      padding-right: 28px;
+    }
+  }
 }
 
 /* Dashboard Widget Styles */

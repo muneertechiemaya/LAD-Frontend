@@ -2417,6 +2417,11 @@ interface WABASidebarProps {
   loadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  // First load of the list, and whether it failed. Without these the list
+  // said "No chats found" both while loading and when the request failed.
+  isLoadingList?: boolean;
+  listError?: unknown;
+  onRetryList?: () => void;
   isImportDialogOpen?: boolean;
   onImportDialogOpenChange?: (open: boolean) => void;
 }
@@ -2448,6 +2453,9 @@ function WABASidebar({
   loadMore,
   hasMore,
   isLoadingMore,
+  isLoadingList = false,
+  listError,
+  onRetryList,
   isImportDialogOpen: externalIsImportDialogOpen,
   onImportDialogOpenChange,
 }: WABASidebarProps) {
@@ -3294,7 +3302,7 @@ function WABASidebar({
       )}
 
       {/* Filter Chips (All / Unread) + Sort/Filter */}
-      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
+      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-fade-x border-b border-border dark:border-[#222d34]/80">
         {(['all', 'unread'] as FilterTab[]).map((tab) => (
           <button
             key={tab}
@@ -3691,6 +3699,31 @@ function WABASidebar({
               Make it easy to find the people and groups that matter most across WhatsApp.
             </p>
             <button className="mt-4 text-[#00a884] text-[15px] font-medium hover:underline">Add to Favourites</button>
+          </div>
+        ) : isLoadingList && conversations.length === 0 ? (
+          <div aria-busy="true" aria-label="Loading chats">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <div className="h-12 w-12 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-2/5 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : listError && conversations.length === 0 ? (
+          <div role="alert" className="p-6 text-center text-sm text-muted-foreground dark:text-[#8696a0]">
+            <p>Couldn&apos;t load your chats.</p>
+            {onRetryList && (
+              <button
+                type="button"
+                onClick={onRetryList}
+                className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border px-4 font-medium text-foreground hover:bg-muted"
+              >
+                Try again
+              </button>
+            )}
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground dark:text-[#8696a0]">
@@ -4711,6 +4744,9 @@ export function WABusinessView({
     loadMore,
     hasMore,
     isLoadingMore,
+    isLoading: isLoadingList,
+    error: listError,
+    refetch: refetchList,
   } = useConversations({ channel });
 
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
@@ -5057,6 +5093,9 @@ const handleFavorite = useCallback(
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              isLoadingList={isLoadingList}
+              listError={listError}
+              onRetryList={() => { void refetchList(); }}
               isImportDialogOpen={isImportDialogOpen}
               onImportDialogOpenChange={setIsImportDialogOpen}
             />
