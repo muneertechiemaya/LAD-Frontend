@@ -52,13 +52,18 @@ const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Load saved credentials
-    const savedEmail = localStorage.getItem('savedEmail');
-    const savedPassword = localStorage.getItem('savedPassword');
-    if (savedEmail && savedPassword) {
-      setFormData({ email: savedEmail, password: savedPassword });
-      setRememberMe(true);
-    }
+    // "Remember me" keeps the email only. Older builds also stored the password
+    // in plain text under `savedPassword` - purge it so it can't be read by any
+    // script on this origin. Saving the password is left to the browser's own
+    // password manager (see the autocomplete attributes on the inputs).
+    try {
+      localStorage.removeItem('savedPassword');
+      const savedEmail = localStorage.getItem('savedEmail');
+      if (savedEmail) {
+        setFormData((prev) => ({ ...prev, email: savedEmail }));
+        setRememberMe(true);
+      }
+    } catch { /* storage unavailable (private mode / blocked) - nothing to restore */ }
   }, []);
 
   useEffect(() => {
@@ -101,6 +106,10 @@ const Login: React.FC = () => {
       // capabilities) - navigate on it immediately instead of blocking on a
       // second /api/auth/me round trip that re-fetches the same data.
       const loginResp = await authService.login(formData);
+      try {
+        if (rememberMe) localStorage.setItem('savedEmail', formData.email);
+        else localStorage.removeItem('savedEmail');
+      } catch { /* storage unavailable - remembering the email is best-effort */ }
       const user = (loginResp?.user || {}) as any;
       dispatch(loginSuccess(user));
       // AuthContext otherwise stays null until a full page refresh, leaving the
@@ -166,6 +175,7 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 disabled={loading}
                 type="email"
+                autoComplete="username"
                 placeholder="you@example.com"
                 className="
                   w-full rounded-xl pl-10 pr-3 py-2.5 sm:py-3
@@ -195,6 +205,7 @@ const Login: React.FC = () => {
               <input
                 name="password"
                 type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
                 disabled={loading}
