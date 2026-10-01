@@ -96,8 +96,22 @@ function resolveDisplayName(...candidates: Array<any>): string {
   }
   return 'User';
 }
+/**
+ * Menu sections, in the order a lead moves: what needs you today, getting new
+ * leads, turning them into customers, results, then setup. Items with no group
+ * (Home, curated Pipelines) sit above the first header.
+ */
+type NavGroup = 'today' | 'grow' | 'convert' | 'measure' | 'setup';
+const NAV_GROUP_LABEL: Record<NavGroup, string> = {
+  today: 'Today',
+  grow: 'Grow',
+  convert: 'Convert',
+  measure: 'Measure',
+  setup: 'Setup',
+};
 type NavItem = {
   href: string;
+  group?: NavGroup;
   label: string;
   icon: any;
   details: string;
@@ -221,7 +235,7 @@ export function Sidebar() {
   const allNavItems: NavItem[] = [
     {
       href: "/overview",
-      label: "Overview",
+      label: "Home",
       icon: Home,
       details: "See your overall dashboard and metrics.",
       requiredCapability: "view_overview",
@@ -238,17 +252,41 @@ export function Sidebar() {
       details: "Switch the pipelines built for your industry on and off.",
       requiresCuratedWorkspace: true,
     },
+
+    // ── Today: what needs a person now ──────────────────────────────────────
+    {
+      href: "/conversations",
+      group: "today",
+      label: "Inbox",
+      icon: MessageSquare,
+      details: "Replies from every channel - handled by Mr LAD or by your team.",
+      requiredCapability: "view_conversations",
+      requiredFeature: FEATURE.CONVERSATIONS,
+    },
+    {
+      href: "/follow-ups",
+      group: "today",
+      label: "Follow-ups",
+      icon: GitFork,
+      details: "Track and manage your follow-up tasks and reminders.",
+      requiredCapability: "view_followups",
+      requiredFeature: FEATURE.FOLLOWUPS,
+    },
+
+    // ── Grow: get new leads ──────────────────────────────────────────────────
     {
       href: "/onboarding/advanced-search-ai",
-      label: "AI Assistant",
+      group: "grow",
+      label: "Ask Mr LAD",
       icon: Search,
-      details: "AI-powered ICP assistant and workflow setup",
+      details: "Find leads, build an audience and plan a campaign with Mr LAD.",
       requiredCapability: "view_ai_assistant",
       requiredFeature: FEATURE.AI_CHAT,
     },
     {
       href: "/campaigns",
-      label: "Campaigns",
+      group: "grow",
+      label: "Outreach",
       icon: Goal,
       details:
         "Multi-channel outreach campaigns with LinkedIn and Email automation.",
@@ -256,34 +294,9 @@ export function Sidebar() {
       requiredFeature: FEATURE.CAMPAIGNS,
     },
     {
-      href: "/conversations",
-      label: "Conversations",
-      icon: MessageSquare,
-      details: "View and manage your social media conversations.",
-      requiredCapability: "view_conversations",
-      requiredFeature: FEATURE.CONVERSATIONS,
-      children: [
-        {
-          href: "/conversations/templates",
-          label: "Templates",
-          icon: LayoutTemplate,
-          details: "Create and manage message templates for conversations and broadcasts.",
-          requiredCapability: "view_conversations",
-          requiredFeature: FEATURE.CONVERSATIONS,
-        },
-      ],
-    },
-    {
-      href: "/community-roi",
-      label: "Community ROI",
-      icon: ChartNoAxesCombined,
-      details: "Track and analyze community engagement and ROI metrics.",
-      requiredCapability: "view_community_roi",
-      requiredFeature: FEATURE.COMMUNITY_ROI,
-    },
-    {
       href: "/make-call",
-      label: "Make a Call",
+      group: "grow",
+      label: "Calls",
       icon: Phone,
       details: "Place outgoing calls using your assigned numbers.",
       requiredCapability: "view_make_call",
@@ -291,7 +304,7 @@ export function Sidebar() {
       children: [
         {
           href: "/call-logs",
-          label: "Call Logs",
+          label: "Call history",
           icon: ChartNoAxesCombined,
           details: "Review past call history and recordings.",
           requiredCapability: "view_call_logs",
@@ -299,8 +312,11 @@ export function Sidebar() {
         },
       ],
     },
+
+    // ── Convert: the human work that moves a lead forward ───────────────────
     {
       href: "/pipeline",
+      group: "convert",
       label: isEducation ? "Students" : "Pipeline",
       icon: isEducation ? GraduationCap : CircleDollarSign,
       details: isEducation
@@ -311,14 +327,38 @@ export function Sidebar() {
     },
     {
       href: "/crm",
-      label: "Contacts Funnel",
+      group: "convert",
+      label: "Contacts",
       icon: Contact,
       details: "Unified cross-channel prospects, leads and clients from the Master Agent.",
       requiredCapability: "view_pipeline",
     },
     {
+      href: "/sales-playbook",
+      group: "convert",
+      label: "Playbook",
+      icon: ClipboardList,
+      details: "Run the discovery call script, score the lead and cost the customisation.",
+      requiredCapability: "view_sales_playbook",
+      requiredFeature: FEATURE.SALES_PLAYBOOK,
+    },
+
+    // ── Measure ──────────────────────────────────────────────────────────────
+    {
+      href: "/community-roi",
+      group: "measure",
+      label: "Referral ROI",
+      icon: ChartNoAxesCombined,
+      details: "Track and analyze community engagement and ROI metrics.",
+      requiredCapability: "view_community_roi",
+      requiredFeature: FEATURE.COMMUNITY_ROI,
+    },
+
+    // ── Setup ────────────────────────────────────────────────────────────────
+    {
       href: "/studio",
-      label: "Tenant Studio",
+      group: "setup",
+      label: "Train Mr LAD",
       icon: Sparkles,
       details: "Train the workspace on your business: interview, ICP training, rehearsal, and the Tailor.",
       // No capability is granted to members on purpose: admins and owners pass
@@ -327,22 +367,16 @@ export function Sidebar() {
       requiredCapability: "manage_tenant_studio",
     },
     {
-      href: "/follow-ups",
-      label: "Follow-ups",
-      icon: GitFork,
-      details: "Track and manage your follow-up tasks and reminders.",
-      requiredCapability: "view_followups",
-      requiredFeature: FEATURE.FOLLOWUPS,
+      // Top-level (was under Conversations): Outreach, broadcasts and the
+      // Inbox all draw on the same templates.
+      href: "/conversations/templates",
+      group: "setup",
+      label: "Templates",
+      icon: LayoutTemplate,
+      details: "Create and manage message templates for conversations and broadcasts.",
+      requiredCapability: "view_conversations",
+      requiredFeature: FEATURE.CONVERSATIONS,
     },
-    {
-      href: "/sales-playbook",
-      label: "Sales Playbook",
-      icon: ClipboardList,
-      details: "Run the discovery call script, score the lead and cost the customisation.",
-      requiredCapability: "view_sales_playbook",
-      requiredFeature: FEATURE.SALES_PLAYBOOK,
-    },
-
   ];
 
   // Helper: does the user have access to this nav item?
@@ -534,7 +568,6 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 flex flex-col gap-0.5 px-3 pt-4 pb-2 overflow-y-auto" aria-label="Main">
-          <span className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">Menu</span>
           {(() => {
             // Build the set of every URL claimed as a "child" anywhere in the
             // nav tree so a top-level item never lights up when the current
@@ -549,7 +582,14 @@ export function Sidebar() {
               Array.from(ownedChildHrefs).some(c =>
                 href === c || href.startsWith(c + '/')
               );
-            return nav.map((n) => {
+            // A deeper top-level link (Templates at /conversations/templates)
+            // owns its path; the shallower one (Inbox at /conversations) must
+            // not light up as well.
+            const shadowedByDeeperTop = (href: string) =>
+              nav.some(o => o.href !== href && o.href.startsWith(href + '/') &&
+                (pathname === o.href || pathname.startsWith(o.href + '/')));
+            return nav.map((n, idx) => {
+              const groupStart = !!n.group && n.group !== nav[idx - 1]?.group;
               const Icon = n.icon;
               const ownChildHrefs = new Set((n.children ?? []).map(c => c.href));
               const matchesOwnRoute = pathname === n.href || pathname.startsWith(n.href + '/');
@@ -559,7 +599,7 @@ export function Sidebar() {
                 !Array.from(ownChildHrefs).some(c =>
                   pathname === c || pathname.startsWith(c + '/')
                 );
-              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild;
+              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild && !shadowedByDeeperTop(n.href);
               const hasChildren = n.children && n.children.length > 0;
               const childOnPath = hasChildren && n.children!.some(c =>
                 pathname === c.href || pathname.startsWith(c.href + '/')
@@ -570,6 +610,11 @@ export function Sidebar() {
 
             return (
               <div key={n.href}>
+                {groupStart && (
+                  <span className="block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                    {NAV_GROUP_LABEL[n.group!]}
+                  </span>
+                )}
                 <NavLink
                   href={n.href}
                   aria-current={selfActive ? "page" : undefined}
@@ -742,7 +787,14 @@ export function Sidebar() {
               Array.from(ownedChildHrefs).some(c =>
                 href === c || href.startsWith(c + '/')
               );
-            return nav.map((n) => {
+            // A deeper top-level link (Templates at /conversations/templates)
+            // owns its path; the shallower one (Inbox at /conversations) must
+            // not light up as well.
+            const shadowedByDeeperTop = (href: string) =>
+              nav.some(o => o.href !== href && o.href.startsWith(href + '/') &&
+                (pathname === o.href || pathname.startsWith(o.href + '/')));
+            return nav.map((n, idx) => {
+              const groupStart = !!n.group && n.group !== nav[idx - 1]?.group;
               const Icon = n.icon;
               const ownChildHrefs = new Set((n.children ?? []).map(c => c.href));
               const matchesOwnRoute = pathname === n.href || pathname.startsWith(n.href + '/');
@@ -750,7 +802,7 @@ export function Sidebar() {
                 !Array.from(ownChildHrefs).some(c =>
                   pathname === c || pathname.startsWith(c + '/')
                 );
-              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild;
+              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild && !shadowedByDeeperTop(n.href);
               const hasChildren = n.children && n.children.length > 0;
               const childOnPath = hasChildren && n.children!.some(c =>
                 pathname === c.href || pathname.startsWith(c.href + '/')
@@ -759,7 +811,15 @@ export function Sidebar() {
             // a sub-item is current. They drive different styling now, so we
             // no longer combine them into one boolean.
             return (
-              <div key={n.href} className="relative group">
+              <div key={n.href}>
+              {groupStart && (isExpanded ? (
+                <span className="block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                  {NAV_GROUP_LABEL[n.group!]}
+                </span>
+              ) : (
+                <div aria-hidden="true" className="mx-auto my-2 h-px w-8 bg-sidebar-border" />
+              ))}
+              <div className="relative group">
                 <NavLink
                   href={n.href}
                   // Collapsed, this renders as a bare 48px icon — the label
@@ -918,6 +978,7 @@ export function Sidebar() {
                     })}
                   </div>
                 ) : null}
+              </div>
               </div>
             );
           });
