@@ -165,7 +165,8 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
                 <div
                   key={agent.id}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-blue-950/40',
+                    // Phones: stats wrap under the name, which otherwise shrank to "Unkn…".
+                    'flex items-center justify-between max-sm:flex-wrap max-sm:gap-y-2 p-3 rounded-xl border border-slate-200 dark:border-blue-950/40',
                     'bg-white dark:bg-[#071131] hover:bg-slate-50 dark:hover:bg-[#0c1a42]',
                     'transition-all duration-200 ease-out will-change-transform hover:-translate-y-0.5 hover:scale-[1.01]'
                   )}
@@ -186,7 +187,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-right">
+                  <div className="flex items-center gap-4 text-right max-sm:w-full max-sm:justify-start max-sm:pl-11 max-sm:text-left">
                     <div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <Phone className="h-3 w-3" />
@@ -219,7 +220,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2"
+                    className="h-7 px-2 max-lg:h-11 max-lg:px-3"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => p - 1)}
                   >
@@ -228,7 +229,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2"
+                    className="h-7 px-2 max-lg:h-11 max-lg:px-3"
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage((p) => p + 1)}
                   >

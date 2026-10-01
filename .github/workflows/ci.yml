@@ -104,6 +104,11 @@ jobs:
         working-directory: web
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+          # Same heap as the Dockerfile (ENV NODE_OPTIONS=--max-old-space-size=6144).
+          # Without it the build ran out of memory on the runner (Oct 2026:
+          # "Reached heap limit ... JavaScript heap out of memory", exit 134) on
+          # every PR, while the Docker deploy - which sets it - built fine.
+          NODE_OPTIONS: --max-old-space-size=6144
         # The same command the Dockerfile runs (`npm run build` -> next build
         # --webpack). Kept identical on purpose: a gate that builds differently
         # from the deploy can pass while the deploy fails.

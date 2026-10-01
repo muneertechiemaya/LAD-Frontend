@@ -246,7 +246,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
                           );
                         })}
                         {events.length > 2 && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[11px] text-muted-foreground">
                             +{events.length - 2} more
                           </span>
                         )}
