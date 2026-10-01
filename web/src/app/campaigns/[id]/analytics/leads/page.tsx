@@ -717,7 +717,7 @@ export default function CampaignLeadsPage() {
                 <button
                   onClick={regenerateFollowup}
                   disabled={followupPreviewing}
-                  className="flex items-center gap-1 text-xs text-[#0b1957] dark:text-[#2B7CFF] hover:underline disabled:opacity-50 font-medium"
+                  className="flex items-center gap-1 text-xs max-md:text-sm text-[#0b1957] dark:text-[#2B7CFF] hover:underline disabled:opacity-50 font-medium max-lg:min-h-11 max-lg:px-2"
                 >
                   {followupPreviewing ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
