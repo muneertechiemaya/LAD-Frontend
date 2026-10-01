@@ -6,6 +6,7 @@
  */
 export {
   taskKeys,
+  WAITING_CHATS_LIMIT,
   getWaitingChats,
   getAssignedConversations,
   getTaskNotifications,
