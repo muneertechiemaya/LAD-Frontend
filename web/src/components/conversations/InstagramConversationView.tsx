@@ -17,6 +17,7 @@
  *   - voice clip + image attachment rendering richer than the current
  *     "attached image" placeholder
  */
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -142,6 +143,8 @@ function InstagramConversationViewInner(): JSX.Element {
   const router = useRouter();
   const [conversations, setConversations] = useState<InstagramConversationRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(!!activeId);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [search, setSearch] = useState('');

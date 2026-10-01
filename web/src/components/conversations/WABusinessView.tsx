@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import { useConversations, useConversationMessages } from '@lad/frontend-features/conversations';
 import type { Conversation, Message } from '@/types/conversation';
 
@@ -4725,6 +4726,8 @@ export function WABusinessView({
   const [isMounted, setIsMounted] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(isMobileChatOpen);
 
   useEffect(() => {
     setIsMounted(true);

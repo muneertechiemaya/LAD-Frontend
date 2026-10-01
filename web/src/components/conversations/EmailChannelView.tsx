@@ -1,5 +1,6 @@
 'use client';
 
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import {
   useState, useEffect, useCallback, useRef, memo, useMemo,
 } from 'react';
@@ -2102,6 +2103,8 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const [contactSearch, setContactSearch] = useState('');
 
   const [activeContact, setActiveContact] = useState<EmailContact | null>(null);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(!!activeContact);
   const [showDetails, setShowDetails] = useState(false);
   const [activeGroup, setActiveGroup] = useState<EmailGroup | null>(null);
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');

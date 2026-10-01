@@ -35,6 +35,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { NavLink } from "./NavLink";
+import { MobileBottomNav } from "./layout/MobileBottomNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
@@ -448,6 +449,8 @@ export function Sidebar() {
     : baseNav;
   return (
     <>
+      <MobileBottomNav nav={nav} />
+
       {/* Mobile Top Bar */}
       <div
         className={cn(
