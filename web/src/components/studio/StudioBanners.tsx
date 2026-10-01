@@ -32,7 +32,7 @@ export function LiveBanner({ onDismiss, pipelineName = null }: { onDismiss: () =
           ? <>{pipelineName} is switched on and running on WhatsApp. You&rsquo;ll get a daily summary, and it hands over to you the moment someone is interested.{' '}<Link href="/studio?room=pipelines" className={LINK}>See your pipelines →</Link></>
           : <>Your first campaign is sending. You&rsquo;ll get a daily summary, and it hands over to you the moment someone is interested.{' '}<Link href="/campaigns" className={LINK}>Watch it →</Link></>}
       </span>
-      <button type="button" onClick={onDismiss} className="shrink-0 rounded-md p-0.5 transition-colors duration-150 hover:bg-emerald-100 dark:hover:bg-emerald-500/20" aria-label="Dismiss">
+      <button type="button" onClick={onDismiss} className="shrink-0 rounded-md p-0.5 max-lg:p-[14px] max-lg:-m-[12px] transition-colors duration-150 hover:bg-emerald-100 dark:hover:bg-emerald-500/20" aria-label="Dismiss">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -93,7 +93,7 @@ export function NeutralVoiceBanner({ state, onAdd }: { state: StudioState; onAdd
         <span className={`font-semibold ${AI_TEXT}`}>Mr LAD</span> is writing in a neutral voice. Add a few real conversations to make it sound like you (3 min).{' '}
         <button type="button" onClick={onAdd} className={LINK}>Add conversations →</button>
       </span>
-      <button type="button" onClick={dismiss} className="shrink-0 rounded-md p-0.5 transition-colors duration-150 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Dismiss">
+      <button type="button" onClick={dismiss} className="shrink-0 rounded-md p-0.5 max-lg:p-[14px] max-lg:-m-[12px] transition-colors duration-150 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Dismiss">
         <X className="h-4 w-4" />
       </button>
     </div>

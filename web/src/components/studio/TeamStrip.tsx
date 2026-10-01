@@ -51,7 +51,7 @@ export default function TeamStrip({ channels, onEdit }: TeamStripProps) {
           {on.length === 0 ? 'Set up your channels →' : 'Change how they talk →'}
         </button>
       </div>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-5">
+      <ul className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {ORDER.map((ch) => {
           const c = byChannel.get(ch);
           const meta = META[ch];
