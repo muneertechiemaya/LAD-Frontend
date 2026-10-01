@@ -189,7 +189,7 @@ export default function AdminBlogPage() {
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="Admin token"
-            className="w-full px-3 py-2 border border-border rounded-md bg-background mb-4 focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full px-3 py-2 max-lg:min-h-11 max-md:text-[16px] border border-border rounded-md bg-background mb-4 focus:outline-none focus:ring-2 focus:ring-ring"
             autoFocus
           />
           {error && <p className="text-sm text-destructive mb-4">{error}</p>}
