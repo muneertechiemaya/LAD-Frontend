@@ -978,18 +978,20 @@ export default function WhatsAppTemplateCreatePage() {
               ) : (
                 <>
 
-              {/* Variable type + Media sample row */}
+              {/* Variable type + Media sample row. Each column is a flex column with
+                  the select pinned to the bottom, so the two selects line up even
+                  when "Media sample · Optional" wraps to two lines on a phone. */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Type of variable
                     <span className="ml-1.5 text-[#64748B] dark:text-slate-400 text-xs">ⓘ</span>
                   </label>
-                  <select className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
+                  <select className="mt-auto max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
                     <option className="dark:bg-[#000724]">Number</option>
                   </select>
                 </div>
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Media sample
                     <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-xs">· Optional</span>
@@ -1003,7 +1005,7 @@ export default function WhatsAppTemplateCreatePage() {
                       setUploadStatus('idle');
                       setUploadError('');
                     }}
-                    className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                    className="mt-auto max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
                   >
                     <option value="NONE" className="dark:bg-[#000724]">None</option>
                     <option value="IMAGE" className="dark:bg-[#000724]">Image</option>
