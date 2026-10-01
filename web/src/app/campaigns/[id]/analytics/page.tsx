@@ -887,7 +887,7 @@ export default function CampaignAnalyticsPage() {
 
                       <div className="grid grid-cols-4 gap-2 mb-3">
                         <div className="text-center">
-                          <p className="text-lg font-bold dark:text-blue-400" style={{ color: config.color }}>{item.actions}</p>
+                          <p className="text-lg font-bold text-[color-mix(in_srgb,var(--tone)_60%,#000)] dark:text-[color-mix(in_srgb,var(--tone)_55%,#fff)]" style={{ '--tone': config.color } as React.CSSProperties}>{item.actions}</p>
                           <p className="text-xs text-[#64748B] dark:text-slate-300">Actions</p>
                         </div>
                         <div className="text-center">
@@ -907,7 +907,7 @@ export default function CampaignAnalyticsPage() {
                       <div>
                         <div className="flex justify-between mb-1">
                           <p className="text-xs text-[#64748B] dark:text-slate-300">Success Rate</p>
-                          <p className="text-xs font-bold dark:text-blue-400" style={{ color: config.color }}>{safeRate.toFixed(1)}%</p>
+                          <p className="text-xs font-bold text-[color-mix(in_srgb,var(--tone)_60%,#000)] dark:text-[color-mix(in_srgb,var(--tone)_55%,#fff)]" style={{ '--tone': config.color } as React.CSSProperties}>{safeRate.toFixed(1)}%</p>
                         </div>
                         <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-600">
                           <div
@@ -986,7 +986,7 @@ export default function CampaignAnalyticsPage() {
                 <div key={rate.label}>
                   <div className="flex justify-between mb-2">
                     <p className="text-[#64748B] dark:text-slate-300">{rate.label}</p>
-                    <p className="font-bold dark:text-blue-400" style={{ color: rate.color }}>{rate.value.toFixed(1)}%</p>
+                    <p className="font-bold text-[color-mix(in_srgb,var(--tone)_60%,#000)] dark:text-[color-mix(in_srgb,var(--tone)_55%,#fff)]" style={{ '--tone': rate.color } as React.CSSProperties}>{rate.value.toFixed(1)}%</p>
                   </div>
                   <div className="relative h-2.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800/80">
                     <div className="absolute h-full rounded-full transition-all" style={{ width: `${rate.value}%`, backgroundColor: rate.color }}></div>
