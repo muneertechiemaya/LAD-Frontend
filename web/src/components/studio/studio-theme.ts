@@ -65,7 +65,8 @@ export const ROW_NEEDED = 'bg-amber-50/60 dark:bg-amber-500/[.07]';
 /** Chips: idle vs selected. */
 export const CHIP_IDLE = 'border-slate-200 bg-white text-slate-700 hover:border-[#7C5CFF]/50 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10';
 export const CHIP_SELECTED = `${AI_GRADIENT} border-transparent text-white shadow-[0_4px_14px_-4px_rgba(124,92,255,.55)]`;
-export const CHIP_BASE = 'inline-flex items-center rounded-full border font-medium transition-all duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50';
+// max-lg:min-h-11: chips are tap targets; 44px on touch sizes.
+export const CHIP_BASE = 'inline-flex items-center max-lg:min-h-11 rounded-full border font-medium transition-all duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50';
 
 /** Focus ring for inputs and textareas (shadcn defaults stay; only the ring colour changes). */
 export const INPUT_FOCUS = 'focus-visible:ring-[#7C5CFF]/60 focus-visible:border-[#7C5CFF]/60';
@@ -80,7 +81,10 @@ export const CHANNEL_GRADIENT: Record<'email' | 'whatsapp' | 'instagram' | 'link
 };
 
 /** An avatar that is switched off. */
-export const AVATAR_OFF = 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-slate-400';
+// Used together with AVATAR, whose text-white otherwise wins by stylesheet
+// order: off-channel initials rendered white on slate-200 (~1.2:1). The
+// important modifier makes these colours stick.
+export const AVATAR_OFF = 'bg-slate-200 text-slate-700! dark:bg-white/10 dark:text-slate-300!';
 
 /** An initials avatar: white bold text on a channel gradient. */
 export const AVATAR = 'flex shrink-0 items-center justify-center rounded-full font-bold text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,.25)]';
@@ -126,7 +130,9 @@ export const BUBBLE_ME = `${AI_GRADIENT} text-white shadow-[0_4px_14px_-6px_rgba
 export const BUBBLE_AGENT = 'bg-slate-100 text-slate-900 dark:bg-white/[.07] dark:text-slate-100';
 
 /** Inline link in the accent colour. */
-export const LINK = 'font-medium text-blue-600 underline-offset-2 transition-colors duration-150 hover:text-[#7C5CFF] hover:underline dark:text-[#8FB5FF] dark:hover:text-[#B69CFF]';
+// max-lg: inline links/buttons ("Undo", "Continue the interview →") get a
+// 44px-tall hit box on touch sizes; they were 16-20px.
+export const LINK = 'max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center font-medium text-blue-600 underline-offset-2 transition-colors duration-150 hover:text-[#7C5CFF] hover:underline dark:text-[#8FB5FF] dark:hover:text-[#B69CFF]';
 
 /** Small headings: keep the app font, tighten tracking. */
 export const H_STEP = 'text-2xl font-semibold leading-snug tracking-tight sm:text-3xl';
