@@ -234,7 +234,7 @@ function FieldRow({ label, required, hint, children }: {
         {label}{required && <span className="text-red-400 ml-1">*</span>}
       </label>
       {children}
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-[#8b949e] mt-1">{hint}</p>}
     </div>
   );
 }
@@ -249,8 +249,8 @@ function TextInput({ value, onChange, placeholder, disabled, type = 'text' }: {
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
-                 placeholder-gray-600 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+      className="max-lg:min-h-11 max-md:text-[16px] w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
+                 placeholder:text-[#8b949e]! focus:outline-none focus:border-purple-500 disabled:opacity-50"
     />
   );
 }
@@ -262,7 +262,7 @@ function SelectInput({ value, onChange, options }: {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
+      className="max-lg:min-h-11 max-md:text-[16px] w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
                  focus:outline-none focus:border-purple-500"
     >
       {options.map(o => (
@@ -279,10 +279,10 @@ function Toggle({ checked, onChange, label }: {
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-all text-sm font-medium
+      className={`max-lg:min-h-11 flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-all text-sm font-medium
         ${checked
           ? 'bg-purple-900/40 border-purple-500 text-purple-300'
-          : 'bg-[#1e2333] border-gray-700 text-gray-400 hover:border-gray-500'
+          : 'bg-[#1e2333] border-gray-700 text-[#9ca3af] hover:border-gray-500'
         }`}
     >
       <div className={`w-9 h-5 rounded-full relative transition-colors ${checked ? 'bg-purple-500' : 'bg-gray-700'}`}>
@@ -314,12 +314,12 @@ function TagGroup({ items, selected, onChange, locked = [] }: {
             type="button"
             onClick={() => toggle(item)}
             title={isLocked ? 'Required - always enabled. Cannot be removed.' : undefined}
-            className={`px-2.5 py-1 rounded text-xs font-mono transition-all border inline-flex items-center gap-1
+            className={`max-lg:min-h-11 px-2.5 py-1 rounded text-xs font-mono transition-all border inline-flex items-center gap-1
               ${isLocked
                 ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300 cursor-not-allowed'
                 : isSelected
                   ? 'bg-purple-900/50 border-purple-500 text-purple-300'
-                  : 'bg-[#1e2333] border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
+                  : 'bg-[#1e2333] border-gray-700 text-[#8b949e] hover:border-gray-500 hover:text-gray-300'
               }`}
           >
             {isLocked && <span aria-hidden>🔒</span>}
@@ -393,10 +393,10 @@ function StepCompany({ form, set, meta }: {
                 key={env}
                 type="button"
                 onClick={() => set('environment', env)}
-                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all
+                className={`max-lg:min-h-11 flex-1 py-2 rounded-lg border text-sm font-medium transition-all
                   ${form.environment === env
                     ? 'bg-purple-900/40 border-purple-500 text-purple-300'
-                    : 'bg-[#1e2333] border-gray-700 text-gray-500 hover:border-gray-500'
+                    : 'bg-[#1e2333] border-gray-700 text-[#8b949e] hover:border-gray-500'
                   }`}
               >
                 {env}
@@ -425,7 +425,7 @@ function StepCompany({ form, set, meta }: {
           {chosen && (
             <div className="mt-3">
               <div className="text-sm text-gray-300">{chosen.description || chosen.key}</div>
-              <div className="text-xs text-gray-500 mb-3">
+              <div className="text-xs text-[#8b949e] mb-3">
                 Manifest {chosen.version}{chosen.status ? ` \u00b7 ${chosen.status}` : ''}
               </div>
               <div className="text-sm font-medium text-gray-200 mb-2">Pipelines to entitle</div>
@@ -439,22 +439,22 @@ function StepCompany({ form, set, meta }: {
                       type="button"
                       disabled={planned}
                       onClick={() => togglePipeline(pipe.key)}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm text-left transition-all
+                      className={`max-lg:min-h-11 flex items-center justify-between px-3 py-2 rounded-lg border text-sm text-left transition-all
                         ${planned
-                          ? 'bg-[#161a26] border-gray-800 text-gray-600 cursor-not-allowed'
+                          ? 'bg-[#161a26] border-gray-800 text-[#8b949e] cursor-not-allowed'
                           : selected
                             ? 'bg-purple-900/40 border-purple-500 text-purple-200'
                             : 'bg-[#1e2333] border-gray-700 text-gray-300 hover:border-gray-600'}`}
                     >
                       <span>
                         {pipe.key}
-                        {pipe.goal ? <span className="text-gray-500"> &middot; {pipe.goal}</span> : null}
+                        {pipe.goal ? <span className="text-[#8b949e]"> &middot; {pipe.goal}</span> : null}
                       </span>
                       {planned ? (
                         /* Said here rather than discovered later: this pipeline
                            can be sold, but its switch is refused server-side
                            until it ships, so selecting it would buy nothing. */
-                        <span className="text-[11px] uppercase tracking-wide text-gray-600">Not built yet</span>
+                        <span className="text-[11px] uppercase tracking-wide text-[#8b949e]">Not built yet</span>
                       ) : null}
                     </button>
                   );
@@ -466,11 +466,11 @@ function StepCompany({ form, set, meta }: {
       )}
 
       {form.slug && (
-        <div className="mt-2 p-3 bg-[#1e2333] border border-gray-700 rounded-lg text-xs font-mono text-gray-400">
-          <span className="text-gray-600">DB will be:</span>{' '}
+        <div className="mt-2 p-3 bg-[#1e2333] border border-gray-700 rounded-lg text-xs font-mono text-[#9ca3af]">
+          <span className="text-[#8b949e]">DB will be:</span>{' '}
           <span className="text-purple-400">salesmaya_{form.slug}</span>
           {' '}·{' '}
-          <span className="text-gray-600">Core schema:</span>{' '}
+          <span className="text-[#8b949e]">Core schema:</span>{' '}
           <span className="text-blue-400">{form.environment === 'stage' ? 'lad_stage' : 'lad_dev'}</span>
         </div>
       )}
@@ -501,14 +501,14 @@ function StepAdmin({ form, set }: { form: FormData; set: (k: keyof FormData, v: 
               value={form.adminPassword}
               onChange={e => set('adminPassword', e.target.value)}
               placeholder="••••••••••••••"
-              className="w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 pr-20 text-sm text-gray-100
-                         placeholder-gray-600 focus:outline-none focus:border-purple-500"
+              className="max-lg:min-h-11 max-md:text-[16px] w-full bg-[#1e2333] border border-gray-700 rounded-lg px-3 py-2 pr-20 text-sm text-gray-100
+                         placeholder:text-[#8b949e]! focus:outline-none focus:border-purple-500"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
               <button
                 type="button"
                 onClick={() => set('adminPassword', genPassword())}
-                className="text-xs text-purple-400 hover:text-purple-300 px-1"
+                className="max-lg:min-h-11 text-xs text-purple-400 hover:text-purple-300 px-1"
                 title="Generate password"
               >
                 Gen
@@ -516,7 +516,7 @@ function StepAdmin({ form, set }: { form: FormData; set: (k: keyof FormData, v: 
               <button
                 type="button"
                 onClick={() => setShowPw(p => !p)}
-                className="text-gray-500 hover:text-gray-300"
+                className="max-lg:min-h-11 text-[#8b949e] hover:text-gray-300"
               >
                 {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -542,7 +542,7 @@ function StepDatabase({ form, set }: { form: FormData; set: (k: keyof FormData, 
       </div>
 
       {form.createDatabase ? (
-        <div className="p-4 bg-[#1e2333] border border-green-800/40 rounded-lg text-sm text-gray-400 space-y-1">
+        <div className="p-4 bg-[#1e2333] border border-green-800/40 rounded-lg text-sm text-[#9ca3af] space-y-1">
           <div className="flex items-center gap-2 text-green-400 font-medium mb-2">
             <CheckCircle2 size={14} />
             <span>Auto-provisioning enabled</span>
@@ -575,7 +575,7 @@ function StepWaba({ form, set }: { form: FormData; set: (k: keyof FormData, v: a
   return (
     <div>
       <h2 className="text-lg font-semibold text-white mb-4">WhatsApp Business API</h2>
-      <p className="text-sm text-gray-500 mb-6">Optional: configure WABA integration for this tenant.</p>
+      <p className="text-sm text-[#8b949e] mb-6">Optional: configure WABA integration for this tenant.</p>
 
       <div className="mb-6">
         <Toggle checked={form.enableWaba} onChange={v => set('enableWaba', v)} label="Enable WABA integration" />
@@ -648,18 +648,18 @@ function StepFeatures({ form, set, meta }: {
       <h2 className="text-lg font-semibold text-white mb-2">Features & Capabilities</h2>
 
       <div className="flex gap-3 mb-5">
-        <button onClick={allFeaturesOn} className="text-xs px-3 py-1.5 rounded border border-purple-700 text-purple-400 hover:bg-purple-900/30">
+        <button onClick={allFeaturesOn} className="max-lg:min-h-11 text-xs px-3 py-1.5 rounded border border-purple-700 text-purple-400 hover:bg-purple-900/30">
           Enable All Defaults
         </button>
-        <button onClick={allFeaturesOff} className="text-xs px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:border-gray-500">
+        <button onClick={allFeaturesOff} className="max-lg:min-h-11 text-xs px-3 py-1.5 rounded border border-gray-700 text-[#8b949e] hover:border-gray-500">
           Clear All
         </button>
       </div>
 
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Tenant Features <span className="text-gray-600 font-normal ml-1">({form.features.length} selected)</span>
+          <p className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider mb-2">
+            Tenant Features <span className="text-[#8b949e] font-normal ml-1">({form.features.length} selected)</span>
             {essentialFeatures.length > 0 && (
               <span className="text-cyan-500/80 font-normal ml-2">· {essentialFeatures.length} required</span>
             )}
@@ -668,15 +668,15 @@ function StepFeatures({ form, set, meta }: {
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Feature Flags <span className="text-gray-600 font-normal ml-1">({form.featureFlags.length} selected)</span>
+          <p className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider mb-2">
+            Feature Flags <span className="text-[#8b949e] font-normal ml-1">({form.featureFlags.length} selected)</span>
           </p>
           <TagGroup items={flagItems} selected={form.featureFlags} onChange={v => set('featureFlags', v)} />
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Owner Capabilities <span className="text-gray-600 font-normal ml-1">({form.capabilities.length} selected)</span>
+          <p className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider mb-2">
+            Owner Capabilities <span className="text-[#8b949e] font-normal ml-1">({form.capabilities.length} selected)</span>
             {essentialCapabilities.length > 0 && (
               <span className="text-cyan-500/80 font-normal ml-2">· {essentialCapabilities.length} required</span>
             )}
@@ -702,8 +702,8 @@ function StepFeatures({ form, set, meta }: {
         </div>
 
         <div className="border-t border-gray-800 pt-4 mt-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">New Features (Billing & ROI)</p>
-          <p className="text-xs text-gray-500 mb-3">These features will be initialized with the tenant&apos;s core schema.</p>
+          <p className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider mb-3">New Features (Billing & ROI)</p>
+          <p className="text-xs text-[#8b949e] mb-3">These features will be initialized with the tenant&apos;s core schema.</p>
           <div className="space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -771,7 +771,7 @@ function StepFeatures({ form, set, meta }: {
 function ReviewRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
-      <span className="text-xs text-gray-500 w-44 shrink-0">{label}</span>
+      <span className="text-xs text-[#8b949e] w-44 shrink-0">{label}</span>
       <span className={`text-sm text-gray-200 text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '-'}</span>
     </div>
   );
@@ -781,13 +781,13 @@ function StepReview({ form }: { form: FormData }) {
   return (
     <div>
       <h2 className="text-lg font-semibold text-white mb-4">Review & Confirm</h2>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-[#8b949e] mb-6">
         Verify all details before provisioning. This will create the tenant, user, and database.
       </p>
 
       <div className="space-y-4">
         <div className="bg-[#1a1f2e] rounded-lg border border-gray-800 p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Company</p>
+          <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">Company</p>
           <ReviewRow label="Name" value={form.companyName} />
           <ReviewRow label="Slug" value={form.slug} mono />
           <ReviewRow label="Email" value={form.email} />
@@ -798,20 +798,20 @@ function StepReview({ form }: { form: FormData }) {
         </div>
 
         <div className="bg-[#1a1f2e] rounded-lg border border-gray-800 p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Admin User</p>
+          <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">Admin User</p>
           <ReviewRow label="Name" value={`${form.adminFirstName} ${form.adminLastName}`} />
           <ReviewRow label="Email" value={form.adminEmail} />
           <ReviewRow label="Password" value={'*'.repeat(form.adminPassword.length)} mono />
         </div>
 
         <div className="bg-[#1a1f2e] rounded-lg border border-gray-800 p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Database</p>
+          <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">Database</p>
           <ReviewRow label="Auto-create" value={form.createDatabase ? 'Yes: run full DDL' : 'No: custom URL'} />
           {!form.createDatabase && <ReviewRow label="Custom URL" value={form.customDbUrl} mono />}
         </div>
 
         <div className="bg-[#1a1f2e] rounded-lg border border-gray-800 p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Features & Configuration</p>
+          <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">Features & Configuration</p>
           <ReviewRow label="Tenant Features" value={`${form.features.length} enabled`} />
           <ReviewRow label="Feature Flags" value={`${form.featureFlags.length} enabled`} />
           <ReviewRow label="Capabilities" value={`${form.capabilities.length} enabled`} />
@@ -844,7 +844,7 @@ function ProvisionLog({ logs, done, result, onReset }: {
 
   const statusIcon = (s: StepLog['status']) => {
     if (s === 'ok') return <CheckCircle2 size={14} className="text-green-400 shrink-0" />;
-    if (s === 'skipped') return <Info size={14} className="text-gray-500 shrink-0" />;
+    if (s === 'skipped') return <Info size={14} className="text-[#8b949e] shrink-0" />;
     if (s === 'error') return <XCircle size={14} className="text-red-400 shrink-0" />;
     return <Loader2 size={14} className="text-purple-400 animate-spin shrink-0" />;
   };
@@ -859,15 +859,15 @@ function ProvisionLog({ logs, done, result, onReset }: {
               l.status === 'ok' ? 'text-green-300' :
               l.status === 'error' ? 'text-red-300' :
               l.status === 'running' ? 'text-purple-300' :
-              'text-gray-600'
+              'text-[#8b949e]'
             }>
               {l.step}
-              {l.detail && <span className="text-gray-600 ml-2">- {l.detail}</span>}
+              {l.detail && <span className="text-[#8b949e] ml-2">- {l.detail}</span>}
             </span>
           </div>
         ))}
         {!done && (
-          <div className="flex items-center gap-2 text-gray-600 animate-pulse">
+          <div className="flex items-center gap-2 text-[#8b949e] animate-pulse">
             <Loader2 size={12} className="animate-spin" />
             <span>Provisioning…</span>
           </div>
@@ -883,24 +883,24 @@ function ProvisionLog({ logs, done, result, onReset }: {
 
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-              <span className="text-gray-500 text-xs w-28">Tenant ID</span>
+              <span className="text-[#8b949e] text-xs w-28">Tenant ID</span>
               <span className="font-mono text-xs text-purple-300 flex-1 text-right truncate">{result.tenantId}</span>
-              <button onClick={() => copy(result.tenantId!, 'tenantId')} className="ml-2 text-gray-600 hover:text-gray-400">
+              <button onClick={() => copy(result.tenantId!, 'tenantId')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                 {copiedField === 'tenantId' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
               </button>
             </div>
             <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-              <span className="text-gray-500 text-xs w-28">User ID</span>
+              <span className="text-[#8b949e] text-xs w-28">User ID</span>
               <span className="font-mono text-xs text-blue-300 flex-1 text-right truncate">{result.userId}</span>
-              <button onClick={() => copy(result.userId!, 'userId')} className="ml-2 text-gray-600 hover:text-gray-400">
+              <button onClick={() => copy(result.userId!, 'userId')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                 {copiedField === 'userId' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
               </button>
             </div>
             {result.dbName && (
             <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-              <span className="text-gray-500 text-xs w-28">Database</span>
+              <span className="text-[#8b949e] text-xs w-28">Database</span>
               <span className="font-mono text-xs text-green-300 flex-1 text-right">{result.dbName}</span>
-              <button onClick={() => copy(result.dbName!, 'dbName')} className="ml-2 text-gray-600 hover:text-gray-400">
+              <button onClick={() => copy(result.dbName!, 'dbName')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                 {copiedField === 'dbName' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
               </button>
             </div>
@@ -908,23 +908,23 @@ function ProvisionLog({ logs, done, result, onReset }: {
             {result.credentials && (
               <>
                 <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-                  <span className="text-gray-500 text-xs w-28">Login Email</span>
+                  <span className="text-[#8b949e] text-xs w-28">Login Email</span>
                   <span className="font-mono text-xs text-gray-200 flex-1 text-right">{result.credentials.email}</span>
-                  <button onClick={() => copy(result.credentials!.email, 'email')} className="ml-2 text-gray-600 hover:text-gray-400">
+                  <button onClick={() => copy(result.credentials!.email, 'email')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                     {copiedField === 'email' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                   </button>
                 </div>
                 <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-                  <span className="text-gray-500 text-xs w-28">Password</span>
+                  <span className="text-[#8b949e] text-xs w-28">Password</span>
                   <span className="font-mono text-xs text-amber-300 flex-1 text-right">{result.credentials.password}</span>
-                  <button onClick={() => copy(result.credentials!.password, 'pw')} className="ml-2 text-gray-600 hover:text-gray-400">
+                  <button onClick={() => copy(result.credentials!.password, 'pw')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                     {copiedField === 'pw' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                   </button>
                 </div>
                 <div className="flex items-center justify-between bg-[#0e1118] rounded px-3 py-2">
-                  <span className="text-gray-500 text-xs w-28">Login URL</span>
+                  <span className="text-[#8b949e] text-xs w-28">Login URL</span>
                   <span className="font-mono text-xs text-blue-400 flex-1 text-right truncate">{result.credentials.loginUrl}</span>
-                  <button onClick={() => copy(result.credentials!.loginUrl, 'url')} className="ml-2 text-gray-600 hover:text-gray-400">
+                  <button onClick={() => copy(result.credentials!.loginUrl, 'url')} className="max-lg:min-h-11 ml-2 text-[#8b949e] hover:text-gray-400">
                     {copiedField === 'url' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                   </button>
                 </div>
@@ -934,7 +934,7 @@ function ProvisionLog({ logs, done, result, onReset }: {
 
           <button
             onClick={onReset}
-            className="w-full py-2 rounded-lg border border-gray-700 text-sm text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-all"
+            className="max-lg:min-h-11 w-full py-2 rounded-lg border border-gray-700 text-sm text-[#9ca3af] hover:border-gray-500 hover:text-gray-200 transition-all"
           >
             Provision Another Tenant
           </button>
@@ -950,7 +950,7 @@ function ProvisionLog({ logs, done, result, onReset }: {
           <p className="text-sm text-red-300 font-mono">{result.error}</p>
           <button
             onClick={onReset}
-            className="mt-4 w-full py-2 rounded-lg border border-red-800 text-sm text-red-400 hover:bg-red-900/30 transition-all"
+            className="max-lg:min-h-11 mt-4 w-full py-2 rounded-lg border border-red-800 text-sm text-red-400 hover:bg-red-900/30 transition-all"
           >
             Try Again
           </button>
@@ -1249,13 +1249,13 @@ export default function TenantOnboardPage() {
             </div>
           </div>
           <h1 className="text-xl font-semibold text-white">Access Restricted</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[#8b949e]">
             This page is only accessible to super-admin accounts.
             <br />Contact <span className="text-purple-400">{SUPER_ADMIN_EMAIL}</span> if you need access.
           </p>
           <button
             onClick={() => router.back()}
-            className="text-sm text-gray-600 hover:text-gray-400 underline underline-offset-2"
+            className="max-lg:min-h-11 text-sm text-[#8b949e] hover:text-gray-400 underline underline-offset-2"
           >
             Go back
           </button>
@@ -1267,14 +1267,14 @@ export default function TenantOnboardPage() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 flex flex-col">
       {/* Header */}
-      <div className="border-b border-gray-800 px-8 py-4 flex items-center justify-between">
+      <div className="border-b border-gray-800 px-8 py-4 flex items-center justify-between flex-wrap gap-3 max-md:px-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
             <Building2 size={16} className="text-white" />
           </div>
           <div>
             <h1 className="text-sm font-semibold text-white">Tenant Onboarding</h1>
-            <p className="text-xs text-gray-500">web.mrlads.com/tenant/onboard/new</p>
+            <p className="text-xs text-[#8b949e]">web.mrlads.com/tenant/onboard/new</p>
           </div>
           {application && (
             <span className="ml-3 text-xs px-2 py-0.5 rounded-full border border-green-700 text-green-400 bg-green-900/20">
@@ -1295,9 +1295,9 @@ export default function TenantOnboardPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Step Sidebar */}
-        <div className="w-52 shrink-0 border-r border-gray-800 py-8 px-4 space-y-1">
+      <div className="flex flex-1 overflow-hidden max-md:flex-col">
+        {/* Step Sidebar (phones: a horizontal scroll strip above the form) */}
+        <div className="w-52 shrink-0 border-r border-gray-800 py-8 px-4 space-y-1 no-scrollbar max-md:flex max-md:w-full max-md:gap-1 max-md:space-y-0 max-md:overflow-x-auto max-md:border-r-0 max-md:border-b max-md:py-2 max-md:px-3">
           {STEPS.map(s => {
             const Icon = s.icon;
             const active = s.id === step;
@@ -1307,12 +1307,12 @@ export default function TenantOnboardPage() {
                 key={s.id}
                 onClick={() => !provisioning && !isProvisioningStep && setStep(s.id)}
                 disabled={provisioning || isProvisioningStep}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all text-left
+                className={`max-lg:min-h-11 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all text-left max-md:w-auto max-md:shrink-0 max-md:whitespace-nowrap max-md:gap-2
                   ${active
                     ? 'bg-purple-900/40 text-purple-300 border border-purple-700/50'
                     : done
                     ? 'text-green-400 hover:bg-[#1e2333]'
-                    : 'text-gray-600 hover:bg-[#1e2333] hover:text-gray-400'
+                    : 'text-[#8b949e] hover:bg-[#1e2333] hover:text-gray-400'
                   }`}
               >
                 {done && s.id < step ? (
@@ -1328,7 +1328,7 @@ export default function TenantOnboardPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-8 max-md:p-4">
           <div className="max-w-2xl mx-auto">
 
             {/* Step progress bar */}
@@ -1375,7 +1375,7 @@ export default function TenantOnboardPage() {
                   <button
                     onClick={back}
                     disabled={step === 1}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-700 text-sm text-gray-400
+                    className="max-lg:min-h-11 flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-700 text-sm text-[#9ca3af]
                                hover:border-gray-500 hover:text-gray-200 disabled:opacity-30 disabled:pointer-events-none transition-all"
                   >
                     <ChevronLeft size={15} />
@@ -1385,7 +1385,7 @@ export default function TenantOnboardPage() {
                   {isLastStep ? (
                     <button
                       onClick={provision}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500
+                      className="max-lg:min-h-11 flex items-center gap-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500
                                  text-white text-sm font-semibold transition-all shadow-lg shadow-purple-900/40"
                     >
                       <Database size={15} />
@@ -1394,7 +1394,7 @@ export default function TenantOnboardPage() {
                   ) : (
                     <button
                       onClick={next}
-                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500
+                      className="max-lg:min-h-11 flex items-center gap-2 px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500
                                  text-white text-sm font-medium transition-all"
                     >
                       Next
