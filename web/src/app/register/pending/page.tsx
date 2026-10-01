@@ -73,9 +73,9 @@ export default function RegisterPendingPage() {
             )}
             <div className="pt-2 text-xs text-gray-500">
               {status === 'provisioned' ? (
-                <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">Sign in</Link>
+                <Link href="/login" className="max-lg:inline-flex max-lg:min-h-11 max-lg:items-center text-blue-600 dark:text-blue-400 hover:underline">Sign in</Link>
               ) : (
-                <Link href="/" className="text-blue-600 dark:text-blue-400 hover:underline">Back to home</Link>
+                <Link href="/" className="max-lg:inline-flex max-lg:min-h-11 max-lg:items-center text-blue-600 dark:text-blue-400 hover:underline">Back to home</Link>
               )}
             </div>
           </>

@@ -55,7 +55,7 @@ const LegalPageLayout = memo(function LegalPageLayout({
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                className={`rounded-full px-4 py-2 max-lg:inline-flex max-lg:min-h-11 max-lg:items-center text-sm font-semibold transition-colors ${
                   isActive
                     ? 'bg-[#0b1957] text-white shadow dark:bg-blue-600 dark:text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-[#1a2f6b]/50 dark:text-gray-300 dark:hover:bg-[#1a2f6b] dark:hover:text-white'
