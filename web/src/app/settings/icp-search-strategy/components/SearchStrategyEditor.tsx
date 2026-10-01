@@ -114,7 +114,7 @@ export function SearchStrategyEditor({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
             Backends &amp; discovery order
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             The dispatcher tries enabled backends top-to-bottom. Disabled
             backends are skipped entirely.
           </p>
@@ -130,7 +130,7 @@ export function SearchStrategyEditor({
                     type="button"
                     disabled={disabled || idx === 0}
                     onClick={() => moveBackend(b, -1)}
-                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
                     aria-label={`Move ${b} up`}
                   >
                     ▲
@@ -139,7 +139,7 @@ export function SearchStrategyEditor({
                     type="button"
                     disabled={disabled || idx === order.length - 1}
                     onClick={() => moveBackend(b, 1)}
-                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
                     aria-label={`Move ${b} down`}
                   >
                     ▼
@@ -153,18 +153,18 @@ export function SearchStrategyEditor({
                       checked={enabled}
                       disabled={disabled}
                       onChange={(e) => toggleBackend(b, e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 max-lg:h-6 max-lg:w-6 dark:text-blue-400"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {BACKEND_LABEL[b]}
                     </span>
                   </label>
-                  <p className="ml-7 text-xs text-gray-500">
+                  <p className="ml-7 text-xs text-gray-500 dark:text-slate-400">
                     {BACKEND_DESCRIPTION[b]}
                   </p>
                 </div>
 
-                <label className="flex items-center gap-2 text-xs text-gray-600">
+                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
                   <span>Max per run</span>
                   <input
                     type="number"
@@ -177,7 +177,7 @@ export function SearchStrategyEditor({
                     }
                     onChange={(e) => setBackendCap(b, Number(e.target.value))}
                     disabled={disabled || !enabled}
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:opacity-50"
+                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
                   />
                 </label>
               </li>
@@ -208,7 +208,7 @@ export function SearchStrategyEditor({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
             Fallback rules
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             What the dispatcher does when a backend returns zero or a special
             condition is met.
           </p>
@@ -245,7 +245,7 @@ export function SearchStrategyEditor({
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Deduplication</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             How to collapse the same person when multiple backends return them.
           </p>
         </header>
@@ -273,11 +273,11 @@ export function SearchStrategyEditor({
                         deduplication: { ...dd, cross_backend_merge: opt.value },
                       })
                     }
-                    className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500 max-lg:h-6 max-lg:w-6 dark:text-blue-400"
                   />
                   <span>
                     <span className="font-medium">{opt.label}</span>
-                    <span className="ml-2 text-xs text-gray-500">{opt.hint}</span>
+                    <span className="ml-2 text-xs text-gray-500 dark:text-slate-400">{opt.hint}</span>
                   </span>
                 </label>
               ))}
@@ -290,7 +290,7 @@ export function SearchStrategyEditor({
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Run caps</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             Safety nets that cap how many candidates the dispatcher will
             collect across all backends.
           </p>
@@ -310,9 +310,9 @@ export function SearchStrategyEditor({
                 set({ total_cap_per_run: Number(e.target.value) })
               }
               disabled={disabled}
-              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
             />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-slate-400">
               Default 800. Per-backend caps are still enforced within this.
             </span>
           </label>
@@ -330,9 +330,9 @@ export function SearchStrategyEditor({
                 set({ total_cap_per_day: Number(e.target.value) })
               }
               disabled={disabled}
-              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
             />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-slate-400">
               Default 2,000. Rolls over at midnight UTC.
             </span>
           </label>
@@ -364,7 +364,7 @@ function RuleRow({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm disabled:opacity-50"
+        className="rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
