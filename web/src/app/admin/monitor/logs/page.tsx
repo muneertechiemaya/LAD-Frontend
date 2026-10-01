@@ -74,7 +74,8 @@ export default function MonitorLogsPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      {/* overflow-x-auto, not -hidden: on phones the right-hand columns were clipped. */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full divide-y divide-gray-200 text-xs dark:divide-gray-800">
           <thead className="bg-gray-50 text-left uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
             <tr>
