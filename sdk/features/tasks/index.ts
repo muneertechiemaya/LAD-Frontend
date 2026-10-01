@@ -1,6 +1,6 @@
 /**
  * Tasks Feature SDK — "My Tasks": chats handed to a person, conversations
- * assigned to me, and my assignment notifications.
+ * assigned to me, my assignment notifications, and pending approvals.
  *
  *   import { useWaitingChats, useAssignedConversations } from '@lad/frontend-features/tasks';
  */
@@ -10,6 +10,8 @@ export {
   getAssignedConversations,
   getTaskNotifications,
   markTaskNotificationRead,
+  getPendingApprovals,
+  decideApproval,
 } from './api';
 
 export {
@@ -17,6 +19,19 @@ export {
   useAssignedConversations,
   useTaskNotifications,
   useMarkTaskNotificationRead,
+  usePendingApprovals,
+  useDecideApproval,
 } from './hooks';
 
-export type { TaskChannel, HandoffChannel, WaitingChat, AssignedConversation, TaskNotification } from './types';
+export type {
+  TaskChannel,
+  HandoffChannel,
+  WaitingChat,
+  AssignedConversation,
+  TaskNotification,
+  ApprovalType,
+  ApprovalAction,
+  ApprovalDecision,
+  PendingApproval,
+  PendingApprovals,
+} from './types';

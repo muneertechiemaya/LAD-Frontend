@@ -4,15 +4,27 @@
  * Every call goes through the app's own `/api/*` proxies, which resolve the
  * tenant and user from the signed token; nothing here sends a tenant id.
  */
-import { apiGet, apiPut } from '../../shared/apiClient';
+import { apiGet, apiPost, apiPut } from '../../shared/apiClient';
+import { ApiError } from '../../shared/apiError';
 import { proxyClient } from '../../shared/proxyClient';
-import type { AssignedConversation, HandoffChannel, TaskChannel, TaskNotification, WaitingChat } from './types';
+import type {
+  ApprovalAction,
+  ApprovalDecision,
+  ApprovalType,
+  AssignedConversation,
+  HandoffChannel,
+  PendingApprovals,
+  TaskChannel,
+  TaskNotification,
+  WaitingChat,
+} from './types';
 
 export const taskKeys = {
   all: ['tasks'] as const,
   waiting: (channel: HandoffChannel) => [...taskKeys.all, 'waiting', channel] as const,
   assigned: () => [...taskKeys.all, 'assigned'] as const,
   notifications: () => [...taskKeys.all, 'notifications'] as const,
+  approvals: () => [...taskKeys.all, 'approvals'] as const,
 };
 
 const CHANNELS: readonly TaskChannel[] = ['waba', 'personal', 'linkedin'];
@@ -75,4 +87,31 @@ export async function getTaskNotifications(): Promise<TaskNotification[]> {
 
 export async function markTaskNotificationRead(id: string): Promise<void> {
   await apiPut(`/api/inbox/${encodeURIComponent(id)}/read`);
+}
+
+export async function getPendingApprovals(): Promise<PendingApprovals> {
+  const res = await apiGet<{ data?: PendingApprovals }>('/api/approvals/pending');
+  const data = res.data?.data;
+  if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response shape');
+  return { items: data.items, degraded: Array.isArray(data.degraded) ? data.degraded : [] };
+}
+
+/**
+ * Approve / reject in the app. The server resolves the item's single-use link
+ * token itself and runs the same handler the WhatsApp/email link runs.
+ * 409 = already decided elsewhere or expired: not an error, nothing changed.
+ */
+export async function decideApproval(type: ApprovalType, id: string, action: ApprovalAction): Promise<ApprovalDecision> {
+  try {
+    const res = await apiPost<{ data?: { status?: string; message?: string | null } }>(
+      `/api/approvals/${encodeURIComponent(type)}/${encodeURIComponent(id)}/decision`,
+      { action },
+    );
+    return { applied: true, status: res.data?.data?.status ?? null, message: res.data?.data?.message ?? null };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      return { applied: false, status: null, message: err.body?.message ?? 'Already decided.' };
+    }
+    throw err;
+  }
 }

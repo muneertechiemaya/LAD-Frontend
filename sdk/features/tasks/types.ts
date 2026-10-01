@@ -37,3 +37,36 @@ export interface TaskNotification {
   isRead: boolean;
   receivedAt: string | null;
 }
+
+/** Something waiting for a human yes/no — see LAD_backend features/approvals. */
+export type ApprovalType =
+  | 'linkedin_post'
+  | 'linkedin_invite'
+  | 'linkedin_greeting'
+  | 'lead_report'
+  | 'market_insight';
+
+export interface PendingApproval {
+  type: ApprovalType;
+  id: string;
+  title: string;
+  preview: string | null;
+  campaignId: string | null;
+  leadId: string | null;
+  at: string | null;
+}
+
+export interface PendingApprovals {
+  items: PendingApproval[];
+  /** Sources the backend could not read — "couldn't check", not "nothing". */
+  degraded: ApprovalType[];
+}
+
+export type ApprovalAction = 'approve' | 'reject';
+
+export interface ApprovalDecision {
+  /** false when someone else decided first or it expired — nothing changed. */
+  applied: boolean;
+  status: string | null;
+  message: string | null;
+}
