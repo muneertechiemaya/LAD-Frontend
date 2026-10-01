@@ -60,6 +60,7 @@ export const AUTH_ROUTES = [
   '/onboarding',
   '/community-roi',
   '/follow-ups',
+  '/tasks',
   '/sales-playbook', // Discovery call script, scoring and customisation costing
   '/studio', // Tenant Studio — train the workspace: interview, ICP training, rehearsal, Tailor (admin/owner)
   '/instagram', // Instagram management (accounts, AI replies, comments, goals)

@@ -32,6 +32,7 @@ import {
   UserPlus,
   Sparkles,
   Check,
+  ListTodo,
 } from 'lucide-react';
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -254,6 +255,15 @@ export function Sidebar() {
     },
 
     // ── Today: what needs a person now ──────────────────────────────────────
+    {
+      href: "/tasks",
+      group: "today",
+      label: "My Tasks",
+      icon: ListTodo,
+      details: "Chats waiting for a person, conversations assigned to you, and your notifications.",
+      requiredCapability: "view_conversations",
+      requiredFeature: FEATURE.CONVERSATIONS,
+    },
     {
       href: "/conversations",
       group: "today",
