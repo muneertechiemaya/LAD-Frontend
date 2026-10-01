@@ -42,7 +42,7 @@ export const CH: Record<string, ChannelMeta> = {
   voice:     { label: 'Voice',     color: T.voice,    Icon: Phone },
   instagram: { label: 'Instagram', color: '#ec4899',  Icon: Camera },
   intent:    { label: 'Signal',    color: T.primary,  Icon: Radio },
-  system:    { label: 'System',    color: '#64748b',  Icon: Settings2 },
+  system:    { label: 'System',    color: '#475569',  Icon: Settings2 }, // slate-600: -500 was 4.2:1 on its tint
 };
 
 export const STAGE_META: Record<string, { label: string; color: string }> = {
