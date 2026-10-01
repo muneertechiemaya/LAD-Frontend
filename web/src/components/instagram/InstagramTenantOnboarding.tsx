@@ -363,7 +363,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
             type="button"
             onClick={() => load(true)}
             disabled={refreshing}
-            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-blue-950/40 dark:bg-[#071131]/80 dark:text-slate-200 dark:hover:bg-[#0c1b43]"
+            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 max-lg:min-h-11 max-md:text-sm text-xs text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-blue-950/40 dark:bg-[#071131]/80 dark:text-slate-200 dark:hover:bg-[#0c1b43]"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -406,7 +406,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setEditingAccount(a)}
-                        className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:border-blue-950/40 dark:bg-[#071131]/80 dark:text-slate-200 dark:hover:bg-[#0c1b43]"
+                        className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 max-lg:min-h-11 max-md:text-sm text-xs text-slate-700 hover:bg-slate-100 dark:border-blue-950/40 dark:bg-[#071131]/80 dark:text-slate-200 dark:hover:bg-[#0c1b43]"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         Edit
