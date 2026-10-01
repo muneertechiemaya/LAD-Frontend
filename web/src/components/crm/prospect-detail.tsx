@@ -146,13 +146,14 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
     <div className="mt-6 space-y-4">
       {/* Sub-header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Row 1: Back button and Contact Name */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* Row 1: Back button and Contact Name. Phones get the same trail from
+            the TopBar crumb ("Contacts Funnel › name"), so it is hidden there. */}
+        <div className="max-md:hidden flex items-center gap-2 min-w-0">
           <button
             onClick={onClose}
-            className="h-8 px-2.5 rounded-lg text-[12.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 shrink-0"
+            className="h-8 max-lg:h-11 px-2.5 rounded-lg text-[12.5px] max-md:text-[14px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> All deals
+            <ArrowLeft className="w-3.5 h-3.5" /> Contacts
           </button>
           <span className="text-slate-300 dark:text-slate-700 shrink-0">/</span>
           <span className="text-[12.5px] font-medium text-[#172560] dark:text-white truncate">
@@ -165,7 +166,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
               onClick={onRemove}
               disabled={isRemoving}
               title="Remove this prospect - not a fit"
-              className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
+              className="h-9 max-lg:h-11 px-3 whitespace-nowrap md:flex-none rounded-lg text-[12.5px] max-md:text-[14px] font-medium text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Not a fit'}
             </button>
@@ -173,7 +174,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
           <button
             disabled
             title="Not available yet"
-            className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] inline-flex items-center justify-center md:justify-start gap-1.5 opacity-50 cursor-not-allowed"
+            className="max-md:hidden h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] inline-flex items-center justify-center md:justify-start gap-1.5 opacity-50 cursor-not-allowed"
           >
             <MoreHorizontal className="w-4 h-4" /> More
           </button>
@@ -181,7 +182,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
             type="button"
             disabled
             title="Not available yet"
-            className="h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 outline-none border-none opacity-50 cursor-not-allowed
+            className="max-md:hidden h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 outline-none border-none opacity-50 cursor-not-allowed
             bg-[#0b1957]
             dark:bg-[#2563eb]"
           >
@@ -210,8 +211,10 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
                   {prospect.full_name}
                 </h2>
                 <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ background: `${stage.color}1a`, color: stage.color }}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium dark:!text-slate-100"
+                  // Raw stage colours (e.g. info blue) read ~2.5:1 as text on their own tint;
+                  // 60% toward black keeps the hue and clears 4.5:1.
+                  style={{ background: `${stage.color}1a`, color: `color-mix(in srgb, ${stage.color} 60%, #000)` }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: stage.color }}></span>
                   {stage.label}
@@ -500,7 +503,7 @@ function KpiRoutes({
           Warm routes
         </p>
         <span
-          className="inline-flex items-center gap-1 text-[10.5px] font-medium opacity-70 group-hover:opacity-100 text-[#0B1957] dark:text-slate-400 transition-colors"
+          className="inline-flex items-center gap-1 text-[10.5px] font-medium text-[#0B1957] dark:text-slate-300 group-hover:underline transition-colors"
         >
           {open ? 'Hide' : 'Open'}
           {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -553,7 +556,7 @@ function KpiLast({
       </div>
       <div className="mt-2 inline-flex items-center gap-1.5">
         <span
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium dark:!text-slate-200"
           style={{ color: c.color, background: `${c.color}1a` }}
         >
           <Icon className="w-3 h-3" /> {c.label}

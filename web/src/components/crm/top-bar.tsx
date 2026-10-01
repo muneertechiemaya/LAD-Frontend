@@ -28,7 +28,8 @@ export default function TopBar({
     <header className={`${hideOnMobile ? 'max-md:hidden ' : ''}sticky top-0 z-30 backdrop-blur bg-[#F8F9FE]/85 dark:bg-[#000724]/85 border-b border-slate-200/70 dark:border-[#262831]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2">
+          {/* Brand mark: the app's mobile header already shows it. */}
+          <div className="max-md:hidden flex items-center gap-2">
             <div
               className="w-7 h-7 rounded-md grid place-items-center"
               style={{ background: '#0B1957' }}
@@ -42,14 +43,14 @@ export default function TopBar({
               Mr LAD
             </span>
           </div>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="max-md:hidden text-slate-300 dark:text-slate-700">·</span>
           <nav className="text-[12.5px] flex items-center gap-1.5 min-w-0">
             {crumbs.map((c, i, arr) => (
               <React.Fragment key={i}>
                 {c.href ? (
                   <a
                     href={c.href}
-                    className="text-slate-500 dark:text-slate-300 hover:text-[#0B1957] dark:hover:text-white"
+                    className="max-lg:inline-flex max-lg:min-h-11 max-lg:items-center max-md:text-[14px] whitespace-nowrap text-slate-500 dark:text-slate-300 hover:text-[#0B1957] dark:hover:text-white"
                   >
                     {c.label}
                   </a>
