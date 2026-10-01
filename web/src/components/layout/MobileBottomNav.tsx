@@ -2,7 +2,7 @@
 
 /**
  * Phone-only bottom navigation: a floating pill with the most-used pages and a
- * round "Ask Mr LAD" button beside it.
+ * round "Ask Mr LAD" button beside it - the animated LAD logo (AgentVisualizer).
  *
  * It renders from the sidebar's already-filtered nav, so a page the user can't
  * open in the sidebar never appears here either. While visible it publishes
@@ -13,9 +13,10 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBottomNavHidden } from '@/lib/bottom-nav';
+import AgentVisualizer from '@/components/ui/AgentVisualizer';
 
 export interface BottomNavSourceItem {
   href: string;
@@ -81,14 +82,14 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
                   href={t.href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex h-full flex-col items-center justify-center gap-0.5 rounded-full px-1 transition-colors',
+                    'flex h-full flex-col items-center justify-center gap-0.5 rounded-full px-0.5 transition-colors',
                     active
                       ? 'bg-primary/10 text-primary dark:bg-white/10 dark:text-white'
                       : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5',
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span className={cn('max-w-full truncate text-[11px] leading-tight', active ? 'font-semibold' : 'font-medium')}>
+                  <span className={cn('max-w-full truncate text-[11px] leading-tight tracking-tight max-[359px]:text-[10px]', active ? 'font-semibold' : 'font-medium')}>
                     {t.label}
                   </span>
                 </Link>
@@ -102,17 +103,11 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
         <Link
           href={ASK_HREF}
           aria-label="Ask Mr LAD"
-          className="relative flex h-15 w-15 shrink-0 flex-col items-center justify-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_25%,#1e3a8a_0%,#0b1433_55%,#020617_100%)] text-white shadow-[0_8px_30px_rgba(30,58,138,0.45)] ring-1 ring-white/20 transition active:scale-95"
+          title="Ask Mr LAD"
+          className="flex h-15 w-15 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 shadow-[0_8px_30px_rgba(11,25,87,0.25)] backdrop-blur-xl transition active:scale-95 dark:border-white/10 dark:bg-[#0b1433]/90 dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
         >
-          <span
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(ellipse_at_50%_120%,rgba(96,165,250,0.85),transparent_70%)]"
-            aria-hidden="true"
-          />
-          <span className="relative text-[10px] font-medium leading-none tracking-wide">Ask</span>
-          <span className="relative mt-0.5 flex items-center gap-0.5 text-[12px] font-bold italic leading-none">
-            Mr LAD
-          </span>
-          <Sparkles className="absolute right-2 top-2.5 h-3 w-3 text-blue-200" aria-hidden="true" />
+          {/* The same animated LAD logo as the AI Assistant's "LAD in Action" rows. */}
+          <AgentVisualizer state="idle" size={38} />
         </Link>
       )}
     </nav>
