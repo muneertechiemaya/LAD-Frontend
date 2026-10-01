@@ -91,12 +91,14 @@ export default function TenantSignupsPage() {
   };
 
   // Same full-bleed dark canvas as /tenant/onboard/new: these internal pages
+  // (muted greys are explicit hexes: the app's light-mode override of
+  // text-gray-400/-500 is tuned for white backgrounds and fails on this one).
   // sit outside the tenant app shell and bring their own background.
   const Canvas = ({ children }: { children: React.ReactNode }) => (
     <div className="min-h-screen bg-[#0d1117] text-gray-100"><div className="p-6 md:p-8 max-w-6xl mx-auto space-y-5">{children}</div></div>
   );
 
-  if (authState === 'loading') return <Canvas><div className="text-gray-400 flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Checking access…</div></Canvas>;
+  if (authState === 'loading') return <Canvas><div className="text-[#9ca3af] flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Checking access…</div></Canvas>;
   if (authState === 'denied') return <Canvas><div className="text-red-400">Access denied.</div></Canvas>;
 
   return (
@@ -104,9 +106,9 @@ export default function TenantSignupsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Signup applications</h1>
-          <p className="text-sm text-gray-400">Verified identities that asked for a workspace. Approve, then provision through the wizard.</p>
+          <p className="text-sm text-[#9ca3af]">Verified identities that asked for a workspace. Approve, then provision through the wizard.</p>
         </div>
-        <button onClick={load} disabled={loading} className="text-xs text-gray-400 hover:text-white flex items-center gap-1">
+        <button onClick={load} disabled={loading} className="text-xs max-md:text-sm text-[#9ca3af] hover:text-white flex items-center gap-1 max-lg:min-h-11 max-lg:px-2">
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
@@ -114,8 +116,8 @@ export default function TenantSignupsPage() {
       <div className="flex flex-wrap gap-2">
         {STATUSES.map((s) => (
           <button key={s} onClick={() => setStatus(s)}
-            className={`px-3 py-1 rounded-full text-xs border ${status === s ? 'bg-white/10 border-white/30 text-white' : 'border-white/10 text-gray-400 hover:text-white'}`}>
-            {s} {s !== 'all' && summary[s] != null ? <span className="ml-1 text-gray-500">{summary[s]}</span> : null}
+            className={`px-3 py-1 max-lg:min-h-11 max-lg:min-w-11 max-md:text-sm rounded-full text-xs border ${status === s ? 'bg-white/10 border-white/30 text-white' : 'border-white/10 text-[#9ca3af] hover:text-white'}`}>
+            {s} {s !== 'all' && summary[s] != null ? <span className="ml-1 text-[#8b949e]">{summary[s]}</span> : null}
           </button>
         ))}
       </div>
@@ -123,9 +125,9 @@ export default function TenantSignupsPage() {
       {error && <div className="rounded-md border border-red-500/40 bg-red-500/10 text-red-300 text-sm px-3 py-2">{error}</div>}
 
       {loading && rows.length === 0 ? (
-        <div className="text-gray-400 text-sm flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading…</div>
+        <div className="text-[#9ca3af] text-sm flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="text-gray-500 text-sm">Nothing {status === 'all' ? 'yet' : status}.</div>
+        <div className="text-[#8b949e] text-sm">Nothing {status === 'all' ? 'yet' : status}.</div>
       ) : (
         <ul className="space-y-3">
           {rows.map((app) => {
@@ -137,13 +139,13 @@ export default function TenantSignupsPage() {
                     <div className="flex items-center gap-2">
                       <h2 className="font-semibold text-white">{app.business_name}</h2>
                       <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border ${badge[app.status]}`}>{app.status}</span>
-                      <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border border-white/10 text-gray-400">{app.vertical}</span>
+                      <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border border-white/10 text-[#9ca3af]">{app.vertical}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-[#9ca3af] mt-0.5">
                       {app.contact_name} · {app.contact_email || '—'} · {app.contact_phone || '—'}
                       {app.city ? ` · ${app.city}` : ''}{app.country ? `, ${app.country}` : ''}
                     </p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
+                    <p className="text-[11px] text-[#8b949e] mt-0.5">
                       Verified via {app.provider}: {app.identity_email || (app.identity_phone ? `+${app.identity_phone}` : '—')} · {new Date(app.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -156,30 +158,30 @@ export default function TenantSignupsPage() {
 
                 {(app.goal || details.services || details.booking_system || details.weekly_enquiries) && (
                   <div className="text-xs text-gray-300 space-y-1">
-                    {app.goal && <p><span className="text-gray-500">Goal:</span> {app.goal}</p>}
-                    {Array.isArray(details.services) && details.services.length > 0 && <p><span className="text-gray-500">Offers:</span> {details.services.join(', ')}</p>}
-                    {details.booking_system && <p><span className="text-gray-500">Booking:</span> {String(details.booking_system)}</p>}
-                    {details.weekly_enquiries && <p><span className="text-gray-500">Enquiries/week:</span> {String(details.weekly_enquiries)}</p>}
+                    {app.goal && <p><span className="text-[#8b949e]">Goal:</span> {app.goal}</p>}
+                    {Array.isArray(details.services) && details.services.length > 0 && <p><span className="text-[#8b949e]">Offers:</span> {details.services.join(', ')}</p>}
+                    {details.booking_system && <p><span className="text-[#8b949e]">Booking:</span> {String(details.booking_system)}</p>}
+                    {details.weekly_enquiries && <p><span className="text-[#8b949e]">Enquiries/week:</span> {String(details.weekly_enquiries)}</p>}
                   </div>
                 )}
 
-                {app.review_notes && <p className="text-xs text-gray-400"><span className="text-gray-500">Notes:</span> {app.review_notes}</p>}
+                {app.review_notes && <p className="text-xs text-[#9ca3af]"><span className="text-[#8b949e]">Notes:</span> {app.review_notes}</p>}
                 {app.tenant_id && <p className="text-xs text-green-400 font-mono">tenant {app.tenant_id}</p>}
 
                 {app.status !== 'provisioned' && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <input value={notes[app.id] || ''} onChange={(e) => setNotes((n) => ({ ...n, [app.id]: e.target.value }))}
-                      placeholder="Review note (optional)" className="flex-1 min-w-[180px] rounded-md bg-black/20 border border-white/10 px-2 py-1 text-xs text-gray-200 placeholder-gray-500" />
+                      placeholder="Review note (optional)" className="flex-1 min-w-[180px] max-md:min-w-full max-lg:h-11 rounded-md bg-black/20 border border-white/10 px-2 py-1 text-xs max-md:text-[16px] text-gray-200 placeholder-[#8b949e]" />
                     {app.status !== 'approved' && (
                       <button onClick={() => review(app, 'approved')} disabled={acting === app.id}
-                        className="px-3 py-1 rounded-md text-xs bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 disabled:opacity-50"><Check size={12} /> Approve</button>
+                        className="px-3 py-1 max-lg:min-h-11 max-md:text-sm rounded-md text-xs bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 disabled:opacity-50"><Check size={12} /> Approve</button>
                     )}
                     {app.status === 'approved' && (
-                      <button onClick={() => provision(app)} className="px-3 py-1 rounded-md text-xs bg-green-600 hover:bg-green-500 text-white flex items-center gap-1"><Rocket size={12} /> Provision</button>
+                      <button onClick={() => provision(app)} className="px-3 py-1 max-lg:min-h-11 max-md:text-sm rounded-md text-xs bg-green-700 hover:bg-green-600 text-white flex items-center gap-1"><Rocket size={12} /> Provision</button>
                     )}
                     {app.status !== 'rejected' && (
                       <button onClick={() => review(app, 'rejected')} disabled={acting === app.id}
-                        className="px-3 py-1 rounded-md text-xs bg-white/5 hover:bg-red-600/40 text-gray-300 flex items-center gap-1 disabled:opacity-50"><X size={12} /> Reject</button>
+                        className="px-3 py-1 max-lg:min-h-11 max-md:text-sm rounded-md text-xs bg-white/5 hover:bg-red-600/40 text-gray-300 flex items-center gap-1 disabled:opacity-50"><X size={12} /> Reject</button>
                     )}
                   </div>
                 )}
