@@ -113,7 +113,7 @@ function EditableName({ name, onChange }: { name: string; onChange: (v: string) 
   }
 
   return (
-    <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 group cursor-pointer max-w-full">
+    <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 group cursor-pointer max-w-full max-lg:min-h-11">
       <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate max-w-[120px] xs:max-w-[200px] sm:max-w-xs dark:text-white">{name || 'Untitled template'}</span>
       <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
     </button>
@@ -420,7 +420,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     router.back();
                   }
                 }}
-          className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#253456] transition-colors cursor-pointer flex-shrink-0"
+          className="p-1.5 max-lg:h-11 max-lg:w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#253456] transition-colors cursor-pointer flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -438,7 +438,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
           {/* Preview & test */}
           <button
             onClick={() => { setShowPreview(true); setTestResult(null); setTestEmailAddr(''); setTestProvider('google'); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none transition-all cursor-pointer flex-shrink-0 shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 max-lg:min-h-11 max-lg:min-w-11 justify-center rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none transition-all cursor-pointer flex-shrink-0 shadow-sm"
           >
             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Preview & test</span>
@@ -450,14 +450,14 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               <button
                 onClick={() => handleSave(true)}
                 disabled={saving}
-                className="flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white text-xs sm:text-sm font-semibold rounded-l-lg sm:rounded-l-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 disabled:opacity-60 transition-all cursor-pointer border-none outline-none"
+                className="flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 max-lg:min-h-11 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white text-xs sm:text-sm font-semibold rounded-l-lg sm:rounded-l-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 disabled:opacity-60 transition-all cursor-pointer border-none outline-none"
               >
                 {saving && <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin"/>}
                 Save
               </button>
               <button
                 onClick={() => setShowSaveMenu((v) => !v)}
-                className="px-1.5 py-1.5 sm:px-2 sm:py-2 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white rounded-r-lg sm:rounded-r-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none border-l border-[#1c2c77]/60 dark:border-[#262831] transition-all cursor-pointer outline-none"
+                className="px-1.5 py-1.5 sm:px-2 sm:py-2 max-lg:min-h-11 max-lg:min-w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white rounded-r-lg sm:rounded-r-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none border-l border-[#1c2c77]/60 dark:border-[#262831] transition-all cursor-pointer outline-none"
               >
                 <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"/>
               </button>
