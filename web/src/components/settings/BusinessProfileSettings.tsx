@@ -451,7 +451,7 @@ export const BusinessProfileSettings: React.FC = () => {
             </div>
             <button
               onClick={() => { setHoursError(null); setHoursOpen(true); }}
-              className="h-9 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
+              className="h-9 max-lg:h-11 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
             >
               {savedBH ? 'Edit' : 'Set hours'}
             </button>
