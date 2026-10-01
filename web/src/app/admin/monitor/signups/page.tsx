@@ -59,7 +59,7 @@ export default function MonitorSignupsPage() {
         </h2>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -92,7 +92,7 @@ export default function MonitorSignupsPage() {
           <button
             key={t.label}
             onClick={() => setStatus(t.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`max-lg:min-h-11 max-lg:min-w-11 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               status === t.value
                 ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
@@ -168,7 +168,7 @@ export default function MonitorSignupsPage() {
                   value={s.status}
                   disabled={savingId === s.id}
                   onChange={(e) => save(s.id, e.target.value as SignupStatus).catch(() => {})}
-                  className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                  className="max-lg:min-h-11 max-md:text-[16px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                 >
                   {(['new', 'contacted', 'accepted', 'declined', 'spam'] as SignupStatus[]).map((v) => (
                     <option key={v} value={v}>

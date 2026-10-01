@@ -94,7 +94,7 @@ export function VerticalPromptViewer() {
   }, [vertical, pipeline, version, mode, load]);
 
   const selectCls =
-    'rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 '
+    'max-lg:min-h-11 max-lg:min-w-11 max-md:text-[16px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 '
     + 'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
 
   return (
@@ -106,7 +106,7 @@ export function VerticalPromptViewer() {
         </h2>
         <button
           onClick={() => load()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -158,7 +158,7 @@ export function VerticalPromptViewer() {
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
+              className={`max-lg:min-h-11 max-lg:min-w-11 rounded-md px-2.5 py-1 text-[11px] font-medium ${
                 mode === m
                   ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
                   : 'text-gray-600 dark:text-gray-300'
@@ -177,12 +177,12 @@ export function VerticalPromptViewer() {
             onChange={(e) => setTenantId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load()}
             placeholder="Tenant ID"
-            className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+            className="max-lg:min-h-11 max-md:text-[16px] flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
           />
           <button
             onClick={() => load()}
             disabled={!tenantId.trim() || loading}
-            className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-900"
+            className="max-lg:min-h-11 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-900"
           >
             Render
           </button>
@@ -199,7 +199,7 @@ export function VerticalPromptViewer() {
       {meta && <p className="mb-1.5 font-mono text-[10px] text-gray-400">{meta}</p>}
 
       {loading && (
-        <p className="flex items-center gap-2 py-6 text-xs text-gray-500">
+        <p className="flex items-center gap-2 py-6 text-xs text-gray-500 dark:text-gray-400">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </p>
       )}

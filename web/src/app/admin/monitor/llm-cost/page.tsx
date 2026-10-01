@@ -29,7 +29,7 @@ export default function MonitorLlmCostPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">LLM Spend & Spikes</h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Daily Claude/Gemini/etc. cost from the billing ledger, with automatic spike attribution.
           </p>
         </div>
@@ -39,10 +39,10 @@ export default function MonitorLlmCostPage() {
               <button
                 key={w}
                 onClick={() => setDays(w)}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`max-lg:min-h-11 max-lg:min-w-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                   days === w
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-400'
                 }`}
               >
                 {w}d
@@ -51,7 +51,7 @@ export default function MonitorLlmCostPage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -75,7 +75,7 @@ export default function MonitorLlmCostPage() {
           <div className="h-72 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
         </div>
       ) : isEmpty ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           No LLM usage recorded in this window. Billing events land in
           <span className="font-mono"> billing_usage_events</span> as features call the LLM providers.
         </div>
@@ -87,7 +87,7 @@ export default function MonitorLlmCostPage() {
             <StatCard title="Today" value={money(s.todayCost)} icon={Sparkles} accent="text-purple-500" />
             <StatCard title="Avg / active day" value={money(s.avgDailyCost)} icon={TrendingUp} accent="text-blue-500" />
             <StatCard title="Projected / mo" value={money(s.projectedMonthlyCost)} icon={CalendarClock} accent="text-cyan-500" subtitle="at current rate" />
-            <StatCard title="Spikes flagged" value={s.spikeCount} icon={AlertTriangle} accent={s.spikeCount > 0 ? 'text-red-500' : 'text-emerald-500'} subtitle={s.maxDay ? `peak ${money(s.maxDayCost)} · ${s.maxDay}` : undefined} />
+            <StatCard title="Spikes flagged" value={s.spikeCount} icon={AlertTriangle} accent={s.spikeCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'} subtitle={s.maxDay ? `peak ${money(s.maxDayCost)} · ${s.maxDay}` : undefined} />
           </div>
 
           {/* Daily spend chart with spike highlighting */}
@@ -99,10 +99,10 @@ export default function MonitorLlmCostPage() {
           {data!.spikes.length > 0 ? (
             <div className="mt-6">
               <div className="mb-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <AlertTriangle className="h-4 w-4 text-red-700 dark:text-red-400" />
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Detected spikes</h3>
                 {th ? (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
                     (&gt; {th.spikeMultiplier}× trailing {th.baselineWindowDays}d median &amp; &gt; {money(th.spikeFloorUsd)})
                   </span>
                 ) : null}
@@ -115,7 +115,7 @@ export default function MonitorLlmCostPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">{sp.day}</span>
-                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">{money(sp.total_cost)}</span>
+                      <span className="text-sm font-semibold text-red-700 dark:text-red-400">{money(sp.total_cost)}</span>
                       {sp.multiple_of_baseline ? (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
                           {sp.multiple_of_baseline}× baseline
@@ -128,7 +128,7 @@ export default function MonitorLlmCostPage() {
                         {sp.driver.tenant_name || sp.driver.tenant_id ? (
                           <> · <span className="font-medium">{sp.driver.tenant_name || sp.driver.tenant_id}</span></>
                         ) : null}
-                        <span className="text-gray-400"> ({money(sp.driver.cost)})</span>
+                        <span className="text-gray-600 dark:text-gray-400"> ({money(sp.driver.cost)})</span>
                       </div>
                     ) : null}
                   </div>
@@ -144,7 +144,7 @@ export default function MonitorLlmCostPage() {
               <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Top features</h3>
               <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
-                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
                       <th className="px-4 py-3 font-medium">Feature</th>
                       <th className="px-4 py-3 font-medium">Model</th>
@@ -156,7 +156,7 @@ export default function MonitorLlmCostPage() {
                     {data!.byFeature.slice(0, 10).map((f, i) => (
                       <tr key={`${f.feature_key}-${f.model}-${i}`} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                         <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{f.feature_key}</td>
-                        <td className="px-4 py-2.5 text-xs text-gray-500">{f.model}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-gray-400">{f.model}</td>
                         <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{f.calls.toLocaleString()}</td>
                         <td className="px-4 py-2.5 font-semibold text-gray-900 dark:text-gray-100">{money(f.cost)}</td>
                       </tr>
@@ -173,7 +173,7 @@ export default function MonitorLlmCostPage() {
               </h3>
               <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
-                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
                       <th className="px-4 py-3 font-medium">Tenant</th>
                       <th className="px-4 py-3 font-medium">Calls</th>

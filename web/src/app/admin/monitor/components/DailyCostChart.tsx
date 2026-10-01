@@ -35,15 +35,15 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
       <div className="mb-1 font-semibold text-gray-900 dark:text-gray-100">
-        {r.day} {r.isSpike ? <span className="ml-1 text-red-500">· spike</span> : null}
+        {r.day} {r.isSpike ? <span className="ml-1 text-red-700 dark:text-red-400">· spike</span> : null}
       </div>
       <div className="text-gray-700 dark:text-gray-300">
         Spend: <span className="font-semibold">{money(r.cost)}</span>
-        {r.isSpike && r.multiple ? <span className="text-red-500"> ({r.multiple}× baseline)</span> : null}
+        {r.isSpike && r.multiple ? <span className="text-red-700 dark:text-red-400"> ({r.multiple}× baseline)</span> : null}
       </div>
-      <div className="text-gray-500">Calls: {r.calls.toLocaleString()}</div>
+      <div className="text-gray-500 dark:text-gray-400">Calls: {r.calls.toLocaleString()}</div>
       {r.driverFeature ? (
-        <div className="mt-1 border-t border-gray-100 pt-1 text-gray-500 dark:border-gray-800">
+        <div className="mt-1 border-t border-gray-100 pt-1 text-gray-500 dark:border-gray-800 dark:text-gray-400">
           Top driver: <span className="font-medium text-gray-700 dark:text-gray-300">{r.driverFeature}</span>
           {r.driverTenant ? <> · {r.driverTenant}</> : null}
         </div>
@@ -68,7 +68,7 @@ export function DailyCostChart({ series }: { series: LlmCostDay[] }) {
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Daily LLM spend</h3>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: NORMAL }} /> normal
           </span>

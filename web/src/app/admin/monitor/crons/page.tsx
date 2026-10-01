@@ -50,7 +50,7 @@ export default function MonitorCronsPage() {
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Scheduled Jobs (deadman&apos;s-switch)</h2>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -80,7 +80,7 @@ export default function MonitorCronsPage() {
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
-          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3 font-medium">Job</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -107,9 +107,9 @@ export default function MonitorCronsPage() {
                   <td className="px-4 py-3 font-mono text-gray-900 dark:text-gray-100">{job.jobName}</td>
                   <td className="px-4 py-3"><JobStatus job={job} /></td>
                   <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{relativeTime(job.secondsSinceBeat)}</td>
-                  <td className="px-4 py-3 text-gray-500">every {interval(job.expectedIntervalSeconds)}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">every {interval(job.expectedIntervalSeconds)}</td>
                   <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{job.consecutiveFailures}</td>
-                  <td className="px-4 py-3 max-w-xs truncate text-gray-500" title={job.lastError || ''}>{job.lastError || '-'}</td>
+                  <td className="px-4 py-3 max-w-xs truncate text-gray-500 dark:text-gray-400" title={job.lastError || ''}>{job.lastError || '-'}</td>
                 </tr>
               ))
             )}
@@ -118,7 +118,7 @@ export default function MonitorCronsPage() {
       </div>
 
       <p className="mt-3 text-xs text-gray-400">
-        A job goes <span className="font-medium text-red-500">Stale</span> after missing 3× its expected interval. External monitors should watch
+        A job goes <span className="font-medium text-red-700 dark:text-red-400">Stale</span> after missing 3× its expected interval. External monitors should watch
         <code className="mx-1 font-mono">GET /health/crons</code> (returns 503 when any job is stale).
       </p>
     </div>
