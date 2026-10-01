@@ -18,7 +18,8 @@ export default function AuthLayout({
     <div className="flex h-dvh bg-background dark:bg-[#000724]">
       <Sidebar />
       <HeaderLoader />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden ml-0 md:ml-16 pt-14 md:pt-0">
+      {/* --bottom-nav-h is set by MobileBottomNav only while it is showing. */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden ml-0 md:ml-16 pt-14 md:pt-0 max-md:pb-[var(--bottom-nav-h,0px)]">
         {children}
       </main>
     </div>

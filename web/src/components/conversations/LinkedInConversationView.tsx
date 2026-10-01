@@ -12,6 +12,7 @@
  *   accepted → connected, follow-up pending → chat disabled
  *   active   → automated follow-up sent     → chat enabled
  */
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone, Sparkles, Paperclip, UserPlus, PanelRightOpen, PanelRightClose, AlertCircle, Plus, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -464,6 +465,8 @@ export function LinkedInConversationView({
 }) {
   const [conversations, setConversations] = useState<LinkedInConversation[]>([]);
   const [selectedId, setSelectedId]       = useState<string | null>(null);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(!!selectedId);
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
   const [broadcastOpen, setBroadcastOpen] = useState(false);
