@@ -2348,10 +2348,10 @@ export function ChatSettings() {
                 <tbody className="max-md:block divide-y divide-gray-100 dark:divide-blue-950/40">
                   {(
                     [
-                      { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',          color: 'text-green-600 bg-green-50 dark:text-emerald-400 dark:bg-emerald-950/30' },
-                      { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/20' },
-                      { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20' },
-                      { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-600 bg-red-50 dark:text-rose-400 dark:bg-rose-950/30' },
+                      { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',          color: 'text-green-700 bg-green-50 dark:text-emerald-400 dark:bg-emerald-950/30' },
+                      { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/20' },
+                      { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-700 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20' },
+                      { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-700 bg-red-50 dark:text-rose-400 dark:bg-rose-950/30' },
                     ] as Array<{ key: keyof FollowupTimingConfig['stages']; label: string; desc: string; color: string }>
                   ).map(({ key, label, desc, color }) => {
                     const stage = followupConfig.stages[key];
