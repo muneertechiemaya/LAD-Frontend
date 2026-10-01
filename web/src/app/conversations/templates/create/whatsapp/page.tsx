@@ -175,7 +175,7 @@ function ButtonRow({
     <div className="p-3 border border-[#E2E8F0] dark:border-gray-800 rounded-lg space-y-2 bg-[#FAFBFC] dark:bg-[#000724]">
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-[#64748B] dark:text-gray-400 w-24 shrink-0">{typeLabel}</span>
-        <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Button text</span>
+        <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">Button text</span>
         <input
           value={btn.text}
           onChange={e => onChange({ text: e.target.value })}
@@ -183,7 +183,7 @@ function ButtonRow({
           maxLength={25}
           className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
         />
-        <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.text.length}/25</span>
+        <span className="text-[10px] text-[#64748B] dark:text-slate-400 shrink-0">{btn.text.length}/25</span>
         <button type="button" onClick={onRemove} className="text-[#94A3B8] dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -191,16 +191,16 @@ function ButtonRow({
 
       {btn.type === 'URL' && (
         <div className="flex items-center gap-2 pl-24 flex-wrap">
-          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">URL type</span>
+          <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">URL type</span>
           <select
             value={btn.urlType}
             onChange={e => onChange({ urlType: e.target.value as 'static' | 'dynamic' })}
-            className="px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white focus:outline-none"
+            className="max-lg:min-h-11 max-md:text-[16px] px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white focus:outline-none"
           >
             <option value="static" className="dark:bg-[#000c3b]">Static</option>
             <option value="dynamic" className="dark:bg-[#000c3b]">Dynamic</option>
           </select>
-          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Website URL</span>
+          <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">Website URL</span>
           <input
             type="url"
             value={btn.url}
@@ -208,13 +208,13 @@ function ButtonRow({
             placeholder="https://example.com"
             className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
           />
-          <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.url.length}/2000</span>
+          <span className="text-[10px] text-[#64748B] dark:text-slate-400 shrink-0">{btn.url.length}/2000</span>
         </div>
       )}
 
       {btn.type === 'PHONE_NUMBER' && (
         <div className="flex items-center gap-2 pl-24">
-          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Phone number</span>
+          <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">Phone number</span>
           <input
             value={btn.phone}
             onChange={e => onChange({ phone: e.target.value })}
@@ -441,12 +441,12 @@ function AuthenticationFields({
       <div>
         <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
           Message validity period
-          <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+          <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-xs">· Optional</span>
         </label>
         <select
           value={ttl}
           onChange={e => onTtl(e.target.value)}
-          className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+          className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
         >
           {AUTH_TTL_OPTIONS.map(o => (
             <option key={o.value || 'default'} value={o.value} className="dark:bg-[#000724]">{o.label}</option>
@@ -797,7 +797,7 @@ export default function WhatsAppTemplateCreatePage() {
         <div className="px-4 md:px-6 py-4 sm:py-5 flex items-center gap-3">
           <button
             onClick={() => router.push('/conversations/templates')}
-            className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-[#E2E8F0] dark:border-gray-800 text-[#64748B] hover:text-[#1E293B] dark:text-gray-300 dark:hover:text-white font-medium transition-colors cursor-pointer bg-transparent"
+            className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 max-lg:min-h-11 max-md:text-sm rounded-lg border border-[#E2E8F0] dark:border-gray-800 text-[#64748B] hover:text-[#1E293B] dark:text-gray-300 dark:hover:text-white font-medium transition-colors cursor-pointer bg-transparent"
           >
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -852,7 +852,7 @@ export default function WhatsAppTemplateCreatePage() {
                   <select
                     value={effectiveAccountId}
                     onChange={e => setAccountId(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                    className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
                   >
                     {accounts.map(a => (
                       <option key={a.id} value={a.id} className="dark:bg-[#000724]">
@@ -868,7 +868,7 @@ export default function WhatsAppTemplateCreatePage() {
                       {targetAccount?.display_phone_number || targetAccount?.display_name || targetAccount?.slug}
                     </div>
                   )}
-                  <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-1">
+                  <p className="text-[11px] text-[#64748B] dark:text-slate-400 mt-1">
                     Templates belong to one number. Meta reviews this one against{' '}
                     {accounts.length > 1 ? 'the number you pick' : 'this number'}.
                   </p>
@@ -887,13 +887,13 @@ export default function WhatsAppTemplateCreatePage() {
                       maxLength={512}
                       className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">{name.length}/512</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#64748B] dark:text-slate-400 pointer-events-none">{name.length}/512</span>
                   </div>
                   {name && safeName !== name.toLowerCase().replace(/\s+/g, '_') && (
                     <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Will be saved as: <span className="font-mono font-semibold">{safeName}</span></p>
                   )}
                   {safeName && (
-                    <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-1 font-mono">{safeName || 'template_name'}</p>
+                    <p className="text-[11px] text-[#64748B] dark:text-slate-400 mt-1 font-mono">{safeName || 'template_name'}</p>
                   )}
                 </div>
                 <div>
@@ -901,7 +901,7 @@ export default function WhatsAppTemplateCreatePage() {
                   <select
                     value={language}
                     onChange={e => setLanguage(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                    className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
                   >
                     {LANGUAGES.map(l => <option key={l.code} value={l.code} className="dark:bg-[#000724]">{l.label}</option>)}
                   </select>
@@ -918,7 +918,7 @@ export default function WhatsAppTemplateCreatePage() {
                         key={c.value}
                         type="button"
                         onClick={() => setCategory(c.value)}
-                        className={`text-sm font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer ${
+                        className={`text-sm font-semibold px-4 py-2 max-lg:min-h-11 rounded-full border transition-all cursor-pointer ${
                           category === c.value
                             ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-[0_2px_8px_rgba(11,25,87,0.25)]'
                             : 'bg-white dark:bg-[#000724] text-[#64748B] dark:text-gray-300 border-[#E2E8F0] dark:border-gray-800 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:text-[#1E293B] dark:hover:text-white'
@@ -983,16 +983,16 @@ export default function WhatsAppTemplateCreatePage() {
                 <div>
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Type of variable
-                    <span className="ml-1.5 text-[#94A3B8] dark:text-gray-500 text-xs">ⓘ</span>
+                    <span className="ml-1.5 text-[#64748B] dark:text-slate-400 text-xs">ⓘ</span>
                   </label>
-                  <select className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
+                  <select className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
                     <option className="dark:bg-[#000724]">Number</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                     Media sample
-                    <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+                    <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-xs">· Optional</span>
                   </label>
                   <select
                     value={mediaType}
@@ -1003,7 +1003,7 @@ export default function WhatsAppTemplateCreatePage() {
                       setUploadStatus('idle');
                       setUploadError('');
                     }}
-                    className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                    className="max-lg:min-h-11 max-md:text-[16px] w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
                   >
                     <option value="NONE" className="dark:bg-[#000724]">None</option>
                     <option value="IMAGE" className="dark:bg-[#000724]">Image</option>
@@ -1062,7 +1062,7 @@ export default function WhatsAppTemplateCreatePage() {
                             <p className="text-sm font-semibold text-[#1E293B] dark:text-white group-hover:text-[#0b1957] dark:group-hover:text-blue-400">
                               Choose {mediaType.charAt(0) + mediaType.slice(1).toLowerCase()} file
                             </p>
-                            <p className="text-xs text-[#94A3B8] dark:text-gray-500 mt-1">
+                            <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1">
                               {mediaType === 'IMAGE'    && 'JPG, PNG or WebP · Max 5MB'}
                               {mediaType === 'VIDEO'    && 'MP4 or 3GP · Max 16MB'}
                               {mediaType === 'DOCUMENT' && 'PDF, DOC or DOCX · Max 100MB'}
@@ -1084,7 +1084,7 @@ export default function WhatsAppTemplateCreatePage() {
               <div>
                 <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                   Header
-                  <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+                  <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-xs">· Optional</span>
                 </label>
                 <div className="relative">
                   <input
@@ -1100,7 +1100,7 @@ export default function WhatsAppTemplateCreatePage() {
                     maxLength={60}
                     className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 disabled:bg-[#F8F9FE] dark:disabled:bg-[#000724] disabled:text-[#94A3B8] dark:disabled:text-gray-600 disabled:cursor-not-allowed bg-white dark:bg-[#000724]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#64748B] dark:text-slate-400 pointer-events-none">
                     {headerText.length}/60
                   </span>
                 </div>
@@ -1126,7 +1126,7 @@ export default function WhatsAppTemplateCreatePage() {
                   <label className="text-sm font-medium text-[#1E293B] dark:text-white">
                     Body <span className="text-red-500">*</span>
                   </label>
-                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">{bodyText.length}/1028</span>
+                  <span className="text-xs text-[#64748B] dark:text-slate-400">{bodyText.length}/1028</span>
                 </div>
 
                 {/* Formatting toolbar */}
@@ -1192,7 +1192,7 @@ export default function WhatsAppTemplateCreatePage() {
               <div>
                 <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
                   Footer
-                  <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+                  <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-xs">· Optional</span>
                 </label>
                 <div className="relative">
                   <input
@@ -1203,7 +1203,7 @@ export default function WhatsAppTemplateCreatePage() {
                     maxLength={60}
                     className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#64748B] dark:text-slate-400 pointer-events-none">
                     {footerText.length}/60
                   </span>
                 </div>
@@ -1223,7 +1223,7 @@ export default function WhatsAppTemplateCreatePage() {
             <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">
                 Buttons
-                <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-sm">· Optional</span>
+                <span className="ml-1 text-[#64748B] dark:text-slate-400 font-normal text-sm">· Optional</span>
               </h2>
               <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
                 Create buttons that let customers respond to your message or take action. You can add up to 3 buttons.
@@ -1279,7 +1279,7 @@ export default function WhatsAppTemplateCreatePage() {
 
             {/* ── Mobile Footer with Template Status Indicator ── */}
             <div className="p-4 pb-20 space-y-2">
-              <p className="text-sm text-[#64748B] dark:text-gray-500">Template details pending</p>
+              <p className="text-sm text-[#64748B] dark:text-slate-400">Template details pending</p>
             </div>
           </div>
 
@@ -1378,22 +1378,22 @@ export default function WhatsAppTemplateCreatePage() {
                     <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
                     {safeName && (
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs text-[#94A3B8] dark:text-gray-500">Name</span>
+                          <span className="text-xs text-[#64748B] dark:text-slate-400">Name</span>
                           <span className="text-xs font-mono font-semibold text-[#1E293B] dark:text-white truncate max-w-[160px] text-right">{safeName}</span>
                         </div>
                     )}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Language</span>
+                      <span className="text-xs text-[#64748B] dark:text-slate-400">Language</span>
                       <span className="text-xs text-[#1E293B] dark:text-white">{LANGUAGES.find(l => l.code === language)?.label}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Category</span>
+                      <span className="text-xs text-[#64748B] dark:text-slate-400">Category</span>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
                     {category}
                   </span>
                     </div>
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
+                      <span className="text-xs text-[#64748B] dark:text-slate-400">Components</span>
                       <span className="text-xs text-[#1E293B] dark:text-white text-right">
                     {buildComponents().map((c: any) => c.type).join(', ') || '-'}
                   </span>
@@ -1509,22 +1509,22 @@ export default function WhatsAppTemplateCreatePage() {
                 <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
                 {safeName && (
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs text-[#94A3B8] dark:text-gray-500">Name</span>
+                    <span className="text-xs text-[#64748B] dark:text-slate-400">Name</span>
                     <span className="text-xs font-mono font-semibold text-[#1E293B] dark:text-white truncate max-w-[160px] text-right">{safeName}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Language</span>
+                  <span className="text-xs text-[#64748B] dark:text-slate-400">Language</span>
                   <span className="text-xs text-[#1E293B] dark:text-white">{LANGUAGES.find(l => l.code === language)?.label}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Category</span>
+                  <span className="text-xs text-[#64748B] dark:text-slate-400">Category</span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
                     {category}
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
+                  <span className="text-xs text-[#64748B] dark:text-slate-400">Components</span>
                   <span className="text-xs text-[#1E293B] dark:text-white text-right">
                     {buildComponents().map((c: any) => c.type).join(', ') || '-'}
                   </span>
