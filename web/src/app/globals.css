@@ -1049,3 +1049,17 @@ input.media-builder-prompt:focus-visible,
 .dark .text-primary:not([class*="dark:text-"]) {
   color: #60A5FA;
 }
+
+/* -------------------------------------------------------------
+   Muted text contrast (light mode). text-gray-400 (#9ca3af) and
+   text-slate-400 (#94a3b8) are used as secondary/body text in ~240 files
+   and read 2.5-2.6:1 on white - under WCAG's 4.5:1. In light mode they
+   render one step darker (gray-500 4.8:1, slate-500 4.8:1), which still
+   reads as "muted". Dark mode is untouched (html.dark doesn't match).
+   :where() keeps this at plain-utility specificity and it sits after the
+   generated utilities, so hover:/focus:/group-hover: variants still win.
+----------------------------------------------------------------- */
+@layer utilities {
+  :where(html:not(.dark)) .text-gray-400 { color: #6b7280; }
+  :where(html:not(.dark)) .text-slate-400 { color: #64748b; }
+}
