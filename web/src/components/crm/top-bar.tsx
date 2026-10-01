@@ -14,15 +14,18 @@ export interface Crumb {
 export default function TopBar({
   tenant,
   crumbs = [],
+  hideOnMobile = false,
 }: {
   tenant?: string;
   crumbs?: Crumb[];
+  /** Phones already have the app's own header; skip this bar where the crumb adds nothing. */
+  hideOnMobile?: boolean;
 }) {
   const { tenant: tenantCtx } = useTenant();
   const tenantName =
     tenant || (tenantCtx?.name && tenantCtx.name !== 'Default' ? tenantCtx.name : '');
   return (
-    <header className="sticky top-0 z-30 backdrop-blur bg-[#F8F9FE]/85 dark:bg-[#000724]/85 border-b border-slate-200/70 dark:border-[#262831]">
+    <header className={`${hideOnMobile ? 'max-md:hidden ' : ''}sticky top-0 z-30 backdrop-blur bg-[#F8F9FE]/85 dark:bg-[#000724]/85 border-b border-slate-200/70 dark:border-[#262831]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2">

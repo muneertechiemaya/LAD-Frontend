@@ -45,33 +45,37 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
   ];
 
   return (
-    <div className="flex gap-3 sm:gap-4 mb-5 flex-wrap items-stretch">
+    // Phones: one compact row of four (count over label). md+: the full cards.
+    <div className="mb-4 grid grid-cols-4 gap-2 md:mb-5 md:flex md:flex-wrap md:items-stretch md:gap-4">
       {cards.map((c) => {
         const isSel = selected === c.key;
         const Icon = c.Icon;
         return (
-          <div key={c.key} className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
+          <div key={c.key} className="min-w-0 md:w-[calc(25%-12px)]">
             <button
               onClick={() => onSelect(c.key)}
-              className={`bg-white dark:bg-[#071131] rounded-[20px] border w-full text-left flex flex-col h-full min-h-[120px] transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
+              aria-pressed={isSel}
+              className={`bg-white dark:bg-[#071131] rounded-2xl md:rounded-[20px] border w-full text-left flex flex-col h-full min-h-16 md:min-h-[120px] transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
                 isSel
                   ? 'border-[#0b1957] dark:border-[#2563eb] ring-2 ring-[#0b1957]/30'
                   : 'border-slate-200 dark:border-blue-950/40'
               }`}
             >
-              <div className="flex-1 flex flex-col p-4">
-                <div className="flex justify-end mb-2">
+              <div className="flex-1 flex flex-col items-center justify-center px-1 py-2 md:items-stretch md:justify-start md:p-4">
+                <div className="hidden md:flex justify-end mb-2">
                   <div className={`${c.bg} w-12 h-12 rounded-full grid place-items-center`}>
                     <Icon className={`w-6 h-6 ${c.ic}`} />
                   </div>
                 </div>
-                <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-[10px] sm:text-[12.5px] text-slate-500 dark:text-slate-400 mb-1">{c.title}</p>
+                <div className="flex flex-col-reverse items-center md:flex-1 md:flex-col md:items-start md:justify-end">
+                  <p className="max-w-full truncate text-[11px] text-slate-600 dark:text-slate-300 md:mb-1 md:text-[12.5px] md:text-slate-500 md:dark:text-slate-400">
+                    {c.title}
+                  </p>
                   <h5
-                    className="text-2xl font-bold text-slate-800 dark:text-white tabular-nums"
+                    className="text-lg md:text-2xl font-bold text-slate-800 dark:text-white tabular-nums leading-tight"
                     style={{ fontFamily: '"Space Grotesk", system-ui' }}
                   >
-                    {c.value}
+                    {c.value ?? '—'}
                   </h5>
                 </div>
               </div>
