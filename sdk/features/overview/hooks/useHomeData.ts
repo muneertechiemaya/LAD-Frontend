@@ -5,12 +5,17 @@
  */
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getEmailBroadcastSummary,
   getInstagramSummary,
   getLeadJourneyCounts,
   getLinkedInSummary,
+  getHomeLayout,
+  saveHomeLayout,
+  resetHomeLayout,
+  type HomeLayout,
+  type SavedHomeLayout,
 } from '../api';
 
 export type PipelinePeriod = 'week' | 'month' | 'quarter';
@@ -22,6 +27,7 @@ export const homeKeys = {
   linkedin: () => [...homeKeys.all, 'linkedin'] as const,
   email: () => [...homeKeys.all, 'email'] as const,
   instagram: () => [...homeKeys.all, 'instagram'] as const,
+  layout: () => [...homeKeys.all, 'layout'] as const,
 };
 
 const OPTS = { staleTime: 60_000, retry: 1 } as const;
@@ -48,4 +54,42 @@ export function useEmailBroadcastSummary(enabled = true) {
 
 export function useInstagramSummary(enabled = true) {
   return useQuery({ queryKey: homeKeys.instagram(), queryFn: getInstagramSummary, enabled, ...OPTS });
+}
+
+/** The user's saved Home layout. `data.layout === null` → use the default. */
+export function useHomeLayout() {
+  return useQuery({ queryKey: homeKeys.layout(), queryFn: getHomeLayout, staleTime: 5 * 60_000, retry: 1 });
+}
+
+/** Save optimistically; roll back to the previous layout if the write fails. */
+export function useSaveHomeLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (layout: HomeLayout) => saveHomeLayout(layout),
+    onMutate: async (layout) => {
+      await qc.cancelQueries({ queryKey: homeKeys.layout() });
+      const prev = qc.getQueryData<SavedHomeLayout>(homeKeys.layout());
+      qc.setQueryData<SavedHomeLayout>(homeKeys.layout(), { layout, degraded: false });
+      return { prev };
+    },
+    onError: (_err, _layout, ctx) => {
+      if (ctx?.prev) qc.setQueryData(homeKeys.layout(), ctx.prev);
+    },
+  });
+}
+
+export function useResetHomeLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: resetHomeLayout,
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: homeKeys.layout() });
+      const prev = qc.getQueryData<SavedHomeLayout>(homeKeys.layout());
+      qc.setQueryData<SavedHomeLayout>(homeKeys.layout(), { layout: null, degraded: false });
+      return { prev };
+    },
+    onError: (_err, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(homeKeys.layout(), ctx.prev);
+    },
+  });
 }

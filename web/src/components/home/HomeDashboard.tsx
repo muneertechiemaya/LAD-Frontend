@@ -16,13 +16,15 @@
  */
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useMemo, useState, type ReactNode } from 'react';
 import { format, isSameDay } from 'date-fns';
 import {
   ArrowRight,
   CalendarClock,
   Mail,
   Phone,
+  SlidersHorizontal,
   Sparkles,
   Wallet,
 } from 'lucide-react';
@@ -34,14 +36,43 @@ import {
   useEmailBroadcastSummary,
   useInstagramSummary,
   useLinkedInSummary,
+  useHomeLayout,
   usePipelineCounts,
+  useResetHomeLayout,
+  useSaveHomeLayout,
   useWalletStats,
+  type HomeLayoutSection,
   type PipelinePeriod,
 } from '@lad/frontend-features/overview';
 import { useConversationAnalytics } from '@/components/overview/useConversationAnalytics';
 import { useConnectedChannels } from '@/hooks/useConnectedChannels';
 import { ChannelIcon } from '@/components/conversations/ChannelIcon';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/app-toaster';
+import { CustomizeHomeSheet } from './CustomizeHomeSheet';
+import { SECTION_BY_ID, SPAN_CLASS, resolveLayout, sameLayout } from './homeSections';
+
+// ── Opt-in widgets (from the earlier configurable dashboard) ────────────────
+// Loaded only when a user adds one, so the default Home stays light.
+
+// The old widgets are typed React.FC against a duplicate @types/react, so the
+// loader narrows them here rather than at every import.
+type WidgetComponent = React.ComponentType<{ id: string }>;
+const widget = (load: () => Promise<unknown>) =>
+  dynamic(() => load().then((c) => c as WidgetComponent), { ssr: false, loading: () => <div className="h-64 w-full animate-pulse rounded-[20px] bg-slate-200/60 dark:bg-white/5" /> });
+
+const EXTRA_WIDGETS: Record<string, WidgetComponent> = {
+  'lead-journey': widget(() => import('@/components/overview/widgets/LeadJourneyWidget').then((m) => m.LeadJourneyWidget)),
+  'combined-funnel': widget(() => import('@/components/overview/widgets/CombinedFunnelWidget').then((m) => m.CombinedFunnelWidget)),
+  calendar: widget(() => import('@/components/overview/widgets/CalendarWidget').then((m) => m.CalendarWidget)),
+  'conversation-funnel': widget(() => import('@/components/overview/widgets/ConversationFunnelWidget').then((m) => m.ConversationFunnelWidget)),
+  'reengage-topics': widget(() => import('@/components/overview/widgets/ReengageTopicsWidget').then((m) => m.ReengageTopicsWidget)),
+  'broadcast-performance': widget(() => import('@/components/overview/widgets/BroadcastPerformanceWidget').then((m) => m.BroadcastPerformanceWidget)),
+  'linkedin-funnel': widget(() => import('@/components/overview/widgets/LinkedInFunnelWidget').then((m) => m.LinkedInFunnelWidget)),
+  'email-activity': widget(() => import('@/components/overview/widgets/EmailActivityWidget').then((m) => m.EmailActivityWidget)),
+  'instagram-activity': widget(() => import('@/components/overview/widgets/InstagramActivityWidget').then((m) => m.InstagramActivityWidget)),
+  'voice-agents': widget(() => import('@/components/overview/widgets/VoiceAgentsWidget').then((m) => m.VoiceAgentsWidget)),
+};
 
 // ── Shared pieces ───────────────────────────────────────────────────────────
 
@@ -81,7 +112,7 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Greeting ────────────────────────────────────────────────────────────────
 
-function Greeting({ tasks, meetingsToday }: { tasks: number | undefined; meetingsToday: number | undefined }) {
+function Greeting({ tasks, meetingsToday, onCustomize }: { tasks: number | undefined; meetingsToday: number | undefined; onCustomize: () => void }) {
   const { user } = useAuth();
   const now = new Date();
   const h = now.getHours();
@@ -109,13 +140,23 @@ function Greeting({ tasks, meetingsToday }: { tasks: number | undefined; meeting
         </h1>
         <p className={cn(MUTED, 'mt-1')}>{summary}</p>
       </div>
-      <Link
-        href="/onboarding/advanced-search-ai"
-        className="inline-flex min-h-11 shrink-0 items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900 sm:self-auto dark:border-blue-950/50 dark:bg-[#071131] dark:text-slate-200 dark:hover:text-white"
-      >
-        <Sparkles className="h-4 w-4 text-[#2563eb] dark:text-blue-300" aria-hidden="true" />
-        Ask Mr LAD…
-      </Link>
+      <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+        <Link
+          href="/onboarding/advanced-search-ai"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-blue-950/50 dark:bg-[#071131] dark:text-slate-200 dark:hover:text-white"
+        >
+          <Sparkles className="h-4 w-4 text-[#2563eb] dark:text-blue-300" aria-hidden="true" />
+          Ask Mr LAD…
+        </Link>
+        <button
+          type="button"
+          onClick={onCustomize}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-blue-950/50 dark:bg-[#071131] dark:text-slate-200 dark:hover:text-white"
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          Customize
+        </button>
+      </div>
     </header>
   );
 }
@@ -612,10 +653,35 @@ export function HomeDashboard() {
   const wallet = useWalletStats();
   const walletFailed = !wallet.loading && Boolean(wallet.error);
 
-  return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-      <Greeting tasks={tasks} meetingsToday={meetingsToday?.length} />
+  // ── Layout: saved per user; edited as a live draft while Customize is open.
+  const layoutQ = useHomeLayout();
+  const saveLayout = useSaveHomeLayout();
+  const resetLayout = useResetHomeLayout();
+  const { push: toast } = useToast();
+  const saved = useMemo(() => resolveLayout(layoutQ.data?.layout?.sections), [layoutQ.data]);
+  const [draft, setDraft] = useState<HomeLayoutSection[] | null>(null);
+  const [resetRequested, setResetRequested] = useState(false);
+  const layout = draft ?? saved;
 
+  const openCustomize = () => {
+    setDraft(saved);
+    setResetRequested(false);
+  };
+  const closeCustomize = () => {
+    const next = draft;
+    setDraft(null);
+    if (!next) return;
+    const onError = () =>
+      toast({ title: 'Couldn’t save your layout', description: 'Your Home is back to how it was. Please try again.', variant: 'error' });
+    if (resetRequested && sameLayout(next, resolveLayout(null))) {
+      resetLayout.mutate(undefined, { onError });
+    } else if (!sameLayout(next, saved)) {
+      saveLayout.mutate({ sections: next }, { onError });
+    }
+  };
+
+  const sections: Record<string, ReactNode> = {
+    today: (
       <section aria-label="Today" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TodayTile
           label="Waiting on you"
@@ -649,27 +715,78 @@ export function HomeDashboard() {
           failed={walletFailed}
         />
       </section>
-
-      <PipelineCard />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <InsightsCard wabaStatus={statuses.waba} />
-        <UpNextCard
-          meetings={meetingsQ.data}
-          loading={meetingsQ.isLoading}
-          failed={!meetingsQ.isLoading && meetingsQ.data === undefined}
-        />
-      </div>
-
-      <ChannelsRow />
-
+    ),
+    pipeline: <PipelineCard />,
+    insights: <InsightsCard wabaStatus={statuses.waba} />,
+    'up-next': (
+      <UpNextCard
+        meetings={meetingsQ.data}
+        loading={meetingsQ.isLoading}
+        failed={!meetingsQ.isLoading && meetingsQ.data === undefined}
+      />
+    ),
+    channels: <ChannelsRow />,
+    spend: (
       <SpendCard
         balance={wallet.stats?.balance ?? null}
         usage={wallet.stats?.usageThisMonth ?? null}
         loading={wallet.loading && !wallet.stats}
         failed={walletFailed}
       />
+    ),
+  };
 
+  const renderSection = (id: string) => {
+    if (sections[id] !== undefined) return sections[id];
+    const Widget = EXTRA_WIDGETS[id];
+    return Widget ? <Widget id={`home-${id}`} /> : null;
+  };
+
+  // Hide inactive channels: a channel-bound section waits for a 'connected' status.
+  const visible = layout.filter((s) => {
+    if (!s.visible) return false;
+    const ch = SECTION_BY_ID.get(s.id)?.channel;
+    return !ch || statuses[ch] === 'connected';
+  });
+
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <Greeting tasks={tasks} meetingsToday={meetingsToday?.length} onCustomize={openCustomize} />
+
+      {layoutQ.isLoading ? (
+        <div className="space-y-6" aria-busy="true">
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-3xl" />
+        </div>
+      ) : visible.length === 0 ? (
+        <div className={cn(CARD, 'text-center')}>
+          <p className={MUTED}>Your Home is empty.</p>
+          <button type="button" onClick={openCustomize} className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#0b1957] hover:underline dark:text-blue-300">
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" /> Add sections
+          </button>
+        </div>
+      ) : (
+        // Dense flow lets a half-width section backfill the gap beside another.
+        <div className="grid grid-cols-1 gap-6 lg:grid-flow-row-dense lg:grid-cols-12">
+          {visible.map((s) => (
+            <div key={s.id} className={cn('min-w-0 empty:hidden', SPAN_CLASS[SECTION_BY_ID.get(s.id)!.span])}>
+              {renderSection(s.id)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <CustomizeHomeSheet
+        open={draft !== null}
+        onOpenChange={(o) => (o ? openCustomize() : closeCustomize())}
+        draft={layout}
+        onChange={setDraft}
+        onReset={() => {
+          setDraft(resolveLayout(null));
+          setResetRequested(true);
+        }}
+        statuses={statuses}
+      />
     </div>
   );
 }

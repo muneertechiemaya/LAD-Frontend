@@ -21,8 +21,11 @@ export {
   getLinkedInSummary,
   getEmailBroadcastSummary,
   getInstagramSummary,
+  getHomeLayout,
+  saveHomeLayout,
+  resetHomeLayout,
 } from './api';
-export type { LeadJourneyCounts, LinkedInSummary, EmailBroadcastSummary, InstagramSummary } from './api';
+export type { LeadJourneyCounts, LinkedInSummary, EmailBroadcastSummary, InstagramSummary, HomeLayout, HomeLayoutSection, SavedHomeLayout } from './api';
 
 // Hooks
 export { useLeadBookings } from './hooks/useLeadBookings';
@@ -40,5 +43,8 @@ export {
   useLinkedInSummary,
   useEmailBroadcastSummary,
   useInstagramSummary,
+  useHomeLayout,
+  useSaveHomeLayout,
+  useResetHomeLayout,
   type PipelinePeriod,
 } from './hooks/useHomeData';

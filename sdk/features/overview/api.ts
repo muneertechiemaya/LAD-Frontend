@@ -1,5 +1,5 @@
 // Dashboard/Overview SDK API Layer
-import { apiGet, apiPost, apiPut } from "../../shared/apiClient";
+import { apiDelete, apiGet, apiPost, apiPut } from "../../shared/apiClient";
 import type {
   LeadBookingListResponse,
   LeadBookingResponse,
@@ -299,4 +299,44 @@ export async function getInstagramSummary(): Promise<InstagramSummary> {
   const rows: any[] = Array.isArray(b?.data) ? b.data : Array.isArray(b?.conversations) ? b.conversations : Array.isArray(b) ? b : [];
   const unreadOf = (c: any) => Number(c?.unread_count ?? c?.unreadCount ?? c?.unread ?? 0) || 0;
   return { threads: rows.length, unread: rows.filter((r) => unreadOf(r) > 0).length };
+}
+
+// ── Home dashboard layout (per-user preference) ───────────────────────────
+
+export interface HomeLayoutSection {
+  id: string;
+  visible: boolean;
+}
+
+export interface HomeLayout {
+  sections: HomeLayoutSection[];
+}
+
+export interface SavedHomeLayout {
+  /** null = the user never customised (or reset) — use the default layout. */
+  layout: HomeLayout | null;
+  /** The preference store couldn't be read; the default is a stand-in. */
+  degraded: boolean;
+}
+
+const HOME_LAYOUT_PATH = '/api/user-preferences/home-dashboard';
+
+export async function getHomeLayout(): Promise<SavedHomeLayout> {
+  const res = await apiGet<any>(HOME_LAYOUT_PATH);
+  const j = res.data;
+  const sections = j?.data?.sections;
+  return {
+    layout: Array.isArray(sections) ? { sections } : null,
+    degraded: Boolean(j?.degraded),
+  };
+}
+
+export async function saveHomeLayout(layout: HomeLayout): Promise<HomeLayout> {
+  const res = await apiPut<any>(HOME_LAYOUT_PATH, { sections: layout.sections });
+  const sections = res.data?.data?.sections;
+  return Array.isArray(sections) ? { sections } : layout;
+}
+
+export async function resetHomeLayout(): Promise<void> {
+  await apiDelete<any>(HOME_LAYOUT_PATH);
 }
