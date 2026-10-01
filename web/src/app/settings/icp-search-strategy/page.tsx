@@ -105,7 +105,7 @@ export default function IcpSearchStrategyPage() {
           <Button
             variant="ghost"
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors p-0 h-auto hover:bg-transparent group"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors p-0 h-auto hover:bg-transparent group dark:text-slate-400"
           >
             <div className="p-1.5 rounded-full bg-white shadow-sm border border-slate-200 group-hover:border-slate-300 transition-all">
               <ArrowLeft className="h-4 w-4" />
@@ -113,19 +113,19 @@ export default function IcpSearchStrategyPage() {
             <span className="font-medium text-sm">Back</span>
           </Button>
         </div>
-        <nav className="text-xs text-gray-500">
-          <Link href="/settings" className="hover:underline">
+        <nav className="text-xs max-md:text-sm text-gray-500 dark:text-slate-400">
+          <Link href="/settings" className="hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
             Settings
           </Link>{' '}
           /{' '}
-          <Link href="/prospects" className="hover:underline">
+          <Link href="/prospects" className="hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
             Prospects
           </Link>
         </nav>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">
           Search strategy
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
           Tune how the dispatcher discovers prospects: which backends to use,
           in what order, and how to handle overlap. Saved values apply to every
           subsequent run.
@@ -133,7 +133,7 @@ export default function IcpSearchStrategyPage() {
       </header>
 
       {loading && (
-        <div className="rounded border border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-800 p-6 text-sm text-gray-600">
+        <div className="rounded border border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-800 p-6 text-sm text-gray-600 dark:text-slate-300">
           Loading active ICP…
         </div>
       )}
@@ -159,7 +159,7 @@ export default function IcpSearchStrategyPage() {
 
       {definition && draft && (
         <>
-          <div className="mb-4 flex items-center justify-between rounded-md bg-gray-50 dark:bg-background px-4 py-2 text-xs text-gray-600">
+          <div className="mb-4 flex items-center justify-between rounded-md bg-gray-50 dark:bg-background px-4 py-2 text-xs text-gray-600 dark:text-slate-300">
             <span>
               Editing variant <strong>{definition.variant_name}</strong> ·
               last updated{' '}
@@ -168,7 +168,7 @@ export default function IcpSearchStrategyPage() {
             <button
               type="button"
               onClick={handleResetToDefaults}
-              className="text-xs text-blue-600 underline hover:no-underline"
+              className="text-xs text-blue-600 underline hover:no-underline max-lg:min-h-11 dark:text-blue-400"
             >
               Reset to defaults
             </button>
@@ -204,7 +204,7 @@ export default function IcpSearchStrategyPage() {
                   type="button"
                   onClick={handleReset}
                   disabled={!dirty || saving}
-                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11 dark:text-slate-200"
                 >
                   Discard
                 </button>
@@ -212,7 +212,7 @@ export default function IcpSearchStrategyPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={!dirty || saving}
-                  className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11"
                 >
                   {saving ? 'Saving…' : 'Save strategy'}
                 </button>
