@@ -224,7 +224,7 @@ const Login: React.FC = () => {
               checked={rememberMe}
               onCheckedChange={(checked) => setRememberMe(checked === true)}
               className="
-                h-4 w-4 rounded-md
+                h-4 w-4 max-lg:h-6 max-lg:w-6 rounded-md
                 border-gray-300 dark:border-gray-600
                 bg-white/80 dark:bg-gray-800/40
                 data-[state=checked]:bg-blue-600 dark:data-[state=checked]:bg-blue-500

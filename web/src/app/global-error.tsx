@@ -21,7 +21,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
             <p style={{ color: '#6b7280', fontSize: 14 }}>An unexpected error occurred. Our team has been notified.</p>
             <button
               onClick={() => window.location.reload()}
-              style={{ marginTop: 16, padding: '8px 16px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}
+              style={{ marginTop: 16, padding: '8px 16px', minHeight: 44, borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#111827', cursor: 'pointer' }}
             >
               Reload
             </button>
