@@ -22,6 +22,7 @@ export {
   useMarkTaskNotificationRead,
   usePendingApprovals,
   useDecideApproval,
+  useMyTasksCount,
 } from './hooks';
 
 export type {

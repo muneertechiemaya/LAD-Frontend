@@ -10,13 +10,14 @@
  * the last row of a page is never trapped under the bar.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBottomNavHidden } from '@/lib/bottom-nav';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
+import { useMyTasksCount } from '@lad/frontend-features/tasks';
 
 export interface BottomNavSourceItem {
   href: string;
@@ -38,6 +39,21 @@ const HIDDEN_ON = [ASK_HREF];
 
 const BAR_HEIGHT = '5.5rem'; // pill (3.75rem) + bottom gap + breathing room
 
+const TASKS_HREF = '/tasks';
+
+/** True below the `md` breakpoint — the only widths where the bar renders. */
+function usePhoneWidth() {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setPhone(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return phone;
+}
+
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
 export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
@@ -53,6 +69,13 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
 
   const visible =
     !hiddenByScreen && !HIDDEN_ON.some((h) => isActive(pathname, h)) && (tabs.length > 0 || canAsk);
+
+  // Badge data only on phones, only while the bar shows, and only if the user
+  // can open My Tasks at all. Shares the My Tasks page's query cache.
+  const phone = usePhoneWidth();
+  const hasTasksTab = tabs.some((t) => t.href === TASKS_HREF);
+  const { count: taskCount, capped: taskCapped } = useMyTasksCount(phone && visible && hasTasksTab);
+  const badge = taskCount ? (taskCount > 99 ? '99+' : `${taskCount}${taskCapped ? '+' : ''}`) : null;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -81,6 +104,7 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
                 <Link
                   href={t.href}
                   aria-current={active ? 'page' : undefined}
+                  aria-label={t.href === TASKS_HREF && badge ? `${t.label}, ${badge} waiting` : undefined}
                   className={cn(
                     'flex h-full flex-col items-center justify-center gap-0.5 rounded-full px-0.5 transition-colors',
                     active
@@ -88,7 +112,17 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
                       : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5',
                   )}
                 >
-                  <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="relative">
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    {t.href === TASKS_HREF && badge && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-1.5 left-3 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[10px] leading-[18px] font-bold text-white tabular-nums ring-2 ring-white dark:ring-[#0b1433]"
+                      >
+                        {badge}
+                      </span>
+                    )}
+                  </span>
                   <span className={cn('max-w-full truncate text-[11px] leading-tight tracking-tight max-[359px]:text-[10px]', active ? 'font-semibold' : 'font-medium')}>
                     {t.label}
                   </span>
