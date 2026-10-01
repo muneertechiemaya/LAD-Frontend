@@ -15,6 +15,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
+import { DesktopOnlyNotice } from '@/components/layout/DesktopOnlyNotice';
 import { isPipelineDraft, useFirstCampaign, useUpdateFirstCampaign } from '@lad/frontend-features/tenant-studio';
 
 export const dynamic = 'force-dynamic';
@@ -60,8 +61,23 @@ function WorkflowRoute() {
           ? ['This draft was already launched. Launching again creates a second campaign.']
           : undefined;
 
+  // Phones get a "needs a bigger screen" card, but the builder stays mounted
+  // (CSS-hidden) so an auto-launch from the Studio still runs — and while one is
+  // running the builder is shown as-is, since it reports launch progress.
+  const runningAutoLaunch = autoLaunch && Boolean(template) && draft.data?.status !== 'launched';
   return (
-    <div className="h-full">
+    <>
+    {!runningAutoLaunch && (
+      <DesktopOnlyNotice
+        title="Open the builder on a bigger screen"
+        body="Building an accelerator's flow needs a tablet or desktop. On your phone you can ask Mr LAD to set one up for you."
+        actions={[
+          { href: '/onboarding/advanced-search-ai', label: 'Ask Mr LAD', primary: true },
+          { href: fromStudio ? '/studio' : '/campaigns', label: fromStudio ? 'Back to Studio' : 'Back to Outreach' },
+        ]}
+      />
+    )}
+    <div className={`h-full ${runningAutoLaunch ? '' : 'max-md:hidden'}`}>
       <CustomWorkflowBuilder
         onClose={() => router.push(fromStudio ? '/studio' : '/campaigns')}
         initialAiTemplate={template}
@@ -71,6 +87,7 @@ function WorkflowRoute() {
         afterLaunchHref={autoLaunch ? STUDIO_LIVE_HREF : undefined}
       />
     </div>
+    </>
   );
 }
 
