@@ -2148,7 +2148,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 type="button"
                 onClick={() => setShowAttachMenu(v => !v)}
                 className={cn(
-                  'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
+                  'w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
                   showAttachMenu ? 'text-[#00a884] rotate-45' : 'text-muted-foreground dark:text-[#8696a0] hover:text-foreground'
                 )}
               >
@@ -2180,7 +2180,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 aria-label={showStickers ? 'Hide emoji' : 'Show emoji'}
                 aria-pressed={showStickers ? 'true' : 'false'}
                 onClick={() => setShowStickers(v => !v)}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground dark:text-[#8696a0] hover:text-foreground transition-colors"
+                className="w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full text-muted-foreground dark:text-[#8696a0] hover:text-foreground transition-colors"
               >
                 <Smile className="w-5 h-5" />
               </button>
@@ -2202,8 +2202,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
+              placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Message'}
+              className="field-bare flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#667781] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-lg:min-h-11 max-h-[120px] my-0.5 leading-normal shadow-none"
               rows={1}
             />
           </div>
@@ -2214,6 +2214,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               <button
                 className={cn('h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
+                aria-label={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
               </button>
@@ -2232,13 +2233,13 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
           {/* Send / Mic */}
           {isSending ? (
-            <div className="shrink-0 w-9 h-9 flex items-center justify-center">
+            <div className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
             </div>
           ) : (text.trim() || pendingFiles.length > 0) ? (
             <button
               type="button"
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
+              className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
               onClick={handleSend}
               aria-label="Send message"
             >
@@ -2247,7 +2248,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           ) : (
             <button
               ref={micBtnRef}
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
+              className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
               onClick={startVoiceRecording}
               aria-label="Record voice message"
             >
