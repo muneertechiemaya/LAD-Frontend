@@ -1676,7 +1676,14 @@ export default function AdvancedSearchAIPage() {
     // pipelines and is not offered the node canvas - see the builder mount
     // below, which is the single choke point every open path funnels through.
     // Presentation only; snapshotStepGuard enforces server-side.
-    const { isCuratedWorkspace } = useAuth();
+    const { isCuratedWorkspace, user: authUser } = useAuth();
+    // Landing greeting, LLM-app style: "Good evening, Naveen".
+    const heroGreeting = React.useMemo(() => {
+        const h = new Date().getHours();
+        const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+        const first = String(authUser?.name || '').trim().split(/\s+/)[0] || '';
+        return { part, first };
+    }, [authUser?.name]);
 
     // Custom Accelerator builder (node graph) - full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
@@ -7660,9 +7667,12 @@ export default function AdvancedSearchAIPage() {
                     
                     {!mediaMode && (
                         <>
-                            <button className="adv-chat-back" onClick={reset}>
+                            {/* Back = reset the conversation; nothing to reset on the empty landing. */}
+                            {messages.length > 0 && (
+                            <button className="adv-chat-back" onClick={reset} aria-label="New chat">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                             </button>
+                            )}
 
                     {/* AI Playground button - top-right */}
                     {(!isMobile || messages.length === 0) && (
@@ -7695,14 +7705,21 @@ export default function AdvancedSearchAIPage() {
                     <div className={`adv-chat-msgs${hasOptionsOpen ? ' has-options-open' : ''}`} style={{ paddingBottom: mediaMode ? `${mediaInputWrapHeight + 16}px` : undefined }}>
                         {/* Landing Content - Show when no messages */}
                         {messages.length === 0 && !mediaMode && (
-                            <div className="adv-gemini-hero">
-                                <div className="adv-gemini-logo-wrap">
-                                    <img src="/logo.svg" alt="LAD" className="adv-gemini-logo" />
+                            <div className="adv-gemini-hero adv-hero-llm">
+                                {/* The animated LAD mark — same as the "LAD in Action" rows. */}
+                                <div className="adv-hero-mark" aria-hidden="true">
+                                    <AgentVisualizer state="idle" size={44} />
                                 </div>
-                                <h2 className="adv-gemini-title">
-                                    Hey! I am LAD, How can I help you today?
-                                    <Sparkles className="adv-gemini-sparkle" />
+                                <h2 className="adv-hero-greeting">
+                                    {heroGreeting.part}
+                                    {heroGreeting.first && (
+                                        <>
+                                            ,{' '}
+                                            <span className="adv-hero-name">{heroGreeting.first}</span>
+                                        </>
+                                    )}
                                 </h2>
+                                <p className="adv-hero-sub">What should we work on today?</p>
                             </div>
                         )}
 
@@ -8156,9 +8173,10 @@ export default function AdvancedSearchAIPage() {
                         <button
                             className="adv-mobile-icp-btn"
                             onClick={() => setShowPlayground(true)}
+                            aria-label="ICP Discovery"
                             title="ICP Discovery"
                         >
-                            <Sparkles size={22} color="#fff" />
+                            <Sparkles size={20} />
                         </button>
                     </div>
                 )}
@@ -9809,11 +9827,11 @@ function ModelPicker({ value, onChange }: { value: ModelChoice; onChange: (c: Mo
 
     return (
         <div style={{ position: 'relative' }}>
-            <button type="button" className="adv-roles-btn"
+            <button type="button" className="adv-roles-btn" aria-label={`Model: ${label}`}
                 title={value ? `Answers come from ${value.provider}/${value.model}` : 'Model chosen automatically for this workspace'}
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 0 1 5 5v1a4 4 0 0 1 0 8v1a5 5 0 0 1-10 0v-1a4 4 0 0 1 0-8V7a5 5 0 0 1 5-5Z" /></svg>
-                {label}
+                <span className="adv-roles-label">{label}</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
@@ -10010,10 +10028,10 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     }, [open]);
     return (
         <div style={{ position: 'relative' }}>
-            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline"
+            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline" aria-label="Accelerators"
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                Accelerators
+                <span className="adv-roles-label">Accelerators</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
@@ -17033,5 +17051,91 @@ const css = `
                 .adv-chat-back { top: 26px !important; }
                 .adv-mobile-icp-box { top: 34px !important; } /* effective value above is 90px */
                 .adv-chat-msgs { padding-top: 16px !important; }
+            }
+
+            /* ══ LLM-style landing (empty state) ═════════════════════════════════
+               Claude / Gemini / Grok pattern: animated mark, a personal greeting,
+               a quiet subline, slim suggestion pills and one roomy composer — on
+               phones the composer sits at the bottom (thumb reach) with the pills
+               scrolling just above it. Scoped to .adv-chat-left-empty / the hero,
+               and last in the sheet so it wins over the older landing rules. */
+            .adv-hero-llm { flex: 0 0 auto; }
+            .adv-hero-mark { display: flex; justify-content: center; margin-bottom: 18px; }
+            .adv-hero-greeting {
+                margin: 0;
+                font-family: 'Space Grotesk', system-ui, sans-serif;
+                font-size: 36px; font-weight: 500; line-height: 1.15; letter-spacing: -0.025em;
+                color: #0b1957;
+            }
+            .adv-hero-name {
+                background: linear-gradient(90deg, #0b1957 0%, #2563eb 100%);
+                -webkit-background-clip: text; background-clip: text; color: transparent;
+            }
+            .adv-hero-sub { margin: 8px 0 28px; font-size: 17px; line-height: 1.5; color: #64748b; }
+            .dark .adv-hero-greeting { color: #ffffff; }
+            .dark .adv-hero-name { background-image: linear-gradient(90deg, #bfdbfe 0%, #60a5fa 100%); }
+            .dark .adv-hero-sub { color: #94a3b8; }
+
+            .adv-chat-left-empty .adv-chat-input-box { border-radius: 28px !important; }
+            .adv-chat-left-empty .adv-gemini-chips { gap: 8px !important; max-width: 760px !important; padding: 4px 20px 24px !important; }
+            .adv-chat-left-empty .adv-gemini-chip {
+                padding: 8px 14px !important; border-radius: 999px !important; gap: 7px !important;
+                font-size: 13px !important; font-weight: 500 !important; color: #334155 !important;
+                background: transparent !important; border: 1px solid #e2e8f0 !important;
+                box-shadow: none !important; transform: none !important; min-height: 0 !important;
+            }
+            .adv-chat-left-empty .adv-gemini-chip svg { width: 14px !important; height: 14px !important; padding: 0 !important; background: none !important; color: #64748b; flex-shrink: 0; }
+            .adv-chat-left-empty .adv-gemini-chip:hover { background: #f8fafc !important; border-color: #cbd5e1 !important; color: #0b1957 !important; }
+            .dark .adv-chat-left-empty .adv-gemini-chip { color: #cbd5e1 !important; border-color: #1e293b !important; }
+            .dark .adv-chat-left-empty .adv-gemini-chip svg { color: #94a3b8; }
+            .dark .adv-chat-left-empty .adv-gemini-chip:hover { background: #0b1433 !important; border-color: #334155 !important; color: #ffffff !important; }
+
+            /* ICP Discovery on phones: a quiet outlined icon, not a bright tile. */
+            .adv-mobile-icp-btn {
+                width: 44px !important; height: 44px !important; border-radius: 999px !important;
+                background: transparent !important; border: 1px solid #e2e8f0 !important;
+                color: #0b1957 !important; box-shadow: none !important;
+            }
+            .adv-mobile-icp-btn svg { color: currentColor !important; stroke: currentColor !important; }
+            .dark .adv-mobile-icp-btn { background: transparent !important; border-color: #1e293b !important; color: #93c5fd !important; }
+
+            @media (max-width: 767.98px) {
+                /* Greeting fills the space, pills + composer sit at the bottom. */
+                .adv-chat-left-empty { justify-content: flex-end !important; padding-bottom: 12px !important; gap: 0 !important; }
+                .adv-chat-left-empty .adv-chat-msgs { order: 1; flex: 1 1 auto !important; justify-content: center !important; }
+                .adv-chat-left-empty .adv-gemini-chips { order: 2; }
+                .adv-chat-left-empty .adv-chat-input-wrap { order: 3; padding: 0 12px !important; }
+                .adv-hero-llm { align-items: flex-start !important; text-align: left !important; padding: 0 24px !important; }
+                .adv-hero-mark { margin-bottom: 14px; }
+                .adv-hero-greeting { font-size: 30px; }
+                .adv-hero-sub { font-size: 16px; margin-bottom: 0; }
+
+                .adv-chat-left-empty .adv-gemini-chips {
+                    display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important;
+                    grid-template-columns: none !important; justify-content: flex-start !important;
+                    max-width: none !important; margin: 0 !important; padding: 0 12px 10px !important;
+                    scroll-padding-inline: 12px;
+                }
+                .adv-chat-left-empty .adv-gemini-chip {
+                    width: auto !important; flex: 0 0 auto !important; white-space: nowrap !important;
+                    min-height: 44px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1.2 !important;
+                }
+                .adv-chat-left-empty .adv-chat-input-box { border-radius: 24px !important; padding: 10px 10px 6px 14px !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 8px 28px -14px rgba(11,25,87,.28) !important; }
+                .dark .adv-chat-left-empty .adv-chat-input-box { border-color: #1e293b !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 17px !important; }
+                .adv-chat-input-foot { gap: 4px !important; margin-top: 6px !important; }
+                /* An older <=768px rule pins Send to 30px with a two-class selector,
+                   which outranks the later 44px touch-target fix. */
+                .adv-chat-input-foot .adv-send-circle.adv-send-sm {
+                    width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important;
+                    max-width: 44px !important; max-height: 44px !important;
+                }
+                .adv-chat-input-foot .adv-foot-side { gap: 4px !important; }
+            }
+            /* One toolbar row on narrow phones: Accelerators + model go icon-only
+               (they keep aria-labels); the menus are unchanged. */
+            @media (max-width: 479.98px) {
+                .adv-roles-label { display: none; }
+                .adv-roles-btn { padding-left: 10px !important; padding-right: 8px !important; gap: 4px !important; }
             }
             `;
