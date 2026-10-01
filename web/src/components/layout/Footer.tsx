@@ -6,13 +6,15 @@ import { memo } from 'react';
 const Footer = memo(function Footer() {
   return (
     <footer className=" text-white bg-[#000724] text-white py-16">
+      {/* Always-dark footer: muted text is an explicit hex, because the app's light-mode
+          text-gray-400 override (tuned for white pages) fails on #000724. */}
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Company Info */}
           <div>
             <h3 className="text-2xl font-bold mb-4">Mr LAD</h3>
             <p className="text-gray-300 text-sm mb-2">Powered by Techiemaya</p>
-            <p className="text-gray-400 text-sm">
+            <p className="text-[#9ca3af] text-sm">
               AI-powered agents that close deals automatically across all communication channels.
             </p>
           </div>
@@ -82,7 +84,7 @@ const Footer = memo(function Footer() {
         {/* Divider */}
         <div className="border-t border-gray-700 pt-8">
           {/* Copyright */}
-          <div className="text-center text-gray-400 text-sm">
+          <div className="text-center text-[#9ca3af] text-sm">
             <p>&copy; 2026 Mr LAD by Techiemaya. All rights reserved.</p>
           </div>
         </div>
