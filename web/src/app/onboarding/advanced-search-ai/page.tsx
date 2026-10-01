@@ -17122,7 +17122,29 @@ const css = `
                 }
                 .adv-chat-left-empty .adv-chat-input-box { border-radius: 24px !important; padding: 10px 10px 6px 14px !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 8px 28px -14px rgba(11,25,87,.28) !important; }
                 .dark .adv-chat-left-empty .adv-chat-input-box { border-color: #1e293b !important; }
-                .adv-chat-left-empty .adv-chat-ta { font-size: 17px !important; }
+                /* Compact landing composer: one 24px line that scrolls sideways
+                   (search-bar style) instead of wrapping, 16px so iOS doesn't zoom
+                   on focus, tighter padding, 40px tools. */
+                .adv-chat-left-empty textarea.adv-chat-ta {
+                    font-size: 16px !important; line-height: 24px !important;
+                    height: 24px !important; min-height: 24px !important; max-height: 24px !important;
+                    padding: 2px 0 !important; white-space: nowrap !important;
+                    overflow-x: auto !important; overflow-y: hidden !important; scrollbar-width: none;
+                }
+                .adv-chat-left-empty textarea.adv-chat-ta::-webkit-scrollbar { display: none; }
+                .adv-chat-left-empty .adv-chat-input-box { padding: 10px 8px 6px 14px !important; }
+                .adv-chat-left-empty .adv-chat-input-foot { margin-top: 4px !important; }
+                .adv-chat-left-empty .adv-chat-input-foot .adv-chat-attach-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-premium-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-mic-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-send-circle.adv-send-sm {
+                    width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important;
+                    max-width: 40px !important; max-height: 40px !important;
+                }
+                .adv-chat-left-empty .adv-chat-input-foot .adv-roles-btn { height: 40px !important; min-height: 40px !important; }
+                /* ICP Discovery sat across the blue rule under the app header
+                   (box at 34px, rule at 56-60px). Sit it 12px below the rule. */
+                .adv-mobile-icp-box { top: 72px !important; right: 12px !important; left: auto !important; transform: none !important; }
                 .adv-chat-input-foot { gap: 4px !important; margin-top: 6px !important; }
                 /* An older <=768px rule pins Send to 30px with a two-class selector,
                    which outranks the later 44px touch-target fix. */
