@@ -464,19 +464,25 @@ export default function CampaignLeadsPage() {
   }
   return (
     <div className="w-full h-full overflow-auto bg-slate-50 dark:bg-[#000724]">
-      <div className="p-6 pb-12">
+      <div className="p-6 max-sm:p-4 pb-12">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="mb-6 max-sm:mb-4 flex justify-between items-center">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
             <Button
               variant="outline"
               onClick={() => router.push(`/campaigns/${campaignId}/analytics`)}
-              className="min-w-auto dark:bg-[#071131] dark:border-[#1e293b] dark:text-white"
+              aria-label="Back to campaign"
+              className="min-w-auto max-lg:size-11 shrink-0 dark:bg-[#071131] dark:border-[#1e293b] dark:text-white"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <div>
-              <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
+            <div className="min-w-0">
+              {/* Phones: campaign names run long ("X +10 more Outreach · Aug
+                  2026") and took six lines at 320px; cap at two. */}
+              <h4
+                className="text-2xl max-sm:text-lg max-sm:leading-snug max-sm:line-clamp-2 break-words font-bold text-slate-800 dark:text-white mb-1"
+                title={campaign?.name || undefined}
+              >
                 {campaign?.name || 'Campaign Leads'}
               </h4>
               <p className="text-sm text-slate-500 dark:text-slate-300">
@@ -488,7 +494,9 @@ export default function CampaignLeadsPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="mb-4 flex gap-2 flex-wrap">
+        {/* One sideways-scrolling row below lg (the four tabs wrapped to three
+            rows at 320px); wraps from lg. */}
+        <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar scroll-fade-x lg:flex-wrap lg:overflow-visible">
           {[
             { key: 'all', label: 'All Leads' },
             { key: 'sent', label: 'Connections Sent' },
@@ -498,7 +506,7 @@ export default function CampaignLeadsPage() {
             <button
               key={tab.key}
               onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=${tab.key}`)}
-              className={`px-4 py-1.5 max-lg:min-h-11 rounded-full text-sm font-semibold border transition-all ${
+              className={`px-4 py-1.5 max-lg:min-h-11 shrink-0 whitespace-nowrap rounded-full text-sm font-semibold border transition-all ${
                 filterParams === tab.key
                   ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-sm'
                   : 'bg-white dark:bg-[#071131] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-[#1e293b]/60 hover:border-[#0b1957] hover:text-[#0b1957] dark:hover:border-blue-500 dark:hover:text-white dark:hover:bg-[#0e1d4d]'
@@ -515,7 +523,8 @@ export default function CampaignLeadsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400" />
             <Input
               className="pl-10 bg-white dark:bg-[#071131] border-slate-200 dark:border-[#1e293b]/60 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl"
-              placeholder="Search leads by name, email, company, or title..."
+              placeholder="Search name, email, company, title…"
+              aria-label="Search leads by name, email, company, or title"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
