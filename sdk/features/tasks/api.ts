@@ -44,9 +44,12 @@ function rows(body: unknown): any[] {
  * `channel` goes in as a plain query param - the conversations proxy routes on
  * it (waba / personal / linkedin), and proxyClient only defaults it if absent.
  */
+/** Page size for waiting chats; a channel returning this many may have more (UI shows "20+"). */
+export const WAITING_CHATS_LIMIT = 20;
+
 export async function getWaitingChats(channel: HandoffChannel): Promise<WaitingChat[]> {
   const res = await proxyClient.get<unknown>('/api/whatsapp-conversations/conversations', {
-    params: { context_status: 'Human', limit: '20', offset: '0', channel },
+    params: { context_status: 'Human', limit: String(WAITING_CHATS_LIMIT), offset: '0', channel },
   });
   return rows(res.data).map((c) => ({
     conversationId: String(c.id),
