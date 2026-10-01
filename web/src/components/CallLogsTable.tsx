@@ -628,7 +628,7 @@ export function CallLogsTable({
               );
             }}
           >
-            <SelectTrigger className={`w-24 h-7 text-xs ${tagConfig.bgColor} ${tagConfig.textColor} border ${tagConfig.borderColor} focus:ring-0`}>
+            <SelectTrigger className={`w-24 h-7 max-lg:w-auto max-lg:min-w-24 max-lg:h-11 max-lg:gap-2 text-xs ${tagConfig.bgColor} ${tagConfig.textColor} border ${tagConfig.borderColor} focus:ring-0`}>
               <SelectValue placeholder="Tag" />
             </SelectTrigger>
             <SelectContent>
@@ -936,6 +936,13 @@ export function CallLogsTable({
     );
   };
 
+  // Cards replace the table below lg for the plain list (see JSX). The page
+  // always passes batchGroups; with no actual batch groups every call is a
+  // plain row, so cards apply. Real batch groups keep the grouped table
+  // (expand/collapse rows the cards don't replicate).
+  const hasBatchGroups = !!batchGroups && Object.keys(batchGroups.groups || {}).length > 0;
+  const showCallCards = !isLoading && !hasBatchGroups && table.getRowModel().rows.length > 0;
+
   return (
     <div id="call-logs-table" className="bg-white dark:bg-[#000724] rounded-lg border border-[#E2E8F0] dark:border-[#262831] shadow-sm overflow-hidden">
       {/* Search Bar & Filters Area */}
@@ -948,7 +955,7 @@ export function CallLogsTable({
               placeholder="Search Call Logs..."
               value={globalFilter ?? ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-10 h-10 rounded-md border border-[#E2E8F0] dark:border-blue-950/40 bg-transparent dark:bg-slate-800/50 dark:text-white placeholder:text-[#64748B] dark:placeholder:text-slate-300 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="w-full pl-10 h-10 max-lg:h-11 rounded-md border border-[#E2E8F0] dark:border-blue-950/40 bg-transparent dark:bg-slate-800/50 dark:text-white placeholder:text-[#64748B] dark:placeholder:text-slate-300 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
@@ -1061,7 +1068,55 @@ export function CallLogsTable({
           </div>
         )}
       </div>
-      <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative">
+      {/* Phones and tablets: one card per call. The table below needs 1000px+
+          (12 columns, 1272px at 390px wide). Only the plain list gets cards;
+          loading, batch groups and empty states keep the table. Cards reuse
+          the table's own cell renderers. */}
+      {showCallCards && (
+        <ul className="lg:hidden divide-y divide-[#E2E8F0] dark:divide-[#262831] border-b border-[#E2E8F0] dark:border-[#262831]">
+          {table.getRowModel().rows.map((row) => {
+            const render = (id: string) => {
+              const cell = row.getVisibleCells().find((c) => c.column.id === id);
+              return cell ? flexRender(cell.column.columnDef.cell, cell.getContext()) : null;
+            };
+            const open = () => onRowClick(row.original.id);
+            return (
+              <li key={row.id} className={selectedCalls.has(row.original.id) ? 'bg-primary/5' : 'bg-white dark:bg-[#000724]'}>
+                <div
+                  role="link"
+                  tabIndex={0}
+                  onClick={open}
+                  onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
+                  className="flex flex-col gap-2 px-4 py-3 cursor-pointer active:bg-gray-50 dark:active:bg-[#253456]"
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1 text-sm">{render('lead_name')}</div>
+                    <div
+                      className="-mr-2 -mt-1 shrink-0 [&_button]:min-h-11 [&_button]:min-w-11"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {render('actions')}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {render('status')}
+                    {render('type')}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#64748B] dark:text-slate-300">
+                    <span className="min-w-0">{render('assistant')}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{render('startedAt')}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{render('duration')}</span>
+                  </div>
+                  <div className="empty:hidden">{render('tag')}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className={cn('w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative', showCallCards && 'max-lg:hidden')}>
         <div className="min-w-[1000px] w-full">
           <Table containerClassName="overflow-visible" className="border-separate border-spacing-0">
             <TableHeader className="sticky top-0 z-30 bg-[#F8FAFC] dark:bg-[#000724] shadow-xs border-b border-[#E2E8F0] dark:border-[#262831]">
@@ -1337,7 +1392,7 @@ export function CallLogsTable({
                   onPageChange?.(1);
                 }}
               >
-                <SelectTrigger className="w-[70px] h-7 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
+                <SelectTrigger className="w-[70px] h-7 max-lg:h-11 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
                   <SelectValue placeholder={perPage} />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40 min-w-[70px] max-w-[70px] w-[70px] p-0">
@@ -1382,7 +1437,7 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -1391,7 +1446,7 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1400,7 +1455,7 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -1409,7 +1464,7 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(totalPages)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>

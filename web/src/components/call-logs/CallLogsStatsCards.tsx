@@ -28,9 +28,9 @@ const useCountUp = (end: number, duration: number = 2000) => {
 
 // Skeleton loading component
 const SkeletonCard = () => (
-  <div className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
-    <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px]">
-      <div className="flex-1 flex flex-col p-4">
+  <div className="w-[calc(50%-8px)] max-sm:w-[calc(50%-4px)] md:w-[calc(25%-12px)]">
+    <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] max-sm:min-h-0">
+      <div className="flex-1 flex flex-col p-4 max-sm:p-3">
         <div className="flex flex-col h-full">
           <div className="flex justify-end mb-2">
             <div className="w-8 h-8 bg-gray-200 dark:bg-input/30 rounded-full animate-pulse"></div>
@@ -63,9 +63,9 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, bgColor, onClick, isLeadTag, isSelected }: StatCardProps) => (
-  <div className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
+  <div className="w-[calc(50%-8px)] max-sm:w-[calc(50%-4px)] md:w-[calc(25%-12px)]">
     <div 
-      className={`bg-white dark:bg-[#071131] rounded-[20px] border w-full flex flex-col h-full min-h-[120px] transition-all duration-300 ease-out
+      className={`bg-white dark:bg-[#071131] rounded-[20px] border w-full flex flex-col h-full min-h-[120px] max-sm:min-h-0 transition-all duration-300 ease-out
         ${onClick ? 'cursor-pointer' : ''}
         ${isLeadTag
           ? `hover:shadow-xl hover:shadow-primary-500/20 hover:scale-[1.05] hover:-translate-y-1 hover:border-primary-300 active:scale-[0.98] ${isSelected ? 'border-primary-400 shadow-lg shadow-primary-500/30 ring-2 ring-primary-400/50' : 'border-slate-200 dark:border-blue-950/40'}`
@@ -73,10 +73,10 @@ const StatCard = ({ title, value, icon, bgColor, onClick, isLeadTag, isSelected 
         }`}
       onClick={onClick}
     >
-      <div className="flex-1 flex flex-col p-4">
+      <div className="flex-1 flex flex-col p-4 max-sm:p-3">
         <div className="flex flex-col h-full">
           <div className="flex justify-end mb-2">
-            <Avatar className={`${bgColor} w-12 h-12 rounded-full`}>
+            <Avatar className={`${bgColor} w-12 h-12 max-sm:w-8 max-sm:h-8 rounded-full`}>
               <AvatarFallback className={bgColor}>
                 {icon}
               </AvatarFallback>
@@ -86,7 +86,7 @@ const StatCard = ({ title, value, icon, bgColor, onClick, isLeadTag, isSelected 
             <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-300 mb-1">
               {title}
             </p>
-            <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
+            <h5 className="text-2xl max-sm:text-xl font-bold text-slate-800 dark:text-white">
               <AnimatedValue value={value} />
             </h5>
           </div>
@@ -115,7 +115,7 @@ export default function CallLogsStatsCards({
 }: CallLogsStatsCardsProps) {
   if (loading) {
     return (
-      <div className="flex gap-4 mb-6 flex-wrap items-stretch">
+      <div className="flex gap-4 max-sm:gap-2 mb-6 flex-wrap items-stretch">
         {/* Show 9 skeleton cards to match the actual number of cards */}
         {Array.from({ length: 9 }, (_, index) => (
           <SkeletonCard key={index} />
@@ -143,7 +143,7 @@ export default function CallLogsStatsCards({
   };
 
   return (
-    <div className="flex gap-4 mb-6 flex-wrap items-stretch">
+    <div className="flex gap-4 max-sm:gap-2 mb-6 flex-wrap items-stretch">
       {/* Total Calls */}
       <StatCard 
         title="Total Calls" 
