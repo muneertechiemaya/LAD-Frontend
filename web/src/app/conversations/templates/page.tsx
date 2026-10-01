@@ -192,8 +192,9 @@ function MessageTemplateCard({
   return (
     <div className="bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-blue-950/40 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group flex flex-col justify-between">
       <div>
-        {/* Top Header Window Preview (as shown in screenshot) */}
-        <div className="p-3 pb-1">
+        {/* Top Header Window Preview (as shown in screenshot). Decorative, so
+            hidden on phones: ~60px per card that pushed templates off-screen. */}
+        <div className="p-3 pb-1 max-sm:hidden">
           <div className="bg-[#0b1957] dark:bg-[#040a1d] border border-[#0b1957]/20 dark:border-blue-950/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-inner">
             <div className="flex items-start gap-2.5 flex-1 min-w-0">
               {/* Traffic light dots */}
@@ -506,13 +507,14 @@ export default function TemplatesPage() {
 
       {/* Tab Navigation */}
       <div className="bg-white dark:bg-[#071131] border-b border-gray-200 dark:border-blue-950/40">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex gap-8">
+        <div className="max-w-7xl mx-auto px-8 max-sm:px-4">
+          {/* Scrolls sideways (with an edge fade) when the channels don't fit. */}
+          <div className="flex gap-8 max-sm:gap-6 overflow-x-auto no-scrollbar scroll-fade-x">
             {TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`py-4 px-1 min-w-11 shrink-0 whitespace-nowrap border-b-2 font-medium text-sm ${
                   activeTab === tab.key
                     ? 'border-[#0b1957] text-[#0b1957] dark:text-[#60a5fa] dark:border-[#60a5fa]'
                     : 'border-transparent text-gray-600 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
