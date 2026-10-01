@@ -67,7 +67,44 @@ function detailToMessage(detail: unknown): string | undefined {
       .filter((m): m is string => typeof m === 'string' && m.length > 0);
     return msgs.length ? msgs.join('; ') : undefined;
   }
+  // A STRUCTURED detail — `raise HTTPException(409, detail={error, message, ...})`.
+  // This is how every deliberate refusal in LAD-WABA-Comms is raised, and it was
+  // the one `detail` shape not read here: an object fell through to `fallback`,
+  // so the service's own sentence was replaced by whatever string the call site
+  // happened to pass.
+  //
+  // Measured on stage 2026-10-01: four attempts to message +971 52 685 0791
+  // were refused because the customer last replied 44.1 hours earlier and
+  // Meta's 24-hour window had closed. The service said exactly that and named
+  // the remedy — send a template. The composer showed "Failed to send message",
+  // so the reason was only readable in the network tab.
+  //
+  // `message` wins over `error`: `error` is the slug a caller branches on
+  // ("outside_24h_window"), `message` is the sentence written for a person.
+  // The slug is not lost — detailToCode hands it to ApiError.code.
+  if (detail && typeof detail === 'object') {
+    const d = detail as Record<string, unknown>;
+    for (const key of ['message', 'error'] as const) {
+      const v = d[key];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+  }
   return undefined;
+}
+
+/**
+ * The machine-readable discriminator inside a structured FastAPI detail.
+ *
+ * Express routes put it at `body.code`; the Python services put it at
+ * `detail.error`. Surfacing it as `ApiError.code` is what lets a call site
+ * branch on the KIND of refusal — `code === 'outside_24h_window'` can offer the
+ * template picker — instead of regex-matching prose, which is the thing this
+ * whole module exists to stop.
+ */
+function detailToCode(detail: unknown): string | undefined {
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return undefined;
+  const err = (detail as Record<string, unknown>).error;
+  return typeof err === 'string' && err.trim() ? err.trim() : undefined;
 }
 
 /**
@@ -101,5 +138,5 @@ export async function apiErrorFromResponse(
       : body?.error || body?.message) ||
     detailToMessage(body?.detail) ||
     fallback;
-  return new ApiError(message, res.status, body?.code, body);
+  return new ApiError(message, res.status, body?.code ?? detailToCode(body?.detail), body);
 }

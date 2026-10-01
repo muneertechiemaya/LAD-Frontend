@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useHideBottomNav } from '@/lib/bottom-nav';
 import { useConversations, useConversationMessages } from '@lad/frontend-features/conversations';
+import { apiErrorFromResponse } from '@lad/shared/apiError';
 import type { Conversation, Message } from '@/types/conversation';
 
 // ── Type Extensions for API Response Properties ─────────────────────────────
@@ -346,10 +347,11 @@ function getConversationLabelIds(conv: Conversation): string[] {
 }
 
 async function getApiErrorMessage(res: Response, fallback: string): Promise<string> {
-  const data = await res.json().catch(() => ({}));
-  if (typeof data?.error === 'string' && data.error.trim()) return data.error;
-  if (typeof data?.message === 'string' && data.message.trim()) return data.message;
-  return fallback;
+  // Reads `detail` as well as the top level. The Python services are FastAPI, so
+  // a structured refusal arrives NESTED as {"detail": {...}} and the top-level
+  // lookup this used to do found nothing — every WABA refusal became the generic
+  // fallback. detailToMessage there carries the shapes and the incident.
+  return (await apiErrorFromResponse(res, fallback)).message;
 }
 
 function MessageTicks({ status }: { status?: string }) {
@@ -1533,7 +1535,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         if (sentIds.size > 0) {
           setPendingFiles((prev) => prev.filter((pf) => !sentIds.has(pf.id)));
         }
-        const error = err instanceof Error ? new NetworkError('Failed to send attachment', err) : new NetworkError('Failed to send attachment');
+        // Keep the reason the service gave — see the note on the text send below.
+        const error = new NetworkError(getErrorMessage(err, 'Failed to send attachment'), err);
         setSendError(error.message);
       } finally {
         setIsSending(false);
@@ -1547,7 +1550,11 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setText('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      // Keep the reason the service gave: a structured refusal (the 24-hour
+      // window, a send pause) explains itself and names the remedy, and
+      // replacing it with a constant is why these reach us as screenshots of
+      // the network tab. getErrorMessage falls back when there is no message.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send message'), err);
       setSendError(error.message);
     } finally {
       setIsSending(false);
@@ -1560,7 +1567,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     try {
       await Promise.resolve(onSendMessage(payload));
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      // Keep the reason the service gave — see the note on the text send above.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send message'), err);
       setSendError(error.message);
       return;
     } finally {
@@ -1840,7 +1848,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setIsVoicePlaying(false);
       setVoicePlayProgress(0);
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send voice message', err) : new NetworkError('Failed to send voice message');
+      // Keep the reason the service gave — see the note on the text send above.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send voice message'), err);
       setSendError(error.message);
     } finally {
       setIsSending(false);
