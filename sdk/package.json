@@ -98,6 +98,10 @@
       "types": "./features/sales-playbook/index.ts",
       "default": "./features/sales-playbook/index.ts"
     },
+    "./team": {
+      "types": "./features/team/index.ts",
+      "default": "./features/team/index.ts"
+    },
     "./tenant-studio": {
       "types": "./features/tenant-studio/index.ts",
       "default": "./features/tenant-studio/index.ts"
