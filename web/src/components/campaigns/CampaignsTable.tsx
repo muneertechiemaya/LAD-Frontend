@@ -302,7 +302,53 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
           </div>
         ) : (
           <>
-            <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] relative">
+            {/* Phones and tablets: one card per campaign. The table below needs 1000px, so
+                on a phone it scrolled sideways and showed ~2 columns at a time.
+                Cards reuse the table's own cell renderers. */}
+            <ul className="lg:hidden divide-y divide-[#E2E8F0] dark:divide-blue-950/40">
+              {table.getRowModel().rows.length === 0 ? (
+                <li className="py-8 text-center text-[#64748B] dark:text-slate-300">No campaigns found</li>
+              ) : (
+                table.getRowModel().rows.map((row) => {
+                  const render = (id: string) => {
+                    const cell = row.getVisibleCells().find((c) => c.column.id === id);
+                    return cell ? flexRender(cell.column.columnDef.cell, cell.getContext()) : null;
+                  };
+                  const open = () => router.push(`/campaigns/${row.original.id}/analytics`);
+                  return (
+                    <li key={row.id}>
+                      <div
+                        role="link"
+                        tabIndex={0}
+                        onClick={open}
+                        onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
+                        className="flex flex-col gap-2 px-4 py-3 cursor-pointer active:bg-gray-50 dark:active:bg-[#253456]"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1 pt-1 text-[#1E293B] dark:text-white">{render('name')}</div>
+                          <div className="-mr-2 -mt-1 shrink-0 [&_button]:flex [&_button]:h-11 [&_button]:w-11 [&_button]:items-center [&_button]:justify-center">
+                            {render('actions_menu')}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {render('status')}
+                          {render('actions')}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 text-xs text-[#64748B] dark:text-slate-300">
+                          <span>
+                            {row.original.leads_count || 0} {(row.original.leads_count || 0) === 1 ? 'lead' : 'leads'}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span>Updated {render('last_activity')}</span>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+
+            <div className="hidden lg:block w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] relative">
               <div className="min-w-[1000px] w-full">
                 <Table containerClassName="overflow-visible" className="w-full border-separate border-spacing-0">
               <TableHeader className="sticky top-0 z-20 bg-[#F8FAFC] shadow-sm">
@@ -375,7 +421,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                       table.setPageSize(Number(val));
                     }}
                   >
-                    <SelectTrigger className="w-[70px] h-7 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
+                    <SelectTrigger className="w-[70px] h-7 max-lg:h-11 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
                       <SelectValue placeholder={table.getState().pagination.pageSize} />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40 min-w-[70px] max-w-[70px] w-[70px] p-0">
@@ -409,7 +455,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                       size="sm"
                       onClick={() => table.setPageIndex(0)}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
                     >
                       <ChevronsLeft className="h-4 w-4" />
                     </Button>
@@ -418,7 +464,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                       size="sm"
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -427,7 +473,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                       size="sm"
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -436,7 +482,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                       size="sm"
                       onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                       disabled={!table.getCanNextPage()}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
                     >
                       <ChevronsRight className="h-4 w-4" />
                     </Button>
