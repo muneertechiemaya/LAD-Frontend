@@ -236,8 +236,8 @@ export default function CrmPage() {
 
   const crumbs: Crumb[] =
     view === 'board'
-      ? [{ label: 'Deals Pipeline' }]
-      : [{ label: 'Deals Pipeline', href: '/crm' }, { label: VIEW_TITLES[view] }];
+      ? [{ label: 'Contacts Funnel' }]
+      : [{ label: 'Contacts Funnel', href: '/crm' }, { label: VIEW_TITLES[view] }];
 
   const handleStatSelect = (key: Exclude<CrmView, 'board'>) => {
     setView((prev) => (prev === key ? 'board' : key));
@@ -292,7 +292,7 @@ export default function CrmPage() {
                 className="text-2xl sm:text-3xl font-bold text-[#1e293b] dark:text-white"
                 style={{ fontFamily: '"Space Grotesk", system-ui' }}
               >
-                Deals Pipeline
+                Contacts Funnel
               </h1>
               <p className="text-[13px] text-[#6b7280] dark:text-slate-300">
                 Live cross-channel prospects across all your channels

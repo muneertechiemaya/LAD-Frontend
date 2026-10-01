@@ -162,7 +162,7 @@ export default function CrmDetailPage() {
     <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
       <TopBar
         crumbs={[
-          { label: 'Deals Pipeline', href: '/crm' },
+          { label: 'Contacts Funnel', href: '/crm' },
           { label: fixture?.full_name ?? 'Prospect' },
         ]}
       />
