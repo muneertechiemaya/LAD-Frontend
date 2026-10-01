@@ -261,7 +261,7 @@ export default function CampaignsListPage() {
   return (
     <div className="p-3 bg-[#F8F9FE] dark:bg-[#000724] h-full overflow-auto">
       {/* Header */}
-      <div className="mb-5 flex flex-col sm:flex-row justify-between mt-10 items-stretch sm:items-center gap-2 sm:gap-0">
+      <div className="mb-5 flex flex-col lg:flex-row justify-between mt-10 items-stretch lg:items-center gap-3 lg:gap-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Goal className="w-8 h-8 text-[#1E293B] dark:text-white" />
@@ -273,28 +273,29 @@ export default function CampaignsListPage() {
             Manage your multi-channel outreach campaigns
           </p>
         </div>
-        <div className="flex gap-3 flex-col sm:flex-row">
+        <div className="flex gap-3 flex-col sm:flex-row sm:flex-wrap">
           {/* Refresh LinkedIn accepted connections */}
           <Button
             onClick={handleRefreshConnections}
             disabled={syncing}
             variant="outline"
-            className="bg-[#0b1957] dark:bg-[#2563eb] text-white dark:hover:text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60"
+            className="bg-[#0b1957] dark:bg-[#2563eb] text-white dark:hover:text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing..." : "Refresh Connections"}
           </Button>
 
-          <div className="flex gap-2 w-full sm:w-auto">
+          {/* Phones: the three "+" actions share one row as even columns. */}
+          <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto">
             <Button
               onClick={() => navigateTo("/conversations/templates/create")}
               disabled={isNavigating}
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/conversations/templates/create" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
               )}
               Template
             </Button>
@@ -302,12 +303,12 @@ export default function CampaignsListPage() {
             <Button
               onClick={() => navigateTo("/onboarding/advanced-search-ai")}
               disabled={isNavigating}
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/onboarding/advanced-search-ai" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
               )}
               Campaign
             </Button>
@@ -317,14 +318,14 @@ export default function CampaignsListPage() {
               onClick={() => navigateTo("/campaigns/workflow")}
               disabled={isNavigating}
               variant="outline"
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/campaigns/workflow" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
               )}
-              Custom Accelerator
+              <span className="truncate"><span className="hidden sm:inline">Custom </span>Accelerator</span>
             </Button>
           </div>
         </div>

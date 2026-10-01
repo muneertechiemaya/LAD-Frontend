@@ -292,7 +292,7 @@ export const TeamManagement: React.FC = () => {
               disabled={!privacy.canEdit || privacySaving}
               onClick={() => setPrivacyEnabled(!privacy.enabled)}
               className={cn(
-                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                'relative inline-flex h-6 w-11 max-lg:after:absolute max-lg:after:inset-x-0 max-lg:after:-inset-y-[10px] shrink-0 items-center rounded-full transition-colors',
                 privacy.enabled ? 'bg-[#0B1957] dark:bg-blue-600' : 'bg-gray-300 dark:bg-zinc-700',
                 (!privacy.canEdit || privacySaving) && 'opacity-50 cursor-not-allowed',
               )}
@@ -331,10 +331,12 @@ export const TeamManagement: React.FC = () => {
       {loading && users.length === 0 ? (
         <TeamManagementSkeleton />
       ) : (
-        <div className="bg-white mx-6 dark:bg-[#071131] rounded-2xl border border-slate-200 dark:border-blue-950/40 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
+        <div className="bg-white mx-6 max-sm:mx-0 dark:bg-[#071131] rounded-2xl border border-slate-200 dark:border-blue-950/40 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-slate-50/50 dark:bg-transparent border-b border-slate-200 dark:border-blue-950/40">
+            {/* Below md each member is a stacked card (the same cells, so every
+                control keeps working); the 700px table only fits from md. */}
+            <table className="w-full md:min-w-[700px] max-md:block">
+              <thead className="max-md:hidden bg-slate-50/50 dark:bg-transparent border-b border-slate-200 dark:border-blue-950/40">
                 <tr>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Team Member</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Role &amp; Status</th>
@@ -343,10 +345,12 @@ export const TeamManagement: React.FC = () => {
                   <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-blue-950/30">
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-16 text-center">
+              <tbody className="max-md:block divide-y divide-slate-200 dark:divide-blue-950/30">
+                {/* Not while the load failed: the error above already says so, and
+                    "No team members" would claim an empty team we never read. */}
+                {users.length === 0 && !error ? (
+                  <tr className="max-md:block">
+                    <td colSpan={5} className="px-8 py-16 text-center max-md:block">
                       <div className="flex flex-col items-center">
                         <div className="p-4 rounded-full bg-slate-100 dark:bg-[#030a21] mb-4 border border-slate-200 dark:border-blue-950/40">
                           <UserPlus className="h-8 w-8 text-slate-400 dark:text-slate-500" />
@@ -358,9 +362,9 @@ export const TeamManagement: React.FC = () => {
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+                    <tr key={user.id} className="max-md:flex max-md:flex-col max-md:gap-4 max-md:p-4 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
                       {/* Team Member */}
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-6 max-md:p-0 max-md:block">
                         <div className="flex items-center gap-3.5">
                           <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-[#030a21] border border-slate-200 dark:border-blue-900/40 flex items-center justify-center text-slate-800 dark:text-white font-bold text-sm shrink-0">
                             {(user.name || user.email || '?').charAt(0).toUpperCase()}
@@ -376,7 +380,7 @@ export const TeamManagement: React.FC = () => {
                       </td>
 
                       {/* Role & Status */}
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-6 max-md:p-0 max-md:block">
                         <div className="flex flex-col gap-2.5">
                           {user.role === 'owner' ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 dark:text-blue-400 dark:bg-blue-950/40 dark:border-blue-800/40 w-fit">
@@ -410,7 +414,8 @@ export const TeamManagement: React.FC = () => {
                       </td>
 
                       {/* Permissions List */}
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-6 max-md:p-0 max-md:block">
+                        <p className="md:hidden mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Permissions</p>
                         <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                           {PAGE_CAPABILITIES.map((page) => {
                             const isChecked = isPermissionGranted(page, user.capabilities);
@@ -442,7 +447,8 @@ export const TeamManagement: React.FC = () => {
                       </td>
 
                       {/* Privacy Toggle */}
-                      <td className="px-6 py-6">
+                      <td className="px-6 py-6 max-md:p-0 max-md:block">
+                        <p className="md:hidden mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Privacy</p>
                         <div className="flex flex-col gap-1.5">
                           <button
                             onClick={() => toggleMaskPhone(user.id, !!user.maskPhoneNumber)}
@@ -465,7 +471,7 @@ export const TeamManagement: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-6 text-right">
+                      <td className="px-6 py-6 text-right max-md:p-0 max-md:block max-md:text-left">
                         <button className="p-2 rounded-xl bg-slate-100 dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center">
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
@@ -617,7 +623,7 @@ export const TeamManagement: React.FC = () => {
                 type="button"
                 onClick={() => setNewUser({ ...newUser, maskPhoneNumber: !newUser.maskPhoneNumber })}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mt-1 outline-none",
+                  "relative inline-flex h-6 w-11 max-lg:after:absolute max-lg:after:inset-x-0 max-lg:after:-inset-y-[10px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mt-1 outline-none",
                   newUser.maskPhoneNumber ? "bg-[#0B1957] dark:bg-blue-500" : "bg-gray-200 dark:bg-zinc-800"
                 )}
               >

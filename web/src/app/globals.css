@@ -833,12 +833,14 @@ body {
    GLOBAL DARK MODE INPUT / TEXTAREA / DROPDOWN & MODAL FIELD STYLES
    Ensures all input, textarea, select, combobox, and modal fields use
    slate-900/50 (rgba(15, 23, 42, 0.5)) background and subtle #1c2c4e border.
+   `.field-bare` opts out: a field drawn inside its own styled container (the
+   chat composer pill) would otherwise show a second box inside it.
 ----------------------------------------------------------------- */
-.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.media-builder-prompt),
-.dark textarea,
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.media-builder-prompt):not(.field-bare),
+.dark textarea:not(.field-bare),
 .dark select,
-.dark [data-slot="input"],
-.dark [data-slot="textarea"],
+.dark [data-slot="input"]:not(.field-bare),
+.dark [data-slot="textarea"]:not(.field-bare),
 .dark [data-slot="select-trigger"],
 .dark [role="combobox"],
 .dark button[role="combobox"],
@@ -1048,4 +1050,18 @@ input.media-builder-prompt:focus-visible,
    over the text-primary utility. */
 .dark .text-primary:not([class*="dark:text-"]) {
   color: #60A5FA;
+}
+
+/* -------------------------------------------------------------
+   Muted text contrast (light mode). text-gray-400 (#9ca3af) and
+   text-slate-400 (#94a3b8) are used as secondary/body text in ~240 files
+   and read 2.5-2.6:1 on white - under WCAG's 4.5:1. In light mode they
+   render one step darker (gray-500 4.8:1, slate-500 4.8:1), which still
+   reads as "muted". Dark mode is untouched (html.dark doesn't match).
+   :where() keeps this at plain-utility specificity and it sits after the
+   generated utilities, so hover:/focus:/group-hover: variants still win.
+----------------------------------------------------------------- */
+@layer utilities {
+  :where(html:not(.dark)) .text-gray-400 { color: #6b7280; }
+  :where(html:not(.dark)) .text-slate-400 { color: #64748b; }
 }

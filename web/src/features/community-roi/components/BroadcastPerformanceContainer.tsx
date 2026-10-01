@@ -231,12 +231,12 @@ export function BroadcastPerformanceContainer({
     return (
       <div style={chromeless ? {
         padding: '12px 4px',
-        color: '#7A8290', fontSize: 13, fontWeight: 500,
+        color: '#5F6673', fontSize: 13, fontWeight: 500,
         fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
       } : {
         maxWidth: 640, margin: '0 auto', padding: '20px 24px',
         background: '#fff', border: '1px solid #E6E4DE', borderRadius: 18,
-        color: '#7A8290', fontSize: 13, fontWeight: 500,
+        color: '#5F6673', fontSize: 13, fontWeight: 500,
         fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
       }}>
         Loading broadcast performance…

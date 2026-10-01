@@ -80,6 +80,10 @@ const C = {
   delivered:   '#d97706', deliveredSoft: '#fef3c7',  // amber-600   / amber-100
   pending:     '#94a3b8', pendingSoft:   '#e2e8f0',  // slate-400   / slate-200
   failed:      '#e11d48', failedSoft:    '#ffe4e6',  // rose-600    / rose-100
+  // Pill TEXT on the soft tints: the 600s read 3.3:1 (emerald) and 3.9:1
+  // (rose) there, under WCAG's 4.5:1. The 700s read 4.8:1 and 5.2:1.
+  readInk:     '#047857',   // emerald-700
+  failedInk:   '#be123c',   // rose-700
   // "Okay" band (25-35%): a warmer amber that still reads as caution, not a
   // celebratory green and not an alarming red.
   okay:        '#b45309', okaySoft:      '#fef3c7',  // amber-700   / amber-100
@@ -94,10 +98,10 @@ const pct1 = (v: number) => `${(v * 100).toFixed(1)}`;
 // ─── Read-rate bands ─────────────────────────────────────────────────────────
 type Band = { label: string; color: string; bg: string };
 function bandFor(rate: number): Band {
-  if (rate >= 0.50) return { label: 'Excellent', color: C.read,   bg: C.readSoft   };
-  if (rate >= 0.35) return { label: 'Healthy',   color: C.read,   bg: C.readSoft   };
+  if (rate >= 0.50) return { label: 'Excellent', color: C.readInk, bg: C.readSoft   };
+  if (rate >= 0.35) return { label: 'Healthy',   color: C.readInk, bg: C.readSoft   };
   if (rate >= 0.25) return { label: 'Okay',      color: C.okay,   bg: C.okaySoft   };
-  return              { label: 'Weak',      color: C.failed, bg: C.failedSoft };
+  return              { label: 'Weak',      color: C.failedInk, bg: C.failedSoft };
 }
 
 // ─── Scoped CSS ──────────────────────────────────────────────────────────────
@@ -256,10 +260,44 @@ const SCOPED_CSS = `
 .dark .lad-bp-bar {
   background: #1e293b;
 }
+/* The subtitle's numbers carry an inline light-theme ink (C.ink2), which read
+   1.8:1 on the dark card; the muted caption itself read 3.9:1. */
+.dark .lad-bp-template-sub { color: #94a3b8; }
+.dark .lad-bp-template-sub .lad-bp-mono { color: #e2e8f0 !important; }
 .dark .lad-bp-empty {
   background: #071131;
   border-color: rgba(30, 46, 74, 0.4);
   color: #94a3b8;
+}
+
+/* Phones: a 7-column table (720px min) doesn't fit, so each row becomes a
+   card - template and delivery bar across the top, then the four numbers
+   as a labelled row. Labels come from data-label on each cell. */
+@media (max-width: 640px) {
+  .lad-bp-table, .lad-bp-table tbody { display: block; }
+  .lad-bp-table thead { display: none; }
+  .lad-bp-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 8px;
+    padding: 16px;
+  }
+  .lad-bp-table tbody td { padding: 0; width: auto; min-width: 0; }
+  .lad-bp-col-index { display: none; }
+  .lad-bp-col-template, .lad-bp-col-bar { grid-column: 1 / -1; width: auto; min-width: 0; }
+  .lad-bp-table tbody td.lad-bp-col-template { padding-bottom: 26px; }
+  .lad-bp-col-num, .lad-bp-col-rate { text-align: left; width: auto; }
+  .lad-bp-col-num::before, .lad-bp-col-rate::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-family: ${FONT_UI};
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: ${C.muted};
+  }
 }
 `;
 
@@ -450,7 +488,7 @@ export function BroadcastPerformance({
                         marginLeft: 8,
                         padding: '2px 8px',
                         borderRadius: 999,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 600,
                         letterSpacing: '0.02em',
                         background: CHANNEL_CHIP[t.channel].bg,
@@ -472,6 +510,7 @@ export function BroadcastPerformance({
             </td>
             <td
               className="lad-bp-col-num"
+              data-label="Read"
               style={t.read > 0 ? { color: C.read } : undefined}
               aria-label={`Read: ${nf.format(t.read)} messages`}
             >
@@ -479,18 +518,20 @@ export function BroadcastPerformance({
             </td>
             <td
               className="lad-bp-col-num"
+              data-label="Sent"
               aria-label={`Sent: ${nf.format(t.sent)} messages`}
             >
               <span key={selectedId + '-sent'} className="lad-bp-anim">{nf.format(t.sent)}</span>
             </td>
             <td
               className="lad-bp-col-num"
+              data-label="Failed"
               style={{ color: t.failed > 0 ? C.failed : C.muted }}
               aria-label={`Failed: ${nf.format(t.failed)} messages`}
             >
               <span key={selectedId + '-failed'} className="lad-bp-anim">{nf.format(t.failed)}</span>
             </td>
-            <td className="lad-bp-col-rate">
+            <td className="lad-bp-col-rate" data-label="Read rate">
               <span
                 key={selectedId + '-rate'}
                 className="lad-bp-rate-pill lad-bp-anim"

@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   UserPlus,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -95,8 +96,22 @@ function resolveDisplayName(...candidates: Array<any>): string {
   }
   return 'User';
 }
+/**
+ * Menu sections, in the order a lead moves: what needs you today, getting new
+ * leads, turning them into customers, results, then setup. Items with no group
+ * (Home, curated Pipelines) sit above the first header.
+ */
+type NavGroup = 'today' | 'grow' | 'convert' | 'measure' | 'setup';
+const NAV_GROUP_LABEL: Record<NavGroup, string> = {
+  today: 'Today',
+  grow: 'Grow',
+  convert: 'Convert',
+  measure: 'Measure',
+  setup: 'Setup',
+};
 type NavItem = {
   href: string;
+  group?: NavGroup;
   label: string;
   icon: any;
   details: string;
@@ -142,6 +157,8 @@ export function Sidebar() {
   const [displayName, setDisplayName] = useState("User");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Mobile drawer: workspace list is folded behind the profile card.
+  const [isMobileTenantListOpen, setIsMobileTenantListOpen] = useState(false);
   const [activeConversationChannel, setActiveConversationChannel] = useState<string | null>(null);
 
   // Listen for channel changes broadcasted from ConversationsPage
@@ -218,7 +235,7 @@ export function Sidebar() {
   const allNavItems: NavItem[] = [
     {
       href: "/overview",
-      label: "Overview",
+      label: "Home",
       icon: Home,
       details: "See your overall dashboard and metrics.",
       requiredCapability: "view_overview",
@@ -235,17 +252,41 @@ export function Sidebar() {
       details: "Switch the pipelines built for your industry on and off.",
       requiresCuratedWorkspace: true,
     },
+
+    // ── Today: what needs a person now ──────────────────────────────────────
+    {
+      href: "/conversations",
+      group: "today",
+      label: "Inbox",
+      icon: MessageSquare,
+      details: "Replies from every channel - handled by Mr LAD or by your team.",
+      requiredCapability: "view_conversations",
+      requiredFeature: FEATURE.CONVERSATIONS,
+    },
+    {
+      href: "/follow-ups",
+      group: "today",
+      label: "Follow-ups",
+      icon: GitFork,
+      details: "Track and manage your follow-up tasks and reminders.",
+      requiredCapability: "view_followups",
+      requiredFeature: FEATURE.FOLLOWUPS,
+    },
+
+    // ── Grow: get new leads ──────────────────────────────────────────────────
     {
       href: "/onboarding/advanced-search-ai",
-      label: "AI Assistant",
+      group: "grow",
+      label: "Ask Mr LAD",
       icon: Search,
-      details: "AI-powered ICP assistant and workflow setup",
+      details: "Find leads, build an audience and plan a campaign with Mr LAD.",
       requiredCapability: "view_ai_assistant",
       requiredFeature: FEATURE.AI_CHAT,
     },
     {
       href: "/campaigns",
-      label: "Campaigns",
+      group: "grow",
+      label: "Outreach",
       icon: Goal,
       details:
         "Multi-channel outreach campaigns with LinkedIn and Email automation.",
@@ -253,34 +294,9 @@ export function Sidebar() {
       requiredFeature: FEATURE.CAMPAIGNS,
     },
     {
-      href: "/conversations",
-      label: "Conversations",
-      icon: MessageSquare,
-      details: "View and manage your social media conversations.",
-      requiredCapability: "view_conversations",
-      requiredFeature: FEATURE.CONVERSATIONS,
-      children: [
-        {
-          href: "/conversations/templates",
-          label: "Templates",
-          icon: LayoutTemplate,
-          details: "Create and manage message templates for conversations and broadcasts.",
-          requiredCapability: "view_conversations",
-          requiredFeature: FEATURE.CONVERSATIONS,
-        },
-      ],
-    },
-    {
-      href: "/community-roi",
-      label: "Community ROI",
-      icon: ChartNoAxesCombined,
-      details: "Track and analyze community engagement and ROI metrics.",
-      requiredCapability: "view_community_roi",
-      requiredFeature: FEATURE.COMMUNITY_ROI,
-    },
-    {
       href: "/make-call",
-      label: "Make a Call",
+      group: "grow",
+      label: "Calls",
       icon: Phone,
       details: "Place outgoing calls using your assigned numbers.",
       requiredCapability: "view_make_call",
@@ -288,7 +304,7 @@ export function Sidebar() {
       children: [
         {
           href: "/call-logs",
-          label: "Call Logs",
+          label: "Call history",
           icon: ChartNoAxesCombined,
           details: "Review past call history and recordings.",
           requiredCapability: "view_call_logs",
@@ -296,8 +312,11 @@ export function Sidebar() {
         },
       ],
     },
+
+    // ── Convert: the human work that moves a lead forward ───────────────────
     {
       href: "/pipeline",
+      group: "convert",
       label: isEducation ? "Students" : "Pipeline",
       icon: isEducation ? GraduationCap : CircleDollarSign,
       details: isEducation
@@ -308,14 +327,38 @@ export function Sidebar() {
     },
     {
       href: "/crm",
-      label: "Contacts Funnel",
+      group: "convert",
+      label: "Contacts",
       icon: Contact,
       details: "Unified cross-channel prospects, leads and clients from the Master Agent.",
       requiredCapability: "view_pipeline",
     },
     {
+      href: "/sales-playbook",
+      group: "convert",
+      label: "Playbook",
+      icon: ClipboardList,
+      details: "Run the discovery call script, score the lead and cost the customisation.",
+      requiredCapability: "view_sales_playbook",
+      requiredFeature: FEATURE.SALES_PLAYBOOK,
+    },
+
+    // ── Measure ──────────────────────────────────────────────────────────────
+    {
+      href: "/community-roi",
+      group: "measure",
+      label: "Referral ROI",
+      icon: ChartNoAxesCombined,
+      details: "Track and analyze community engagement and ROI metrics.",
+      requiredCapability: "view_community_roi",
+      requiredFeature: FEATURE.COMMUNITY_ROI,
+    },
+
+    // ── Setup ────────────────────────────────────────────────────────────────
+    {
       href: "/studio",
-      label: "Tenant Studio",
+      group: "setup",
+      label: "Train Mr LAD",
       icon: Sparkles,
       details: "Train the workspace on your business: interview, ICP training, rehearsal, and the Tailor.",
       // No capability is granted to members on purpose: admins and owners pass
@@ -324,22 +367,16 @@ export function Sidebar() {
       requiredCapability: "manage_tenant_studio",
     },
     {
-      href: "/follow-ups",
-      label: "Follow-ups",
-      icon: GitFork,
-      details: "Track and manage your follow-up tasks and reminders.",
-      requiredCapability: "view_followups",
-      requiredFeature: FEATURE.FOLLOWUPS,
+      // Top-level (was under Conversations): Outreach, broadcasts and the
+      // Inbox all draw on the same templates.
+      href: "/conversations/templates",
+      group: "setup",
+      label: "Templates",
+      icon: LayoutTemplate,
+      details: "Create and manage message templates for conversations and broadcasts.",
+      requiredCapability: "view_conversations",
+      requiredFeature: FEATURE.CONVERSATIONS,
     },
-    {
-      href: "/sales-playbook",
-      label: "Sales Playbook",
-      icon: ClipboardList,
-      details: "Run the discovery call script, score the lead and cost the customisation.",
-      requiredCapability: "view_sales_playbook",
-      requiredFeature: FEATURE.SALES_PLAYBOOK,
-    },
-
   ];
 
   // Helper: does the user have access to this nav item?
@@ -465,7 +502,72 @@ export function Sidebar() {
             <X className="h-5 w-5 text-sidebar-foreground" />
           </button>
         </div>
-        <nav className="flex-1 flex flex-col px-2 space-y-1 py-2 overflow-y-auto">
+        {/* Who and where: profile + current workspace. With several
+            workspaces the card toggles a switcher list below it. */}
+        <div className="px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => tenants.length > 1 && setIsMobileTenantListOpen((v) => !v)}
+            aria-expanded={tenants.length > 1 ? isMobileTenantListOpen : undefined}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-2xl p-3 text-left transition",
+              "bg-primary/[0.06] dark:bg-white/[0.06] ring-1 ring-inset ring-primary/10 dark:ring-white/10",
+              tenants.length > 1 ? "active:scale-[0.99] hover:bg-primary/10 dark:hover:bg-white/10" : "cursor-default",
+            )}
+          >
+            {isHydrated && user?.avatar ? (
+              <img src={user.avatar} className="w-11 h-11 rounded-full object-cover flex-shrink-0" alt="" />
+            ) : (
+              <div className="w-11 h-11 rounded-full flex items-center justify-center bg-primary text-white font-semibold flex-shrink-0">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</span>
+                <span className="shrink-0 rounded-full bg-primary/10 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold capitalize text-primary dark:text-white/80">
+                  {user?.role || "admin"}
+                </span>
+              </span>
+              {/* Workspace line, unless it just repeats the name above. */}
+              {tenant?.name && tenant.name !== displayName && (
+                <span className="mt-0.5 block truncate text-xs text-sidebar-foreground/70">{tenant.name}</span>
+              )}
+            </span>
+            {tenants.length > 1 && (
+              <ChevronDown
+                aria-hidden="true"
+                className={cn("h-4 w-4 shrink-0 text-sidebar-foreground/60 transition-transform", isMobileTenantListOpen && "rotate-180")}
+              />
+            )}
+          </button>
+          {tenants.length > 1 && isMobileTenantListOpen && (
+            <div className="mt-2 space-y-1 rounded-2xl border border-sidebar-border p-1" role="list" aria-label="Switch workspace">
+              {tenants.map((t) => (
+                <button
+                  key={t.id}
+                  role="listitem"
+                  onClick={() => {
+                    setTenantById(t.id);
+                    setIsMobileTenantListOpen(false);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-2 rounded-xl px-3 min-h-11 text-sm transition",
+                    tenant.id === t.id
+                      ? "bg-primary/10 dark:bg-white/10 font-semibold text-primary dark:text-white"
+                      : "text-sidebar-foreground/80 hover:bg-primary/5 dark:hover:bg-white/5",
+                  )}
+                >
+                  <span className="truncate">{t.name}</span>
+                  {tenant.id === t.id && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <nav className="flex-1 flex flex-col gap-0.5 px-3 pt-4 pb-2 overflow-y-auto" aria-label="Main">
           {(() => {
             // Build the set of every URL claimed as a "child" anywhere in the
             // nav tree so a top-level item never lights up when the current
@@ -480,7 +582,14 @@ export function Sidebar() {
               Array.from(ownedChildHrefs).some(c =>
                 href === c || href.startsWith(c + '/')
               );
-            return nav.map((n) => {
+            // A deeper top-level link (Templates at /conversations/templates)
+            // owns its path; the shallower one (Inbox at /conversations) must
+            // not light up as well.
+            const shadowedByDeeperTop = (href: string) =>
+              nav.some(o => o.href !== href && o.href.startsWith(href + '/') &&
+                (pathname === o.href || pathname.startsWith(o.href + '/')));
+            return nav.map((n, idx) => {
+              const groupStart = !!n.group && n.group !== nav[idx - 1]?.group;
               const Icon = n.icon;
               const ownChildHrefs = new Set((n.children ?? []).map(c => c.href));
               const matchesOwnRoute = pathname === n.href || pathname.startsWith(n.href + '/');
@@ -490,7 +599,7 @@ export function Sidebar() {
                 !Array.from(ownChildHrefs).some(c =>
                   pathname === c || pathname.startsWith(c + '/')
                 );
-              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild;
+              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild && !shadowedByDeeperTop(n.href);
               const hasChildren = n.children && n.children.length > 0;
               const childOnPath = hasChildren && n.children!.some(c =>
                 pathname === c.href || pathname.startsWith(c.href + '/')
@@ -500,33 +609,42 @@ export function Sidebar() {
             // no longer combine them into one boolean.
 
             return (
-              <div key={n.href} className="relative group/mob">
+              <div key={n.href}>
+                {groupStart && (
+                  <span className="block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                    {NAV_GROUP_LABEL[n.group!]}
+                  </span>
+                )}
                 <NavLink
                   href={n.href}
+                  aria-current={selfActive ? "page" : undefined}
                   className={cn(
-                    "relative flex items-center rounded-xl overflow-visible px-3 h-12",
+                    "relative flex items-center gap-3 rounded-xl px-2 h-12 transition-colors",
                     selfActive
-                      ? "bg-primary/90 text-white shadow-lg"
+                      ? "bg-primary/10 dark:bg-white/10 text-primary dark:text-white font-semibold before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-[3px] before:rounded-full before:bg-primary dark:before:bg-blue-400"
                       : childOnPath
-                        ? "bg-primary/10 text-sidebar-foreground"  // softer "section-active" hint, visible on light & dark
-                        : "hover:bg-white/10 text-sidebar-foreground",
+                        ? "text-primary dark:text-white font-semibold"
+                        : "text-sidebar-foreground hover:bg-primary/5 dark:hover:bg-white/5",
                   )}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <Icon
+                  {/* Icon tile: filled when this is the current page. */}
+                  <span
                     className={cn(
-                      "h-5 w-5",
-                      // Only the fully-active parent gets the white icon  - 
-                      // section-active keeps dark icon for legibility on
-                      // light-background sidebars.
-                      selfActive ? "text-white" : "text-sidebar-foreground",
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                      selfActive
+                        ? "bg-primary text-white dark:bg-blue-500"
+                        : "bg-primary/[0.06] text-sidebar-foreground/80 dark:bg-white/[0.06]",
                     )}
-                  />
-                  <span className="ml-3 text-sm font-medium">{n.label}</span>
+                  >
+                    <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </span>
+                  <span className="text-[15px]">{n.label}</span>
                 </NavLink>
 
                 {hasChildren && (
-                  <div className="pl-10 space-y-0.5 mt-1 border-l-2 border-white/10 ml-4">
+                  // Sub-pages sit under the parent's label on a thin guide line.
+                  <div className="ml-[27px] mt-0.5 mb-1 border-l border-sidebar-border pl-[17px] space-y-0.5">
                     {n.children!.map((child) => {
                       const ChildIcon = child.icon;
                       const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
@@ -534,16 +652,17 @@ export function Sidebar() {
                         <NavLink
                           key={child.href}
                           href={child.href}
+                          aria-current={childActive ? "page" : undefined}
                           className={cn(
-                            "relative flex items-center rounded-xl px-3 h-11 transition-all ml-1",
+                            "flex items-center gap-2.5 rounded-lg px-2 h-11 text-sm transition-colors",
                             childActive
-                              ? "bg-primary/80 text-white shadow-md before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[18px] before:h-5 before:w-0.5 before:bg-primary before:rounded-full"
-                              : "hover:bg-white/10 text-sidebar-foreground/70",
+                              ? "bg-primary/10 dark:bg-white/10 font-semibold text-primary dark:text-white"
+                              : "text-sidebar-foreground/80 hover:bg-primary/5 dark:hover:bg-white/5",
                           )}
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
-                          <ChildIcon className={cn("h-4 w-4", childActive ? "text-white" : "text-sidebar-foreground/70")} />
-                          <span className="ml-2 text-sm font-medium">{child.label}</span>
+                          <ChildIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          <span>{child.label}</span>
                         </NavLink>
                       );
                     })}
@@ -554,80 +673,38 @@ export function Sidebar() {
           });
           })()}
         </nav>
-        {/* Mobile User/Settings/Pricing/Logout */}
-        <div className={cn("border-t p-3 space-y-2 mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
-          {/* Tenant Selector */}
-          <div className="mb-2">
-            <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/75 font-bold px-3">Tenant</span>
-            <div className="mt-1 space-y-1">
-              {tenants.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setTenantById(t.id);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 min-h-11 rounded-lg text-xs transition active:scale-95",
-                    tenant.id === t.id
-                      ? "bg-primary/20 text-primary font-bold"
-                      : "text-sidebar-foreground/70 hover:bg-white/5"
-                  )}
-                >
-                  <span className="truncate">{t.name}</span>
-                  {tenant.id === t.id && <span className="text-primary">✓</span>}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3 px-2 py-2 border-t border-sidebar-border/30">
-            {isHydrated && user?.avatar ? (
-              <img
-                src={user.avatar}
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                alt="avatar"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white font-semibold text-sm flex-shrink-0">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-sidebar-foreground truncate">
-                {displayName}
+        {/* Account actions: same row rhythm and icon tiles as the menu. */}
+        <div className={cn("mt-auto border-t px-3 py-2 space-y-0.5 border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
+          <NavLink
+            href="/settings"
+            className="flex items-center gap-3 rounded-xl px-2 h-12 text-[15px] text-sidebar-foreground hover:bg-primary/5 dark:hover:bg-white/5 transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/[0.06] text-sidebar-foreground/80 dark:bg-white/[0.06]">
+              <Settings className="h-[18px] w-[18px]" aria-hidden="true" />
+            </span>
+            <span>Settings</span>
+          </NavLink>
+          <div className="flex items-center justify-between gap-3 rounded-xl px-2 h-12 text-[15px] text-sidebar-foreground">
+            {/* ThemeToggle on the right is the actual control. */}
+            <span className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/[0.06] text-sidebar-foreground/80 dark:bg-white/[0.06]">
+                <Palette className="h-[18px] w-[18px]" aria-hidden="true" />
               </span>
-              <span className="text-xs text-sidebar-foreground/75">
-                {user?.role || "admin"}
-              </span>
-            </div>
+              <span>Theme</span>
+            </span>
+            <ThemeToggle />
           </div>
-          <div className="space-y-1">
-            <NavLink
-              href="/settings"
-              className="w-full flex items-center gap-2 rounded-xl px-4 min-h-11 hover:bg-white/10 text-sm text-sidebar-foreground"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </NavLink>
-            <div className="w-full flex items-center justify-between rounded-xl px-4 py-2 text-sm text-sidebar-foreground">
-              {/* Left side mirrors the Settings/Logout rows: icon + label.
-                  ThemeToggle (right side) is the actual sun/moon control. */}
-              <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                <span>Theme</span>
-              </div>
-              <ThemeToggle />
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-start gap-2 rounded-xl px-4 min-h-11 text-red-600 dark:text-red-400 hover:bg-red-500/10 active:scale-95 transition text-sm"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 rounded-xl px-2 h-12 text-[15px] text-red-600 dark:text-red-400 hover:bg-red-500/10 active:scale-[0.99] transition"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10">
+              <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+            </span>
+            Logout
+          </button>
         </div>
       </div>
       {/* Mobile Backdrop */}
@@ -710,7 +787,14 @@ export function Sidebar() {
               Array.from(ownedChildHrefs).some(c =>
                 href === c || href.startsWith(c + '/')
               );
-            return nav.map((n) => {
+            // A deeper top-level link (Templates at /conversations/templates)
+            // owns its path; the shallower one (Inbox at /conversations) must
+            // not light up as well.
+            const shadowedByDeeperTop = (href: string) =>
+              nav.some(o => o.href !== href && o.href.startsWith(href + '/') &&
+                (pathname === o.href || pathname.startsWith(o.href + '/')));
+            return nav.map((n, idx) => {
+              const groupStart = !!n.group && n.group !== nav[idx - 1]?.group;
               const Icon = n.icon;
               const ownChildHrefs = new Set((n.children ?? []).map(c => c.href));
               const matchesOwnRoute = pathname === n.href || pathname.startsWith(n.href + '/');
@@ -718,7 +802,7 @@ export function Sidebar() {
                 !Array.from(ownChildHrefs).some(c =>
                   pathname === c || pathname.startsWith(c + '/')
                 );
-              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild;
+              const selfActive = matchesOwnRoute && !pathOwnedByOtherChild && !shadowedByDeeperTop(n.href);
               const hasChildren = n.children && n.children.length > 0;
               const childOnPath = hasChildren && n.children!.some(c =>
                 pathname === c.href || pathname.startsWith(c.href + '/')
@@ -727,7 +811,15 @@ export function Sidebar() {
             // a sub-item is current. They drive different styling now, so we
             // no longer combine them into one boolean.
             return (
-              <div key={n.href} className="relative group">
+              <div key={n.href}>
+              {groupStart && (isExpanded ? (
+                <span className="block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                  {NAV_GROUP_LABEL[n.group!]}
+                </span>
+              ) : (
+                <div aria-hidden="true" className="mx-auto my-2 h-px w-8 bg-sidebar-border" />
+              ))}
+              <div className="relative group">
                 <NavLink
                   href={n.href}
                   // Collapsed, this renders as a bare 48px icon — the label
@@ -886,6 +978,7 @@ export function Sidebar() {
                     })}
                   </div>
                 ) : null}
+              </div>
               </div>
             );
           });

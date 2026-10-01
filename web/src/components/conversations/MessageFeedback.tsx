@@ -80,7 +80,9 @@ export function MessageFeedback({
 
   return (
     <div className="mt-1">
-      <div className="flex items-center gap-1">
+      {/* 44px hit areas below lg without growing the bubble; the wider gap keeps
+          the two hit areas from overlapping. */}
+      <div className="flex items-center gap-1 max-lg:gap-6">
         <button
           type="button"
           aria-label="Good response"
@@ -88,10 +90,10 @@ export function MessageFeedback({
           disabled={saving}
           onClick={() => send('like')}
           className={cn(
-            'rounded p-1 transition-colors disabled:opacity-50',
+            'rounded p-1 max-lg:p-[15px] max-lg:-m-[11px] transition-colors disabled:opacity-50',
             rating === 'like'
               ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-[#667781] hover:text-emerald-600 dark:text-white/50 dark:hover:text-emerald-400'
+              : 'text-[#54656f] hover:text-emerald-600 dark:text-white/50 dark:hover:text-emerald-400'
           )}
         >
           <ThumbsUp className="h-3.5 w-3.5" />
@@ -103,22 +105,22 @@ export function MessageFeedback({
           disabled={saving}
           onClick={onDislike}
           className={cn(
-            'rounded p-1 transition-colors disabled:opacity-50',
+            'rounded p-1 max-lg:p-[15px] max-lg:-m-[11px] transition-colors disabled:opacity-50',
             rating === 'dislike'
               ? 'text-red-600 dark:text-red-400'
-              : 'text-[#667781] hover:text-red-600 dark:text-white/50 dark:hover:text-red-400'
+              : 'text-[#54656f] hover:text-red-600 dark:text-white/50 dark:hover:text-red-400'
           )}
         >
           <ThumbsDown className="h-3.5 w-3.5" />
         </button>
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-[#667781]" />}
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-[#54656f]" />}
         {error && <span className="text-[11px] text-red-500">{error}</span>}
       </div>
 
       {showForm && (
         <div className="mt-2 w-full max-w-md rounded-lg border border-black/10 bg-white p-3 text-xs dark:border-white/10 dark:bg-[#202c33]">
           <div className="mb-2">
-            <div className="mb-1 font-medium text-[#667781] dark:text-white/60">
+            <div className="mb-1 font-medium text-[#54656f] dark:text-white/60">
               What it said
             </div>
             {/* Read-only: the reviewer is correcting this text, not editing
@@ -128,7 +130,7 @@ export function MessageFeedback({
               {content}
             </div>
           </div>
-          <label className="mb-1 block font-medium text-[#667781] dark:text-white/60">
+          <label className="mb-1 block font-medium text-[#54656f] dark:text-white/60">
             What it should have said
           </label>
           <textarea
@@ -139,7 +141,7 @@ export function MessageFeedback({
             placeholder="e.g. We don't run kids classes on Thursdays - the next one is Saturday at 10am."
             className="w-full rounded border border-black/10 bg-white p-2 text-[#111b21] outline-none focus:border-emerald-500 dark:border-white/10 dark:bg-[#2a3942] dark:text-white/90"
           />
-          <p className="mt-1 text-[11px] text-[#667781] dark:text-white/50">
+          <p className="mt-1 text-[11px] text-[#54656f] dark:text-white/50">
             This is added to the agent&apos;s instructions and shapes similar
             replies from the next message onward.
           </p>
@@ -150,7 +152,7 @@ export function MessageFeedback({
                 setShowForm(false);
                 setExpected('');
               }}
-              className="rounded px-2 py-1 text-[#667781] hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
+              className="rounded px-2 py-1 text-[#54656f] hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
             >
               Cancel
             </button>

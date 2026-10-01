@@ -51,15 +51,15 @@ export const StatWidget: React.FC<StatWidgetProps> = ({
       <div className="flex flex-col justify-between h-full">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-lg sm:text-3xl font-bold font-display tracking-tight text-white">
+            <p className="text-lg sm:text-3xl font-bold font-display tracking-tight text-gray-900 dark:text-white">
               {value}
             </p>
             {subtitle && (
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{subtitle}</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
             )}
           </div>
           <div className="p-1.5 sm:p-2 rounded-lg border bg-[#F8F9FE] dark:bg-[#0b1941] border-[#E2E8F0] dark:border-[#262831]">
-            <IconComponent className="h-4 w-4 sm:h-5 sm:h-5 text-primary" />
+            <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           </div>
         </div>
         {trend !== undefined && (
@@ -73,7 +73,7 @@ export const StatWidget: React.FC<StatWidgetProps> = ({
               {trend > 0 ? '+' : ''}{trend}%
             </span>
             {trendLabel && (
-              <span className="text-xs text-slate-400 hidden xs:inline">{trendLabel}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 hidden xs:inline">{trendLabel}</span>
             )}
           </div>
         )}

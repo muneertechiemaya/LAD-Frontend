@@ -29,7 +29,7 @@ const useCountUp = (end: number, duration: number = 2000) => {
 
 // Skeleton loading component
 const SkeletonCard = () => (
-  <div className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
+  <div className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
     <div className="bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px]">
       <div className="flex-1 flex flex-col p-4">
         <div className="flex flex-col h-full">
@@ -68,7 +68,7 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, bgColor, onClick }: StatCardProps) => (
-  <div className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
+  <div className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
     <div
       className={`bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all ${onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]' : ''}`}
       onClick={onClick}
@@ -76,14 +76,14 @@ const StatCard = ({ title, value, icon, bgColor, onClick }: StatCardProps) => (
       <div className="flex-1 flex flex-col p-4">
         <div className="flex flex-col h-full">
           <div className="flex justify-end mb-2">
-            <Avatar className={`${bgColor} w-12 h-12 rounded-full`}>
+            <Avatar className={`${bgColor} w-9 h-9 sm:w-12 sm:h-12 rounded-full`}>
               <AvatarFallback className={bgColor}>
                 {icon}
               </AvatarFallback>
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col justify-end">
-            <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+            <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap max-sm:whitespace-normal max-sm:line-clamp-2">
               {title}
             </p>
             <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -114,24 +114,26 @@ export default function CampaignStatsCards({ stats, loading = false }: CampaignS
   }
 
   return (
+    // Two per row on phones (was one full-width card each, four screens of
+    // scrolling before the first campaign), four from md.
     <div className="flex gap-4 mb-6 flex-wrap items-stretch">
       {/* Total Campaigns - click to go to campaigns list */}
       <div
-        className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
+        className="w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
         onClick={() => router.push('/campaigns')}
       >
         <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]">
           <div className="flex-1 flex flex-col p-4">
             <div className="flex flex-col h-full">
               <div className="flex justify-end mb-2">
-                <Avatar className="bg-blue-100 dark:bg-[#253456] w-12 h-12 rounded-full">
+                <Avatar className="bg-blue-100 dark:bg-[#253456] w-9 h-9 sm:w-12 sm:h-12 rounded-full">
                   <AvatarFallback className="bg-blue-100 dark:bg-[#253456]">
                     <BarChart3 className="w-6 h-6 text-blue-600 dark:text-[#60a5fa]" />
                   </AvatarFallback>
                 </Avatar>
               </div>
               <div className="flex-1 flex flex-col justify-end">
-                <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap max-sm:whitespace-normal max-sm:line-clamp-2">
                   Total Campaigns
                 </p>
                 <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -182,7 +184,7 @@ export default function CampaignStatsCards({ stats, loading = false }: CampaignS
         const displayValue = networkSize != null ? networkSize : (stats.total_connected || 0);
         const displayLabel = networkSize != null ? '1st Connections' : 'Connections Accepted';
         return (
-          <div className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
+          <div className="w-[calc(50%-8px)] md:w-[calc(25%-12px)]">
             <div
               className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
               onClick={() => router.push('/campaigns')}
@@ -198,14 +200,14 @@ export default function CampaignStatsCards({ stats, loading = false }: CampaignS
                     ) : (
                       <div />
                     )}
-                    <Avatar className="bg-blue-50 dark:!bg-white w-12 h-12 rounded-full">
+                    <Avatar className="bg-blue-50 dark:!bg-white w-9 h-9 sm:w-12 sm:h-12 rounded-full">
                       <AvatarFallback className="bg-blue-50 dark:!bg-white">
                         <Linkedin className="w-6 h-6 text-[#0077B5]" />
                       </AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="flex-1 flex flex-col justify-end">
-                    <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                    <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap max-sm:whitespace-normal max-sm:line-clamp-2">
                       {displayLabel}
                     </p>
                     <h5 className="text-2xl font-bold text-slate-800 dark:text-white">

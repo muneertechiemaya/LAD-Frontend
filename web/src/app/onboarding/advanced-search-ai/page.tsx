@@ -16028,6 +16028,12 @@ const css = `
                 /* Mobile: place star icon next to mic icon on right flank */
                 .adv-foot-side { flex: 0 1 auto !important; }
                 .adv-chat-input-foot > .adv-foot-side:first-child { margin-right: auto !important; }
+                /* With 44px touch targets the footer needs ~405px; at 320-390px the
+                   Premium toggle, mic and Send sat outside the box (unreachable).
+                   Wrap instead: pickers on row 1, actions right-aligned on row 2. */
+                .adv-chat-input-foot, .dark .adv-chat-input-foot { flex-wrap: wrap !important; row-gap: 8px !important; }
+                .adv-chat-input-foot > .adv-premium-btn,
+                .adv-chat-input-foot > :last-child { margin-left: auto !important; }
                 .adv-premium-btn, .adv-chat-attach-btn, .adv-send-sm, .adv-send-circle.adv-send-sm, .adv-mic-btn { 
                     width: 30px !important; 
                     height: 30px !important; 
@@ -16125,8 +16131,8 @@ const css = `
                 .adv-mobile-icp-btn {
                     background: #172560;
                     color: #fff;
-                    width: 38px;
-                    height: 38px;
+                    width: 44px;
+                    height: 44px;
                     border-radius: 12px;
                     display: flex;
                     align-items: center;
@@ -16245,7 +16251,9 @@ const css = `
             @media (max-width: 480px) {
                 .adv-gemini-title {font-size: 18px; margin-bottom: 20px; }
                 .adv-gemini-chips { gap: 8px !important; padding: 0 12px 12px !important; }
-                .adv-gemini-chip { padding: 10px 8px !important; font-size: 11px !important; gap: 6px !important; min-height: 56px !important; }
+                .adv-gemini-chip { padding: 10px 8px !important; font-size: 12px !important; gap: 6px !important; min-height: 56px !important; }
+                /* Two visible lines, so the rotating example prompt isn't cut mid-line. */
+                .adv-chat-left-empty .adv-chat-ta { min-height: 3.1em !important; }
 
                 /* ── MOBILE DARK MODE OVERRIDES (EXTRA SMALL DEVICES) ── */
                 .dark .adv-gemini-chip { background: #0e1834 !important; border-color: #1e2a4a !important; }

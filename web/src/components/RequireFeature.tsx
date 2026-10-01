@@ -51,7 +51,7 @@ export const RequireFeature: React.FC<RequireFeatureProps> = ({
         <br />
         Upgrade your subscription to unlock <strong>{keys[0]}</strong>.
       </p>
-      <button className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+      <button className="px-4 py-2 max-lg:min-h-11 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
         Upgrade Plan
       </button>
     </div>
