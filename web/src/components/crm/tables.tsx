@@ -23,13 +23,14 @@ import {
 } from "@/components/ui/select"
 
 // ── Building blocks ──────────────────────────────────────────────────────
+// Text colours are the -700 (-800 for green) of each hue: the -500s read 2.4–3:1 on their tints (WCAG needs 4.5).
 function TypePill({ type }: { type: CrmContact['type'] }) {
   const map: Record<CrmContact['type'], { label: string; color: string; bg: string }> = {
     prospect: { label: 'Prospect', color: '#0B1957', bg: '#e8ebf7' },
-    lead:     { label: 'Lead',     color: '#0ea5e9', bg: '#e0f2fe' },
-    client:   { label: 'Client',   color: '#16a34a', bg: '#dcfce7' },
-    imported: { label: 'Imported', color: '#64748b', bg: '#f1f5f9' },
-    inbound:  { label: 'Inbound',  color: '#a16207', bg: '#fef3c7' },
+    lead:     { label: 'Lead',     color: '#0369a1', bg: '#e0f2fe' },
+    client:   { label: 'Client',   color: '#166534', bg: '#dcfce7' },
+    imported: { label: 'Imported', color: '#475569', bg: '#f1f5f9' },
+    inbound:  { label: 'Inbound',  color: '#92400e', bg: '#fef3c7' },
   };
   const m = map[type] ?? map.imported;
 
@@ -372,18 +373,18 @@ function CrmTable<R extends CrmContact>({
             </span>
           </div>
           {subtitle && (
-            <p className="text-[12px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
+            <p className="max-md:hidden text-[12px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
+        <div className="flex items-center gap-2 flex-wrap max-md:w-full">
+          <div className="relative max-md:w-full">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="h-9 pl-8 pr-3 rounded-lg text-[12.5px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 w-48"
+              className="h-9 max-lg:h-11 pl-8 pr-3 rounded-lg text-[12.5px] max-md:text-[16px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 w-48 max-md:w-full"
             />
           </div>
           {filters?.map((f) => (
@@ -406,7 +407,7 @@ function CrmTable<R extends CrmContact>({
                   ? `Export the ${filtered.length} row${filtered.length === 1 ? '' : 's'} shown${exportIsFiltered ? ' by this filter' : ' on this page'} — not all ${pagination!.total}`
                   : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`
             }
-            className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 max-lg:h-11 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* The count is on the button itself, not only in the tooltip: a
                 hover hint does not exist on touch, and "Export" next to a
@@ -419,14 +420,54 @@ function CrmTable<R extends CrmContact>({
           <button
             disabled
             title="Not available yet"
-            className="h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed"
+            className="max-md:hidden h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" /> New
           </button>
         </div>
       </header>
 
-      <div className="overflow-x-auto">
+      {/* Phones: one card per contact instead of a 10-column table that only
+          scrolls sideways. Same rows, same sort/filter, same open action. */}
+      <ul className="md:hidden divide-y divide-slate-100 dark:divide-[#262831]">
+        {sorted.map((r) => {
+          const sub = [r.title, r.company].filter((v) => v && String(v).trim()).join(' · ');
+          return (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => onRowClick?.(r)}
+                disabled={!onRowClick}
+                aria-label={`Open ${r.name}`}
+                className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] disabled:cursor-default"
+              >
+                <CrmAvatar name={r.name} initials={r.initials} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[14px] font-semibold text-[#172560] dark:text-white">{r.name}</span>
+                    <span className="shrink-0">
+                      <TypePill type={r.type} />
+                    </span>
+                  </span>
+                  {sub && <span className="mt-0.5 block truncate text-[13px] text-slate-600 dark:text-slate-300">{sub}</span>}
+                  <span className="mt-1 flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-400">
+                    {r.channels && r.channels.length > 0 && <ChannelChips channels={r.channels} />}
+                    {r.lastActivityAt && <span className="tabular-nums">{rel(r.lastActivityAt)} ago</span>}
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="py-14 text-center text-[13px] text-slate-500 dark:text-[#7a8ba3]">
+            <Inbox className="mx-auto mb-2 h-6 w-6 opacity-50" />
+            No matches.
+          </li>
+        )}
+      </ul>
+
+      <div className="overflow-x-auto max-md:hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/70 dark:bg-[#071131] border-b border-slate-100 dark:border-[#262831]">

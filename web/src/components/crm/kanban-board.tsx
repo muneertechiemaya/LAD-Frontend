@@ -34,7 +34,8 @@ export interface KanbanBoardProps {
 
 export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, onSelectLead, onAddDeal, stageTotals, unavailable = false }: KanbanBoardProps) {
   return (
-    <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
+    <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4">
+      {/* Phones: one stage per swipe (snap), the next column peeking in. */}
       <div className="flex gap-3 min-w-max">
         {stages.map((s) => {
           const stageKey = s.key || (s as any).id;
@@ -58,7 +59,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
             <div
               key={stageKey}
               /* Column container */
-              className="w-[260px] sm:w-[280px] shrink-0 rounded-xl p-3 bg-[#f9fafb] dark:bg-[#071131] flex flex-col"
+              className="w-[260px] max-md:w-[calc(100vw-56px)] sm:w-[280px] shrink-0 snap-start rounded-xl p-3 bg-[#f9fafb] dark:bg-[#071131] flex flex-col"
               style={{ boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)' }}
             >
               <div className="flex items-center justify-between mb-2 px-1">
@@ -78,7 +79,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                 {onAddDeal && (
                   <button
                     onClick={() => onAddDeal(stageKey)}
-                    className="w-6 h-6 grid place-items-center rounded-md text-slate-400 hover:bg-white dark:hover:bg-[#121c3b] hover:text-[#172560] dark:hover:text-white transition-colors"
+                    className="w-6 h-6 max-lg:w-11 max-lg:h-11 grid place-items-center rounded-md text-slate-400 hover:bg-white dark:hover:bg-[#121c3b] hover:text-[#172560] dark:hover:text-white transition-colors"
                     aria-label={`Add deal to ${s.label}`}
                   >
                     <Plus className="w-3.5 h-3.5" />
