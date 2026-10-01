@@ -19,7 +19,7 @@ export default function ZohoCrmPage() {
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6">
         <Link
           href="/crm"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white mb-4 transition-colors font-medium"
+          className="inline-flex items-center gap-1 max-lg:min-h-11 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white mb-4 transition-colors font-medium"
         >
           <ChevronLeft className="h-4 w-4" /> Back to CRM
         </Link>
@@ -40,7 +40,7 @@ export default function ZohoCrmPage() {
           </div>
           <button
             onClick={() => setShowRecurring(true)}
-            className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-slate-200 dark:border-blue-950/40 text-white bg-primary hover:bg-primary/90 transition-all shadow-xs ml-auto"
+            className="inline-flex items-center justify-center gap-2 h-9 max-lg:h-11 px-4 rounded-lg text-sm font-medium border border-slate-200 dark:border-blue-950/40 text-white bg-primary hover:bg-primary/90 transition-all shadow-xs ml-auto"
           >
             <Repeat className="h-4 w-4 text-white" /> Recurring campaign
           </button>
