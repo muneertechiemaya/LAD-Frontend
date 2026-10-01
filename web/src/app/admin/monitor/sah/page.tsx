@@ -20,14 +20,14 @@ export default function MonitorSahPage() {
           <button
             onClick={() => recompute()}
             disabled={recomputing}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <Calculator className={`h-3.5 w-3.5 ${recomputing ? 'animate-pulse' : ''}`} />
             {recomputing ? 'Recomputing…' : 'Recompute'}
           </button>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -48,7 +48,7 @@ export default function MonitorSahPage() {
           ))}
         </div>
       ) : isEmpty ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           No SAH events yet. Run migration 016, then click <span className="font-medium">Recompute</span> (or wait for the nightly job)
           to derive handoffs from bookings and attribute cost.
         </div>
@@ -75,7 +75,7 @@ export default function MonitorSahPage() {
           <h3 className="mb-2 mt-6 text-sm font-semibold text-gray-900 dark:text-gray-100">By tenant</h3>
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
-              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
                 <tr>
                   <th className="px-4 py-3 font-medium">Tenant</th>
                   <th className="px-4 py-3 font-medium">SAHs</th>
@@ -91,8 +91,8 @@ export default function MonitorSahPage() {
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{t.tenant_name || t.tenant_id}</td>
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{t.sah_count}</td>
                     <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{money(t.avg_cost_per_sah)}</td>
-                    <td className="px-4 py-3 text-gray-500">{money(t.voice_cost)}</td>
-                    <td className="px-4 py-3 text-gray-500">{money(t.llm_cost)}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{money(t.voice_cost)}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{money(t.llm_cost)}</td>
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{money(t.total_cost)}</td>
                   </tr>
                 ))}
