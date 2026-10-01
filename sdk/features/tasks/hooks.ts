@@ -6,13 +6,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  decideApproval,
   getAssignedConversations,
+  getPendingApprovals,
   getTaskNotifications,
   getWaitingChats,
   markTaskNotificationRead,
   taskKeys,
 } from './api';
-import type { HandoffChannel, TaskNotification } from './types';
+import type { ApprovalAction, ApprovalType, HandoffChannel, PendingApprovals, TaskNotification } from './types';
 
 const LIVE = { staleTime: 20_000, refetchInterval: 60_000, retry: 1 } as const;
 
@@ -37,5 +39,23 @@ export function useMarkTaskNotificationRead() {
         prev?.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
       );
     },
+  });
+}
+
+export function usePendingApprovals(enabled = true) {
+  return useQuery({ queryKey: taskKeys.approvals(), queryFn: getPendingApprovals, enabled, ...LIVE });
+}
+
+/** Drops the item from the list whatever the outcome (decided here or already settled), then refetches. */
+export function useDecideApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { type: ApprovalType; id: string; action: ApprovalAction }) => decideApproval(v.type, v.id, v.action),
+    onSuccess: (_out, v) => {
+      qc.setQueryData<PendingApprovals>(taskKeys.approvals(), (prev) =>
+        prev ? { ...prev, items: prev.items.filter((i) => !(i.type === v.type && i.id === v.id)) } : prev,
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.approvals() }),
   });
 }

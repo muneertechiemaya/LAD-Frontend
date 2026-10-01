@@ -6,6 +6,9 @@
  *      conversations have no handoff state, so they appear only via assignment.
  *   2. Conversations assigned to me.
  *   3. My assignment notifications.
+ *   4. Items waiting for a yes/no (LinkedIn posts/invites/greetings, lead
+ *      reports, market insights) — decided right here, through the same
+ *      handler the WhatsApp/email approval link uses.
  *
  * Each source is its own query, so one failing service degrades only its own
  * section; a section is "failed" when it has no data after loading
@@ -14,14 +17,20 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowRight, Bell, CheckCircle2, Hand, Loader2, RefreshCw, UserCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Bell, CheckCircle2, FileText, Hand, Lightbulb, Loader2, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   taskKeys,
   useAssignedConversations,
+  useDecideApproval,
   useMarkTaskNotificationRead,
+  usePendingApprovals,
   useTaskNotifications,
   useWaitingChats,
+  type ApprovalAction,
+  type ApprovalType,
+  type PendingApproval,
   type TaskChannel,
   type WaitingChat,
 } from '@lad/frontend-features/tasks';
@@ -126,6 +135,85 @@ function Row({
   );
 }
 
+/** What each button actually does — "Approve" on a LinkedIn draft posts it. */
+const APPROVAL_COPY: Record<ApprovalType, { label: string; approve: string; reject: string }> = {
+  linkedin_post: { label: 'LinkedIn post', approve: 'Post now', reject: 'Skip' },
+  linkedin_invite: { label: 'LinkedIn invite', approve: 'Accept', reject: 'Ignore' },
+  linkedin_greeting: { label: 'LinkedIn greeting', approve: 'Send', reject: 'Skip' },
+  lead_report: { label: 'Lead report', approve: 'Approve', reject: "Don't send" },
+  market_insight: { label: 'Market insight', approve: 'Add to agent', reject: 'Dismiss' },
+};
+const APPROVAL_TYPE_PLURAL: Record<ApprovalType, string> = {
+  linkedin_post: 'LinkedIn posts',
+  linkedin_invite: 'LinkedIn invites',
+  linkedin_greeting: 'LinkedIn greetings',
+  lead_report: 'lead reports',
+  market_insight: 'market insights',
+};
+
+function ApprovalIcon({ type }: { type: ApprovalType }) {
+  if (type === 'lead_report') return <FileText className="h-[18px] w-[18px] text-slate-600 dark:text-slate-300" />;
+  if (type === 'market_insight') return <Lightbulb className="h-[18px] w-[18px] text-amber-600 dark:text-amber-400" />;
+  return <ChannelIcon channel={'linkedin' as any} size={18} />;
+}
+
+function ApprovalRow({
+  item,
+  busy,
+  onDecide,
+}: {
+  item: PendingApproval;
+  busy: boolean;
+  onDecide: (action: ApprovalAction) => void;
+}) {
+  const copy = APPROVAL_COPY[item.type];
+  return (
+    <li className="px-4 py-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10" aria-hidden="true">
+          <ApprovalIcon type={item.type} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{item.title}</p>
+          {item.preview && (
+            <p className="mt-0.5 line-clamp-3 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">{item.preview}</p>
+          )}
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            {[copy.label, ago(item.at)].filter(Boolean).join(' · ')}
+            {item.campaignId && (
+              <>
+                {' · '}
+                <Link href={`/campaigns/${encodeURIComponent(item.campaignId)}`} className="font-medium text-primary underline-offset-2 hover:underline dark:text-blue-300">
+                  Open campaign
+                </Link>
+              </>
+            )}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onDecide('approve')}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-500"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {copy.approve}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onDecide('reject')}
+              className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-blue-950/40 dark:text-slate-200 dark:hover:bg-white/5"
+            >
+              {copy.reject}
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 const Loading = () => (
   <p className="flex items-center gap-2 px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading…
@@ -147,6 +235,10 @@ export function MyTasks() {
   const assigned = useAssignedConversations();
   const notes = useTaskNotifications();
   const markRead = useMarkTaskNotificationRead();
+  const approvals = usePendingApprovals();
+  const decide = useDecideApproval();
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const [decisionNote, setDecisionNote] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const waitingQueries = [
     { channel: 'waba' as const, q: waba },
@@ -163,7 +255,32 @@ export function MyTasks() {
   const unread = (notes.data ?? []).filter((n) => !n.isRead).length;
   const notifications = [...(notes.data ?? [])].sort((a, b) => Number(a.isRead) - Number(b.isRead));
 
-  const refreshing = waitingQueries.some((w) => w.q.isFetching) || assigned.isFetching || notes.isFetching;
+  const approvalsFailed = !approvals.isLoading && !approvals.isFetching && approvals.data === undefined;
+  const approvalItems = approvals.data?.items ?? [];
+  const approvalsDegraded = approvals.data?.degraded ?? [];
+
+  const onDecide = (item: PendingApproval, action: ApprovalAction) => {
+    const key = `${item.type}:${item.id}`;
+    setDeciding(key);
+    setDecisionNote(null);
+    decide.mutate(
+      { type: item.type, id: item.id, action },
+      {
+        onSuccess: (out) =>
+          setDecisionNote({
+            tone: 'ok',
+            text: out.applied
+              ? out.message || 'Done.'
+              : `${item.title}: already decided or expired — nothing changed.`,
+          }),
+        onError: () => setDecisionNote({ tone: 'error', text: `Couldn't record that for ${item.title}. Try again.` }),
+        onSettled: () => setDeciding(null),
+      },
+    );
+  };
+
+  const refreshing =
+    waitingQueries.some((w) => w.q.isFetching) || assigned.isFetching || notes.isFetching || approvals.isFetching;
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 sm:px-6">
@@ -206,6 +323,45 @@ export function MyTasks() {
             ) : null}
             {waitingFailed.length > 0 && (
               <Failed what={waitingFailed.map((w) => CHANNEL_NAME[w.channel]).join(', ')} />
+            )}
+          </>
+        )}
+      </Section>
+
+      <Section icon={ShieldCheck} title="Needs your approval" count={approvalItems.length} hint="Drafts and requests Mr LAD is holding until someone says yes.">
+        {decisionNote && (
+          <p
+            role="status"
+            className={cn(
+              'border-b border-slate-100 px-4 py-2 text-sm dark:border-blue-950/40',
+              decisionNote.tone === 'ok' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400',
+            )}
+          >
+            {decisionNote.text}
+          </p>
+        )}
+        {approvals.isLoading ? (
+          <Loading />
+        ) : approvalsFailed ? (
+          <Failed what="approvals" />
+        ) : (
+          <>
+            {approvalItems.length > 0 ? (
+              <ul className="divide-y divide-slate-100 dark:divide-blue-950/40">
+                {approvalItems.map((item) => (
+                  <ApprovalRow
+                    key={`${item.type}:${item.id}`}
+                    item={item}
+                    busy={deciding === `${item.type}:${item.id}`}
+                    onDecide={(action) => onDecide(item, action)}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <Empty text="Nothing is waiting for approval." />
+            )}
+            {approvalsDegraded.length > 0 && (
+              <Failed what={approvalsDegraded.map((t) => APPROVAL_TYPE_PLURAL[t]).join(', ')} />
             )}
           </>
         )}
