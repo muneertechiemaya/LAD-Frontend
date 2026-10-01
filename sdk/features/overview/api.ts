@@ -216,3 +216,87 @@ export async function getAvailableAgents(): Promise<VoiceAgentListResponse> {
   const agents = response.data?.data || response.data?.agents || response.data?.items || [];
   return { success: true, data: agents };
 }
+
+// ── Home dashboard (fixed layout) ─────────────────────────────────────────
+// Thin readers over the same endpoints the old overview widgets used. Each
+// throws on a failed request (apiGet raises ApiError on non-2xx) so callers
+// can tell "couldn't load" from "nothing to show".
+
+export interface LeadJourneyCounts {
+  sent: number;
+  accepted: number;
+  responded: number;
+  sah: number;
+  /** A source behind the counts failed — numbers may be low, not zero. */
+  degraded: boolean;
+}
+
+/**
+ * Pipeline counts for a window. The backend computes `counts` from the full
+ * result set before slicing the lead lists, so `limit=1` keeps the payload
+ * small without changing the numbers.
+ */
+export async function getLeadJourneyCounts(from: Date, to: Date): Promise<LeadJourneyCounts> {
+  const qs = `?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&limit=1`;
+  const res = await apiGet<any>(`/api/campaigns/lead-journey${qs}`);
+  const j = res.data;
+  if (j?.success === false) throw new Error(j?.error || 'Lead journey unavailable');
+  const c = j?.counts || {};
+  const degraded = j?.degraded && typeof j.degraded === 'object'
+    ? Object.values(j.degraded).some(Boolean)
+    : Boolean(j?.degraded);
+  return {
+    sent: Number(c.sent) || 0,
+    accepted: Number(c.accepted) || 0,
+    responded: Number(c.responded) || 0,
+    sah: Number(c.sah) || 0,
+    degraded,
+  };
+}
+
+export interface LinkedInSummary {
+  sent: number;
+  replied: number;
+  /** Average reply rate, percent. */
+  replyRate: number | null;
+}
+
+export async function getLinkedInSummary(): Promise<LinkedInSummary> {
+  const res = await apiGet<any>('/api/campaigns/stats');
+  const d = res.data?.data ?? res.data ?? {};
+  const rate = Number(d.avg_reply_rate);
+  return {
+    sent: Number(d.total_sent) || 0,
+    replied: Number(d.total_replied) || 0,
+    replyRate: Number.isFinite(rate) ? rate : null,
+  };
+}
+
+export interface EmailBroadcastSummary {
+  /** Emails sent across the most recent broadcast runs (up to 100 runs). */
+  sent: number;
+  broadcasts: number;
+}
+
+export async function getEmailBroadcastSummary(): Promise<EmailBroadcastSummary> {
+  const res = await apiGet<any>('/api/email-comms/broadcast/runs?limit=100');
+  const body = res.data;
+  const runs: any[] = Array.isArray(body?.runs) ? body.runs : Array.isArray(body) ? body : [];
+  return {
+    sent: runs.reduce((a, r) => a + (Number(r?.sent_count) || 0), 0),
+    broadcasts: runs.length,
+  };
+}
+
+export interface InstagramSummary {
+  threads: number;
+  unread: number;
+}
+
+export async function getInstagramSummary(): Promise<InstagramSummary> {
+  const res = await apiGet<any>('/api/instagram-conversations/conversations');
+  const b = res.data;
+  const rows: any[] = Array.isArray(b?.data) ? b.data : Array.isArray(b?.conversations) ? b.conversations : Array.isArray(b) ? b : [];
+  const unreadOf = (c: any) => Number(c?.unread_count ?? c?.unreadCount ?? c?.unread ?? 0) || 0;
+  return { threads: rows.length, unread: rows.filter((r) => unreadOf(r) > 0).length };
+}

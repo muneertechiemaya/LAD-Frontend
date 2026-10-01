@@ -17,7 +17,12 @@ export {
   getWalletStats,
   getAvailableNumbers,
   getAvailableAgents,
+  getLeadJourneyCounts,
+  getLinkedInSummary,
+  getEmailBroadcastSummary,
+  getInstagramSummary,
 } from './api';
+export type { LeadJourneyCounts, LinkedInSummary, EmailBroadcastSummary, InstagramSummary } from './api';
 
 // Hooks
 export { useLeadBookings } from './hooks/useLeadBookings';
@@ -29,3 +34,11 @@ export { useDashboardCalls } from './hooks/useDashboardCalls';
 export { useWalletStats } from './hooks/useWalletStats';
 export { useAvailableNumbers } from './hooks/useAvailableNumbers';
 export { useAvailableAgents } from './hooks/useAvailableAgents';
+export {
+  homeKeys,
+  usePipelineCounts,
+  useLinkedInSummary,
+  useEmailBroadcastSummary,
+  useInstagramSummary,
+  type PipelinePeriod,
+} from './hooks/useHomeData';
