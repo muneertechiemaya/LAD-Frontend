@@ -13,6 +13,7 @@ import {
   getWaitingChats,
   markTaskNotificationRead,
   taskKeys,
+  WAITING_CHATS_LIMIT,
 } from './api';
 import type { ApprovalAction, ApprovalType, HandoffChannel, PendingApprovals, TaskNotification } from './types';
 
@@ -58,4 +59,33 @@ export function useDecideApproval() {
     },
     onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.approvals() }),
   });
+}
+
+/**
+ * One number for "things waiting on me": handed-over chats + approvals +
+ * conversations assigned to me + unread alerts — the same sources and query
+ * keys as the My Tasks page, so the two share one cache.
+ *
+ * `count` is undefined until at least one source has loaded, so a badge can
+ * stay hidden rather than flash "0". A source that failed simply doesn't
+ * contribute. `capped` is true when a chat channel hit its page size (show "+").
+ */
+export function useMyTasksCount(enabled = true) {
+  const waba = useWaitingChats('waba', enabled);
+  const personal = useWaitingChats('personal', enabled);
+  const approvals = usePendingApprovals(enabled);
+  const assigned = useAssignedConversations(enabled);
+  const notes = useTaskNotifications(enabled);
+
+  const sources = [waba.data, personal.data, approvals.data, assigned.data, notes.data];
+  if (sources.every((d) => d === undefined)) return { count: undefined, capped: false };
+
+  const count =
+    (waba.data?.length ?? 0) +
+    (personal.data?.length ?? 0) +
+    (approvals.data?.items.length ?? 0) +
+    (assigned.data?.length ?? 0) +
+    (notes.data?.filter((n) => !n.isRead).length ?? 0);
+  const capped = (waba.data?.length ?? 0) >= WAITING_CHATS_LIMIT || (personal.data?.length ?? 0) >= WAITING_CHATS_LIMIT;
+  return { count, capped };
 }
