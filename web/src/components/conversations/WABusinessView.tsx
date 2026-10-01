@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { useConversations, useConversationMessages } from '@lad/frontend-features/conversations';
 import type { Conversation, Message } from '@/types/conversation';
 
@@ -4987,6 +4988,19 @@ const handleFavorite = useCallback(
     },
     [conversations, favOverrides]
   );
+
+  // `?conversation=<id>` (from My Tasks or a push alert): open that chat once it
+  // is in the list. Applied once per id, so the user can still navigate away.
+  const deepLinkConversationId = useSearchParams().get('conversation');
+  const appliedDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!deepLinkConversationId || appliedDeepLinkRef.current === deepLinkConversationId) return;
+    if (typedConversations.some((c) => c.id === deepLinkConversationId)) {
+      appliedDeepLinkRef.current = deepLinkConversationId;
+      selectConversation(deepLinkConversationId);
+      setIsMobileChatOpen(true);
+    }
+  }, [deepLinkConversationId, typedConversations, selectConversation]);
 
   const typedSelectedConversation = useMemo(
   () => {

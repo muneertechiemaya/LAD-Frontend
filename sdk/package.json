@@ -38,6 +38,10 @@
       "types": "./features/notifications/index.ts",
       "default": "./features/notifications/index.ts"
     },
+    "./tasks": {
+      "types": "./features/tasks/index.ts",
+      "default": "./features/tasks/index.ts"
+    },
     "./campaigns": {
       "types": "./features/campaigns/index.ts",
       "default": "./features/campaigns/index.ts"
