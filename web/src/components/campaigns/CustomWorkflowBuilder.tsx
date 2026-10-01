@@ -4210,6 +4210,39 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           leads_per_day: perDayN,
           campaign_days: daysN,
           working_days: 'monday-friday',
+          // Keep the drawer's promise. The LinkedIn message box says "Leave
+          // blank to let Mr LAD draft it" and the template picker offers
+          // "None (write below / AI-drafted)" - but the builder never wrote the
+          // flags the backend gates AI drafting on, so a blank box produced a
+          // BARE connection request. Veesham's AccessAbilities Expo campaign
+          // (f8ffb652) sent CONNECTION_SENT, never CONNECTION_SENT_WITH_MESSAGE;
+          // the same tenant's older wizard-built campaigns carry
+          // enable_ai_personalization: true and do draft one.
+          //
+          // Set per-message rather than via the umbrella flag, and only where
+          // the box was actually left blank: an explicitly-set per-message flag
+          // overrides the umbrella in BOTH directions (resolveAiMessageFlags),
+          // and a typed message would otherwise still trigger per-lead AI
+          // generation in DailyLeadEnrichmentService - billing an LLM call per
+          // lead for text nobody will send. Omitted entirely when the workflow
+          // has no step of that kind, so nothing is asserted about a channel
+          // this campaign does not use.
+          ...(() => {
+            const blankMessage = (type: string) => {
+              const nodes = workflowPreview.filter((st: any) => st.type === type);
+              if (!nodes.length) return null;
+              return nodes.some((st: any) => {
+                const c = configs[st.id] || {};
+                return !((c.message || '').trim()) && !c.linkedin_template_id;
+              });
+            };
+            const connect = blankMessage('linkedin_connect');
+            const message = blankMessage('linkedin_message');
+            return {
+              ...(connect === null ? {} : { enable_ai_connection_personalization: connect }),
+              ...(message === null ? {} : { enable_ai_followup_personalization: message }),
+            };
+          })(),
           // Post engagement is the campaign-level opt-in the post-monitor cron
           // keys on (LinkedInPostMonitorService._campaignMonitoredLeads). Only
           // the connections source writes it: the toggle lives on that drawer,
