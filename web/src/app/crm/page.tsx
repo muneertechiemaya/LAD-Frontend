@@ -283,7 +283,7 @@ export default function CrmPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
       <TopBar crumbs={crumbs} hideOnMobile />
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-[1280px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 py-6">
         <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <TrendingUp className="w-7 h-7 text-[#1e293b] dark:text-white" />

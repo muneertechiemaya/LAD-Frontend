@@ -225,6 +225,10 @@ interface Column<R> {
   label: string;
   align?: 'left' | 'right';
   nowrap?: boolean;
+  /** Lower-priority column, hidden below 2xl (1536px). With a sidebar, the
+   *  full 12-column table needed a sideways scroll at ordinary desktop widths
+   *  to reach Last activity and the row actions. */
+  secondary?: boolean;
   sortable?: boolean;
   /** Raw value to sort by — required for sortable columns, since `render`
    *  produces JSX rather than a comparable value. */
@@ -513,7 +517,7 @@ function CrmTable<R extends CrmContact>({
                           : 'none'
                         : undefined
                     }
-                    className={`px-3 py-2.5 text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
+                    className={`px-3 py-2.5 text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${c.secondary ? 'max-2xl:hidden ' : ''}${
                       c.align === 'right' ? 'text-right' : 'text-left'
                     } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]' : ''}`}
                   >
@@ -579,7 +583,7 @@ function CrmTable<R extends CrmContact>({
                     key={j}
                     className={`px-3 py-3 align-middle ${c.align === 'right' ? 'text-right' : ''} ${
                       c.nowrap ? 'whitespace-nowrap' : ''
-                    }`}
+                    } ${c.secondary ? 'max-2xl:hidden' : ''}`}
                   >
                     {c.render(r)}
                   </td>
@@ -686,7 +690,7 @@ export function AllContactsTable({
   const columns: Column<CrmContact>[] = [
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
-    { label: 'Source',  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source', secondary: true,  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
     {
       label: 'Company',
       render: (r) => r.company
@@ -696,7 +700,7 @@ export function AllContactsTable({
     { label: 'Email',   render: (r) => <EmailCell email={r.email} verified={r.emailVerified} /> },
     { label: 'Phone',   render: (r) => <PhoneCell phone={r.phone} verified={r.phoneVerified} /> },
     { label: 'Channels',render: (r) => <ChannelChips channels={r.channels} /> },
-    { label: 'Owner',   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Owner', secondary: true,   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
@@ -707,7 +711,7 @@ export function AllContactsTable({
       ),
     },
     {
-      label: 'Created', sortable: true, nowrap: true,
+      label: 'Created', secondary: true, sortable: true, nowrap: true,
       sortKey: (r) => r.createdAt, serverSortKey: 'created_at',
       render: (r) => (
         <span className="text-[12px] text-slate-500 dark:text-[#7a8ba3] tabular-nums">
@@ -821,8 +825,8 @@ export function ProspectsTable({
         ),
     },
     { label: 'Channels', render: (r) => <ChannelChips channels={r.channels} /> },
-    { label: 'Source',   render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
-    { label: 'Owner',    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Source', secondary: true,   render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Owner', secondary: true,    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last touch', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
@@ -906,7 +910,7 @@ export function LeadsTable({
         </span>
       ),
     },
-    { label: 'Source',    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source', secondary: true,    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
     { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '-'}</span> },
     {
       label: 'Expected close', sortable: true, nowrap: true,
@@ -917,7 +921,7 @@ export function LeadsTable({
         </span>
       ),
     },
-    { label: 'Owner', nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Owner', secondary: true, nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
