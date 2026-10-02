@@ -11,6 +11,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/app-toaster';
 import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
@@ -1209,6 +1210,16 @@ const BEAUTIFY_TIMEOUT_MS = 4000;
 /* ═══════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════ */
+/** Recognition errors worth telling the user about, in their words. */
+const MIC_ERRORS: Record<string, string> = {
+    'not-allowed': 'Microphone access is blocked. Allow it for this site in your browser settings, then try again.',
+    'service-not-allowed': 'Voice input is turned off on this device (on iPhone, enable Siri & Dictation), or the browser blocked it.',
+    'audio-capture': 'No microphone was found, or another app is using it.',
+    'network': 'Voice input needs an internet connection to transcribe. Check your connection and try again.',
+    'no-speech': "Didn't catch anything — tap the mic and speak again.",
+    'language-not-supported': "Voice input doesn't support your browser's language yet.",
+};
+
 export default function AdvancedSearchAIPage() {
     const router = useRouter();
 
@@ -1235,11 +1246,16 @@ export default function AdvancedSearchAIPage() {
     const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
     const [beautifying, setBeautifying] = useState(false);
     const [speechSupported, setSpeechSupported] = useState(false);
+    const { push: pushToast } = useToast();
+    const micToast = (description: string) => pushToast({ title: 'Voice input', description, variant: 'warning', duration: 6000 });
     // Whatever was already in the box when dictation started, plus every
     // finalised chunk so far. onresult only replays results from resultIndex
     // onward, so without these the earlier sentences get overwritten.
     const dictationBaseRef = useRef('');
     const dictationFinalRef = useRef('');
+    // The live recogniser. Events from an older one (stopped when a new session
+    // starts) must not switch the new session off.
+    const activeRecRef = useRef<any>(null);
     // The in-flight cleanup call, so sending can cancel it. Without this a late
     // response lands in the box after the message has already gone out.
     const beautifyAbortRef = useRef<AbortController | null>(null);
@@ -7567,27 +7583,26 @@ export default function AdvancedSearchAIPage() {
         } else {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                micToast("Voice input isn't supported in this browser. Try Chrome, Safari or Edge.");
                 return;
             }
 
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (err) {
-                console.error("Microphone access denied:", err);
-                alert("Microphone access is required for voice interaction.");
-                return;
-            }
-
+            // No getUserMedia preflight: recognition asks for the mic itself. The
+            // preflight broke dictation two ways — the stream it opened was never
+            // stopped, so on Android the recogniser couldn't capture ('audio-capture'),
+            // and awaiting it spent the tap's user activation, so iOS Safari refused
+            // rec.start() ('not-allowed'). start() must run synchronously in the tap.
             const rec = new SpeechRecognition();
             rec.continuous = true;
             rec.interimResults = true;
-            rec.lang = 'en-US';
+            rec.lang = navigator.language || 'en-US';
 
             dictationBaseRef.current = input.trim() ? input.trim() + ' ' : '';
             dictationFinalRef.current = '';
 
+            activeRecRef.current = rec;
             rec.onresult = (event: any) => {
+                if (activeRecRef.current !== rec) return;
                 let interim = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const result = event.results[i];
@@ -7600,16 +7615,24 @@ export default function AdvancedSearchAIPage() {
 
             rec.onerror = (event: any) => {
                 console.error("Speech recognition error:", event.error);
-                if (event.error !== 'aborted') {
-                    setIsRecording(false);
-                }
+                if (event.error === 'aborted' || activeRecRef.current !== rec) return;
+                setIsRecording(false);
+                // These used to fail silently: the mic just stopped pulsing.
+                const reason = MIC_ERRORS[event.error as string];
+                if (reason) micToast(reason);
             };
 
             rec.onend = () => {
-                setIsRecording(false);
+                if (activeRecRef.current === rec) setIsRecording(false);
             };
 
-            rec.start();
+            try {
+                rec.start();
+            } catch (err) {
+                console.error("Speech recognition failed to start:", err);
+                micToast("Couldn't start voice input. Please try again.");
+                return;
+            }
             setIsRecording(true);
             setRecognitionInstance(rec);
         }
