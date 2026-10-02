@@ -112,8 +112,16 @@ export const PromoVideoStudio: React.FC = () => {
   }, [opts, writer]);
 
   const maxShots = opts?.max_screenshots ?? 6;
-  const canSubmit = !!opts?.rendering_available && product.trim().length > 0 && shots.length > 0 && !!writer
-    && !start.isPending;
+  // What still stands between the tenant and "Create video", in the order the
+  // form asks for it. The button is enabled exactly when this is empty, so the
+  // hint beside it can never disagree with it.
+  // Server-side blockers are not something the tenant can add; the banners above
+  // explain them, and the hint just says the server is not ready.
+  const serverReady = !!opts?.rendering_available && !!writer;
+  const missing: string[] = [];
+  if (!product.trim()) missing.push('a description of what you are promoting');
+  if (shots.length === 0) missing.push('at least one screenshot');
+  const canSubmit = serverReady && missing.length === 0 && !start.isPending;
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
@@ -415,11 +423,31 @@ export const PromoVideoStudio: React.FC = () => {
       {start.isError && <Banner tone="error">{start.error?.message}</Banner>}
 
       <div className="flex items-center gap-3">
-        <button type="button" onClick={submit} disabled={!canSubmit} className={primaryBtn}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!canSubmit}
+          className={primaryBtn}
+          title={!serverReady ? 'Promo videos are not set up on this server yet'
+            : missing.length ? `Add ${missing.join(' and ')}` : undefined}
+          aria-describedby="promo-create-hint"
+        >
           {start.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
           Create video
         </button>
-        <span className="text-xs text-gray-500">Uses credits for the storyboard, narration and render.</span>
+        {!serverReady ? (
+          <span id="promo-create-hint" className="text-xs text-amber-700 dark:text-amber-400">
+            Promo videos are not set up on this server yet.
+          </span>
+        ) : missing.length > 0 ? (
+          <span id="promo-create-hint" className="text-xs text-amber-700 dark:text-amber-400">
+            Add {missing.join(' and ')} to create the video.
+          </span>
+        ) : (
+          <span id="promo-create-hint" className="text-xs text-gray-500">
+            Uses credits for the storyboard, narration and render.
+          </span>
+        )}
       </div>
     </div>
   );
