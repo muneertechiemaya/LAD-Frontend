@@ -400,7 +400,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
         <div className="px-8 -mt-20">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-end bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 shadow-2xl">
             <div className="w-40 h-40 rounded-[2.5rem] bg-gradient-to-br from-white to-slate-100 p-1 shadow-2xl ring-4 ring-white/10">
-              <div className="w-full h-full bg-slate-50 rounded-[2.4rem] flex items-center justify-center text-5xl font-bold text-slate-300 dark:bg-white/5">
+              <div className="w-full h-full bg-slate-50 rounded-[2.4rem] flex items-center justify-center text-5xl font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
                 {member.name.split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
             </div>
@@ -451,7 +451,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Referrals Given</span>
             <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-300">+{kpis?.referralsGiven}</span>
-            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500 bg-emerald-50/50 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full dark:text-emerald-300 dark:bg-emerald-500/10">
               <ArrowUpRight className="w-3.5 h-3.5" /> Active Giver
             </div>
           </div>
@@ -525,13 +525,13 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
         )}
 
         {/* Card 5: Total Impact Score */}
-        <div className="bg-blue-600 rounded-[2rem] p-8 shadow-2xl shadow-blue-200 flex flex-col items-center justify-center text-center space-y-2 hover:scale-[1.02] transition-all">
+        <div className="bg-blue-700 rounded-[2rem] p-8 shadow-2xl shadow-blue-200 dark:shadow-none flex flex-col items-center justify-center text-center space-y-2 hover:scale-[1.02] transition-all">
           <div className="p-2.5 rounded-xl bg-white/10 text-blue-100 mb-1">
             <Target className="w-6 h-6" />
           </div>
-          <span className="text-xs font-bold text-blue-100/80 uppercase tracking-widest">Total Impact Score</span>
+          <span className="text-xs font-bold text-white/90 uppercase tracking-widest">Total Impact Score</span>
           <span className="text-5xl font-bold text-white tracking-tight">{kpis?.impactScore ?? 0}</span>
-          <div className="text-xs font-bold text-blue-200 uppercase tracking-tighter">
+          <div className="text-xs font-bold text-blue-50 uppercase tracking-tighter">
             {(kpis?.impactScore ?? 0) === 0 ? 'Building Profile' : 'Elite Member Status'}
           </div>
         </div>
