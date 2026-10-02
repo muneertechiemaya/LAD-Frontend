@@ -24,12 +24,12 @@ export default function SalesPlaybookPage() {
             {ALL_QUESTIONS.length} questions, about {Math.round(TOTAL_BUDGET_SECONDS / 60)} minutes.
           </p>
         </div>
-        <div className="ml-auto flex gap-0.5 rounded-lg bg-muted p-1">
+        <div className="ml-auto flex gap-0.5 rounded-lg bg-slate-100 dark:bg-white/10 p-1">
           {tabs.map(t => (
             <button
               key={t.id} type="button" onClick={() => setTab(t.id)}
               aria-current={tab === t.id ? 'page' : undefined}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+              className={`flex items-center gap-1.5 max-lg:min-h-11 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                 tab === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <t.icon className="h-4 w-4" />{t.label}

@@ -8,7 +8,7 @@ import { buildCsv, downloadCsv } from '@/lib/csv';
 import { CLOSE_FIELDS, COLUMNS, COST_FIELDS, HEAD_FIELDS, PHASES, toneOf } from './script';
 
 const TONE_CHIP: Record<number, string> = {
-  0: 'bg-muted text-muted-foreground border-transparent',
+  0: 'bg-slate-100 dark:bg-white/10 text-muted-foreground border-transparent',
   1: 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600',
   2: 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700',
   3: 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700',
@@ -16,7 +16,7 @@ const TONE_CHIP: Record<number, string> = {
 
 function Chip({ id, value }: { id: string; value?: string }) {
   return (
-    <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${TONE_CHIP[toneOf(id, value)]}`}>
+    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${TONE_CHIP[toneOf(id, value)]}`}>
       {value || '–'}
     </span>
   );
@@ -85,7 +85,7 @@ export default function SavedCalls() {
           />
         </div>
         <button type="button" onClick={exportCsv} disabled={!rows.length}
-          className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-40">
+          className="ml-auto flex items-center gap-1.5 max-lg:min-h-11 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40">
           <Download className="h-4 w-4" />Export CSV
         </button>
       </div>
@@ -103,9 +103,9 @@ export default function SavedCalls() {
         <div className="overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full min-w-[860px] border-collapse">
             <thead>
-              <tr className="bg-muted/50">
+              <tr className="bg-slate-50 dark:bg-white/5">
                 {['Prospect', 'Date', 'Pain', 'Budget', 'Build', 'Setup', 'Monthly', 'Urgency', 'Lead', 'Next action'].map(h => (
-                  <th key={h} className="whitespace-nowrap border-b border-border px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
+                  <th key={h} className="whitespace-nowrap border-b border-border px-3 py-2 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -113,7 +113,7 @@ export default function SavedCalls() {
               {rows.map(r => (
                 <tr key={r.id} className="border-b border-border last:border-b-0 hover:bg-muted/40">
                   <td className="px-3 py-2.5 align-top">
-                    <button type="button" onClick={() => setOpen(r)} className="text-left text-sm font-semibold text-primary hover:underline">
+                    <button type="button" onClick={() => setOpen(r)} className="text-left text-sm font-semibold text-primary dark:text-blue-300 hover:underline">
                       {r.prospectName || 'Unnamed'}
                     </button>
                     <span className="block text-xs text-muted-foreground">
@@ -147,7 +147,7 @@ export default function SavedCalls() {
 function RecordDetail({ record, onClose }: { record: SavedCallRecord; onClose: () => void }) {
   const Row = ({ label, value }: { label: string; value?: string }) => (
     <div className="grid grid-cols-1 gap-1 border-t border-border py-2.5 sm:grid-cols-[190px_1fr] sm:gap-0">
-      <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className={`whitespace-pre-wrap text-sm ${value ? '' : 'italic text-muted-foreground'}`}>{value || 'not answered'}</dd>
     </div>
   );
@@ -163,7 +163,7 @@ function RecordDetail({ record, onClose }: { record: SavedCallRecord; onClose: (
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close"
-            className="ml-auto rounded-md border border-border p-1.5 hover:bg-muted">
+            className="ml-auto rounded-md border border-border p-1.5 hover:bg-slate-100 dark:hover:bg-white/10">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -172,7 +172,7 @@ function RecordDetail({ record, onClose }: { record: SavedCallRecord; onClose: (
             {HEAD_FIELDS.map(([k, l]) => <Row key={k} label={l} value={record[k]} />)}
             {PHASES.map((p, i) => (
               <div key={p.key} className="mt-4 border-t-2 border-border pt-1">
-                <div className="py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Phase {i + 1} · {p.name}
                 </div>
                 {p.qs.map(q => <Row key={q.id} label={q.col} value={record[q.id]} />)}
@@ -180,13 +180,13 @@ function RecordDetail({ record, onClose }: { record: SavedCallRecord; onClose: (
               </div>
             ))}
             <div className="mt-4 border-t-2 border-border pt-1">
-              <div className="py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Close out</div>
+              <div className="py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Close out</div>
               {CLOSE_FIELDS.map(([k, l]) => <Row key={k} label={l} value={record[k]} />)}
               <Row label="Lead Score" value={record.leadScore} />
               <Row label="Follow Up Notes" value={record.followUpNotes} />
             </div>
             <div className="mt-4 border-t-2 border-border pt-1">
-              <div className="py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Costing</div>
+              <div className="py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Costing</div>
               {COST_FIELDS.map(([k, l]) => <Row key={k} label={l} value={record[k]} />)}
             </div>
           </dl>
