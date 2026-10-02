@@ -160,7 +160,7 @@ export default function CommunityROIDashboard() {
               }}
               className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
                 selectedCommunity === community.id 
-                  ? 'bg-slate-900 text-white shadow-lg ring-4 ring-slate-900/10' 
+                  ? 'bg-slate-900 text-white shadow-lg ring-4 ring-slate-900/10 dark:bg-blue-600 dark:ring-blue-500/20' 
                   : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 dark:bg-[#071131] dark:text-slate-400 dark:hover:bg-white/10 dark:border-slate-700'
               }`}
               title={community.name}
