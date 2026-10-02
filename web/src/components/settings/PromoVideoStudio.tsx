@@ -30,7 +30,13 @@ import {
   type PromoFormat,
   type PromoSeconds,
   type PromoStage,
+  type PromoStyle,
 } from '@lad/frontend-features/promo-video';
+
+const STYLE_HINT: Partial<Record<PromoStyle, string>> = {
+  classic: 'Clean, calm motion that lets your screens speak.',
+  showreel: 'Showreel-grade: 3D, kinetic type, counters and cinematic transitions, directed scene by scene.',
+};
 
 const STAGE_LABEL: Record<PromoStage, string> = {
   writing: 'Writing the storyboard',
@@ -87,6 +93,7 @@ export const PromoVideoStudio: React.FC = () => {
   const [ctaLabel, setCtaLabel] = useState('Book a demo');
   const [ctaUrl, setCtaUrl] = useState('');
   const [writer, setWriter] = useState('');
+  const [style, setStyle] = useState<PromoStyle>('classic');
   const [narration, setNarration] = useState(true);
   const [shots, setShots] = useState<Shot[]>([]);
   const [fileError, setFileError] = useState('');
@@ -109,6 +116,7 @@ export const PromoVideoStudio: React.FC = () => {
       ?? opts.writers.find((w) => w.available);
     if (preferred) setWriter(preferred.id);
     if (!opts.voice.available) setNarration(false);
+    if (opts.default_style) setStyle(opts.default_style);
   }, [opts, writer]);
 
   const maxShots = opts?.max_screenshots ?? 6;
@@ -163,6 +171,7 @@ export const PromoVideoStudio: React.FC = () => {
       {
         product: product.trim(), goal: goal.trim(), audience: audience.trim(), tone: tone.trim(), format, seconds,
         ctaLabel: ctaLabel.trim() || undefined, ctaUrl: ctaUrl.trim() || undefined, writer, narration,
+        style: opts?.styles?.length ? style : undefined,
         screenshots: shots.map((s) => ({ file: s.file, caption: s.caption.trim() })),
       },
       {
@@ -336,6 +345,31 @@ export const PromoVideoStudio: React.FC = () => {
         <input id="promo-tone" className={field} maxLength={200} value={tone} onChange={(e) => setTone(e.target.value)}
           placeholder="e.g. Warm and confident" />
       </div>
+
+      {!!opts.styles?.length && (
+        <div>
+          <span className={labelCls}>Motion style</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup" aria-label="Motion style">
+            {opts.styles.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="radio"
+                aria-checked={style === s.id}
+                onClick={() => setStyle(s.id)}
+                className={`text-left rounded-lg border px-3 py-2.5 ${style === s.id
+                  ? 'border-blue-600 ring-1 ring-blue-600 bg-blue-50 dark:bg-blue-950/40'
+                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0b1638]'}`}
+              >
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">{s.label}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {STYLE_HINT[s.id] ?? ''}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
