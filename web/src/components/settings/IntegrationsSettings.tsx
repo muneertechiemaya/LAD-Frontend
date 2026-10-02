@@ -866,7 +866,7 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {routeMagicSyncResult && (
                     <div className="rounded-xl border border-emerald-100 dark:border-emerald-950/60 bg-emerald-50/40 dark:bg-emerald-950/10 p-3.5 text-xs font-semibold space-y-2">
-                      <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-[10px]">Last sync result</div>
+                      <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-xs">Last sync result</div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-700 dark:text-slate-300">
                     <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Fetched:</span> <span className="font-bold text-sm text-blue-500">{routeMagicSyncResult.fetched}</span></div>
                         <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Inserted:</span> <span className="font-bold text-sm text-emerald-500">{routeMagicSyncResult.inserted}</span></div>
@@ -1007,8 +1007,8 @@ export const IntegrationsSettings: React.FC = () => {
                 >
                   {integration.comingSoon && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
-                        <Clock className="h-2.5 w-2.5" />
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
+                        <Clock className="h-3 w-3" />
                         Coming Soon
                       </span>
                     </div>
@@ -1016,8 +1016,8 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {!integration.comingSoon && isLocked && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
-                        <Lock className="h-2.5 w-2.5" />
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
+                        <Lock className="h-3 w-3" />
                         Requires Credits
                       </span>
                     </div>
@@ -1025,7 +1025,7 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {!integration.comingSoon && !isLocked && status && status !== 'loading' && (
                     <div className="absolute top-3 right-3">
-                      <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
                         status === 'connected'
                           ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/50'
                           : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
@@ -1044,7 +1044,7 @@ export const IntegrationsSettings: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm text-foreground leading-tight">{integration.name}</h3>
-                      <span className="text-[11px] text-muted-foreground dark:text-slate-300">{integration.category}</span>
+                      <span className="text-xs text-muted-foreground dark:text-slate-300">{integration.category}</span>
                     </div>
                   </div>
 
@@ -1069,7 +1069,7 @@ export const IntegrationsSettings: React.FC = () => {
                         }
                         onToggle={integration.id === 'whatsapp-ai' ? toggleWabaAi : toggleWapaAi}
                       />
-                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug dark:text-slate-300">
+                      <p className="mt-1 text-xs text-muted-foreground leading-snug dark:text-slate-300">
                         Applies to all chats on this account
                       </p>
                     </div>
@@ -1395,7 +1395,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, rm_tenant_id: e.target.value }))}
                     className={modalInputClass}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-TENANT-ID</code> header
                     </p>
                 </div>
@@ -1421,7 +1421,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, api_key: e.target.value }))}
                     className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                         Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-API-KEY</code> header
                       </p>
                 </div>
@@ -1433,7 +1433,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, base_url: e.target.value }))}
                     className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Defaults to the sandbox endpoint. Switch to production when going live.</p>
                 </div>
               </div>
@@ -1454,7 +1454,7 @@ export const IntegrationsSettings: React.FC = () => {
                 >
                   {routeMagicConnecting ? 'Verifying & Connecting…' : 'Connect Route Magic Account'}
                 </button>
-                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-3 text-center">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-3 text-center">
                   We&apos;ll call <code className="text-foreground">GET /customers</code> against Route Magic to verify before saving.
                 </p>
               </div>
@@ -1487,7 +1487,7 @@ function AiToggleChip({
       type="button"
       onClick={onToggle}
       disabled={disabled}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 max-lg:min-h-11 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 max-lg:min-h-11 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 ${
         enabled
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
           : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'
