@@ -110,13 +110,13 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
                     : 'bg-card text-muted-foreground border-border dark:bg-[#030a21]/60 dark:text-slate-300 dark:border-blue-950/40 hover:border-blue-500 dark:hover:bg-blue-950/10'
                   }`}
               >
-                <span className="text-[10px] uppercase tracking-widest opacity-80 mb-0.5">Last</span>
+                <span className="text-xs uppercase tracking-widest opacity-80 mb-0.5">Last</span>
                 <span className="text-xl font-black leading-none">
                   {range === '7d' && '7'}
                   {range === '30d' && '30'}
                   {range === '90d' && '90'}
                 </span>
-                <span className="text-[10px] uppercase tracking-widest opacity-80 mt-0.5">days</span>
+                <span className="text-xs uppercase tracking-widest opacity-80 mt-0.5">days</span>
               </button>
             ))}
           </div>
