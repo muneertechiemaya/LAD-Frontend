@@ -152,7 +152,7 @@ export default function OnboardNewMembersModal({
             </div>
           ) : error ? (
             <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0 dark:text-red-300" />
               <div>
                 <p className="font-semibold text-red-900">Failed to fetch members</p>
                 <p className="text-sm text-red-700 mt-1">{error.message}</p>

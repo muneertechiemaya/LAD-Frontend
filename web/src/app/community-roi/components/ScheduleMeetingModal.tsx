@@ -227,7 +227,7 @@ export default function ScheduleMeetingModal({
               <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{value.name}</p>
               {value.company_name && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{value.company_name}</p>}
             </div>
-            <button onClick={() => { setId(''); setSearch('') }} className="text-slate-500 hover:text-red-500 dark:text-slate-400">
+            <button onClick={() => { setId(''); setSearch('') }} className="max-lg:min-h-11 text-slate-500 hover:text-red-500 dark:text-slate-400">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -256,7 +256,7 @@ export default function ScheduleMeetingModal({
               filtered.map(m => (
                 <button
                   key={m.id}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  className="max-lg:min-h-11 w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   onClick={() => { setId(m.id); setSearch(''); setShowDropdown(false) }}
                 >
                   <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
@@ -296,7 +296,7 @@ export default function ScheduleMeetingModal({
               <p className="text-xs text-slate-500 dark:text-slate-400">Conflicts are checked automatically</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+          <button onClick={onClose} className="max-lg:min-h-11 max-lg:min-w-11 p-2 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
             <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </button>
         </div>
@@ -380,7 +380,7 @@ export default function ScheduleMeetingModal({
                 <button
                   key={d}
                   onClick={() => setDuration(d)}
-                  className={`
+                  className={`max-lg:min-h-11 
                     px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
                     ${duration === d
                       ? 'bg-blue-600 text-white border-blue-600'
@@ -407,7 +407,7 @@ export default function ScheduleMeetingModal({
                 <button
                   key={value}
                   onClick={() => setMeetingType(value as any)}
-                  className={`
+                  className={`max-lg:min-h-11 
                     flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all
                     ${meetingType === value
                       ? 'bg-blue-50 border-blue-300 text-blue-700'
@@ -454,7 +454,7 @@ export default function ScheduleMeetingModal({
               value={agendaNotes}
               onChange={e => setAgendaNotes(e.target.value)}
               rows={3}
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 dark:border-slate-700 dark:text-slate-200"
+              className="max-lg:min-h-11 w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 dark:border-slate-700 dark:text-slate-200"
             />
           </div>
 
@@ -468,14 +468,14 @@ export default function ScheduleMeetingModal({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-red-600">
+                  <div className="flex items-center gap-2 text-red-600 dark:text-red-300">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="text-sm font-semibold">
                       {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
                     </span>
                   </div>
                   {conflicts.map((c, i) => (
-                    <p key={i} className="text-xs text-red-600 pl-6">{c.message}</p>
+                    <p key={i} className="text-xs text-red-600 pl-6 dark:text-red-300">{c.message}</p>
                   ))}
                 </div>
               )}

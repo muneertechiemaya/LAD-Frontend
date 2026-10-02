@@ -94,20 +94,20 @@ export default function NetworkStatsPanel() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-red-600">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-300">
               <AlertCircle className="h-4 w-4" />
               <span className="font-semibold">Error loading network stats</span>
             </div>
             <div className="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700 dark:bg-red-500/10">
               <p className="font-mono">{error instanceof Error ? error.message : String(error)}</p>
-              <p className="text-xs text-red-600 mt-2">
+              <p className="text-xs text-red-600 mt-2 dark:text-red-300">
                 Check the browser console for more details. Look for [ApiClient] and [NetworkStatsPanel] logs.
               </p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={handleManualLoad}
-                className="px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 font-medium"
+                className="max-lg:min-h-11 px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 font-medium"
               >
                 🔄 Retry
               </button>
@@ -122,7 +122,7 @@ export default function NetworkStatsPanel() {
                     hasData: !!stats,
                   });
                 }}
-                className="px-3 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 font-medium"
+                className="max-lg:min-h-11 px-3 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 font-medium"
               >
                 📋 Log Debug Info
               </button>
@@ -145,7 +145,7 @@ export default function NetworkStatsPanel() {
             <div className="flex gap-2 justify-center">
               <button
                 onClick={handleManualLoad}
-                className="px-4 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 font-medium"
+                className="max-lg:min-h-11 px-4 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 font-medium"
               >
                 📊 Load Data
               </button>
@@ -157,7 +157,7 @@ export default function NetworkStatsPanel() {
                     token: token ? `${token.substring(0, 50)}...` : null,
                   });
                 }}
-                className="px-4 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                className="max-lg:min-h-11 px-4 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
               >
                 🔍 Debug
               </button>

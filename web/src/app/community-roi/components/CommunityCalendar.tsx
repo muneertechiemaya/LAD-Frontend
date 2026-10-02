@@ -504,7 +504,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
           <button
             onClick={toggleEnabled}
             disabled={loadingSettings || togglingEnabled}
-            className={`
+            className={`max-lg:min-h-11 
               flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all
               ${settings?.is_enabled
                 ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-300 dark:border-green-800/50'
@@ -669,7 +669,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDay(parseISO(m.meeting_date)) }}
-                      className="w-full text-left"
+                      className="max-lg:min-h-11 w-full text-left"
                     >
                       <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 dark:hover:bg-white/5">
                         {/* Date badge */}
@@ -769,7 +769,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                             )}
                             <button
                               onClick={() => dismissRecommendation(rec.id)}
-                              className="text-slate-300 hover:text-red-400 transition-colors"
+                              className="max-lg:min-h-11 text-slate-300 hover:text-red-400 transition-colors"
                               title="Dismiss"
                             >
                               <X className="w-3.5 h-3.5" />

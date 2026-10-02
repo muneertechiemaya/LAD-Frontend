@@ -29,7 +29,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
       type="button"
       onClick={onClose}
       aria-label="Close"
-      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors dark:text-slate-400 dark:hover:bg-white/10"
+      className="max-lg:min-h-11 max-lg:min-w-11 absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors dark:text-slate-400 dark:hover:bg-white/10"
     >
       <X className="w-5 h-5" />
     </button>
@@ -357,9 +357,9 @@ function FailedRecipientsButton({
       type="button"
       onClick={apply}
       disabled={loading}
-      className="mt-2 w-full flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50 dark:bg-rose-500/10"
+      className="max-lg:min-h-11 mt-2 w-full flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50 dark:bg-rose-500/10"
     >
-      <span className="text-sm font-medium text-rose-700">
+      <span className="text-sm font-medium text-rose-700 dark:text-rose-300">
         ⚠ Resend to failed only ({count})
       </span>
       <span className="text-xs text-rose-600 dark:text-rose-300">
@@ -656,7 +656,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               placeholder="Search templates..."
               value={templateSearch}
               onChange={e => setTemplateSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700"
+              className="max-lg:min-h-11 w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700"
             />
           </div>
 
@@ -678,7 +678,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                   <button
                     key={`${t.name}-${t.language ?? ''}`}
                     onClick={() => setSelectedTemplate(t)}
-                    className={`w-full text-left p-4 border rounded-xl transition ${
+                    className={`max-lg:min-h-11 w-full text-left p-4 border rounded-xl transition ${
                       isSelected
                         ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
                         : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5'
@@ -719,7 +719,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             <div className="flex gap-3 mb-5">
               <button
                 onClick={() => setSendMode('instant')}
-                className={`flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
+                className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
                   sendMode === 'instant' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -727,7 +727,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               </button>
               <button
                 onClick={() => setSendMode('schedule')}
-                className={`flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
+                className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
                   sendMode === 'schedule' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -814,7 +814,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     placeholder="https://example.com/image.jpg"
                     value={headerMediaUrl}
                     onChange={e => setHeaderMediaUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
+                    className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
                   />
                   <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">
                     {headerMediaUrl
@@ -856,7 +856,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                       updated[i] = { ...updated[i], field: e.target.value };
                       setParamMapping(updated);
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-[#071131]"
+                    className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-[#071131]"
                   >
                     <optgroup label="Contact Fields">
                       {FIELD_OPTIONS.filter(o => o.group === 'contact').map(opt => (
@@ -911,7 +911,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                         updated[i] = { ...updated[i], customValue: e.target.value };
                         setParamMapping(updated);
                       }}
-                      className="mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
+                      className="max-lg:min-h-11 mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
                     />
                   )}
                 </div>
@@ -934,12 +934,12 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>{/* end scrollable middle */}
 
           <div className="flex gap-3 justify-end pt-4">
-            <button onClick={() => setStep('template')} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
+            <button onClick={() => setStep('template')} className="max-lg:min-h-11 px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
             <button
               onClick={() => setStep('members')}
-              className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-1"
+              className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -1040,7 +1040,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             <button
               onClick={() => setStep('confirm')}
               disabled={recipientCount === 0}
-              className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-1"
+              className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -1068,7 +1068,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               type="datetime-local"
               value={scheduledTime}
               onChange={e => setScheduledTime(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
+              className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
             />
           </div>
         )}
@@ -1116,13 +1116,13 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         </div>
 
         <div className="flex gap-3 justify-end">
-          <button onClick={() => setStep('members')} disabled={isScheduling} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
+          <button onClick={() => setStep('members')} disabled={isScheduling} className="max-lg:min-h-11 px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           <button
             onClick={handleSend}
             disabled={isScheduling || (sendMode === 'schedule' && !scheduledTime)}
-            className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-2"
+            className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-2"
           >
             {isScheduling && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {sendMode === 'instant' ? 'Send Now' : 'Schedule'}

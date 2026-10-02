@@ -24,7 +24,7 @@ export default function AnalyticsDashboard() {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded dark:bg-red-500/10">
         <h3 className="text-red-800 font-bold text-lg">Error Loading Data</h3>
-        <p className="text-red-600 mt-2">{String(error)}</p>
+        <p className="text-red-600 mt-2 dark:text-red-300">{String(error)}</p>
       </div>
     );
   }

@@ -192,7 +192,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
             <div className="flex bg-slate-100 rounded-xl p-1 text-xs font-semibold dark:bg-white/10">
               <button
                 onClick={() => setMode('monthly')}
-                className={`px-4 py-1.5 rounded-lg transition-all ${
+                className={`max-lg:min-h-11 px-4 py-1.5 rounded-lg transition-all ${
                   mode === 'monthly' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#071131] dark:text-white' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
@@ -200,7 +200,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
               </button>
               <button
                 onClick={() => setMode('cumulative')}
-                className={`px-4 py-1.5 rounded-lg transition-all ${
+                className={`max-lg:min-h-11 px-4 py-1.5 rounded-lg transition-all ${
                   mode === 'cumulative' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#071131] dark:text-white' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
@@ -209,7 +209,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors dark:hover:bg-white/10 dark:text-slate-400"
+              className="max-lg:min-h-11 max-lg:min-w-11 p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors dark:hover:bg-white/10 dark:text-slate-400"
             >
               <X className="w-5 h-5" />
             </button>

@@ -263,6 +263,8 @@ const SCOPED_CSS = `
 /* The subtitle's numbers carry an inline light-theme ink (C.ink2), which read
    1.8:1 on the dark card; the muted caption itself read 3.9:1. */
 .dark .lad-bp-template-sub { color: #94a3b8; }
+/* the heading's colour is an inline style (C.ink), so dark needs !important */
+.dark #lad-bp-heading { color: #f8fafc !important; }
 .dark .lad-bp-template-sub .lad-bp-mono { color: #e2e8f0 !important; }
 .dark .lad-bp-empty {
   background: #071131;

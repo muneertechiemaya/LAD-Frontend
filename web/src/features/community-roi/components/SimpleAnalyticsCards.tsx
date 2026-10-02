@@ -21,7 +21,7 @@ export default function SimpleAnalyticsCards() {
   if (error) {
     return (
       <div className="text-center p-8 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
-        <p className="text-red-600 font-semibold">Unable to load analytics data</p>
+        <p className="text-red-600 font-semibold dark:text-red-300">Unable to load analytics data</p>
         <p className="text-red-500 text-sm mt-2">{String(error)}</p>
       </div>
     );
@@ -111,7 +111,7 @@ export default function SimpleAnalyticsCards() {
         {/* Avg Referral Value */}
         <div className="bg-rose-100 border-2 border-rose-300 rounded-lg p-6 text-center">
           <div className="text-5xl font-bold text-rose-900">${avgReferralValue.toLocaleString()}</div>
-          <div className="text-sm text-rose-700 mt-2 font-medium">Avg Referral Value</div>
+          <div className="text-sm text-rose-700 mt-2 font-medium dark:text-rose-300">Avg Referral Value</div>
           <div className="text-xs text-rose-600 mt-1">Per referral average</div>
         </div>
       </div>

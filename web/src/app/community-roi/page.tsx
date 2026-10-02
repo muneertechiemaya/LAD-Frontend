@@ -157,7 +157,7 @@ export default function CommunityROIDashboard() {
               </Badge>
               <button
                 onClick={handleTogglePin}
-                className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
+                className="max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                 title={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
               >
                 {sidebarPinned ? (
@@ -169,7 +169,7 @@ export default function CommunityROIDashboard() {
               {!sidebarPinned && (
                 <button
                   onClick={() => setSidebarVisible(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
+                  className="max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                   title="Close sidebar"
                 >
                   <X className="w-4 h-4" />
@@ -200,7 +200,7 @@ export default function CommunityROIDashboard() {
                 <button
                   key={member.id}
                   onClick={() => setSelectedMemberId(member.id)}
-                  className={`w-full p-4 text-left transition-all group flex items-center justify-between ${
+                  className={`max-lg:min-h-11 w-full p-4 text-left transition-all group flex items-center justify-between ${
                     selectedMemberId === member.id 
                       ? 'bg-blue-50 border-r-4 border-blue-600' 
                       : 'hover:bg-slate-50'
@@ -284,7 +284,7 @@ export default function CommunityROIDashboard() {
                   <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-1 dark:bg-white/10">
                     <button
                       onClick={() => { setActiveView('dashboard'); setSelectedMemberId(null) }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      className={`max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         activeView === 'dashboard'
                           ? 'bg-white text-slate-800 shadow-sm dark:bg-[#071131] dark:text-slate-100'
                           : 'text-slate-600 hover:text-slate-800 dark:text-slate-400'
@@ -294,7 +294,7 @@ export default function CommunityROIDashboard() {
                     </button>
                     <button
                       onClick={() => { setActiveView('calendar'); setSelectedMemberId(null) }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      className={`max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         activeView === 'calendar'
                           ? 'bg-white text-slate-800 shadow-sm dark:bg-[#071131] dark:text-slate-100'
                           : 'text-slate-600 hover:text-slate-800 dark:text-slate-400'
@@ -384,7 +384,7 @@ export default function CommunityROIDashboard() {
       <button
         data-sidebar-toggle="true"
         onClick={() => setSidebarVisible(true)}
-        className="fixed left-4 top-4 p-3 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800 transition-all z-40"
+        className="max-lg:min-h-11 fixed left-4 top-4 p-3 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800 transition-all z-40"
         title="Show members sidebar"
       >
         <Users className="w-5 h-5" />

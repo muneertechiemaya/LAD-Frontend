@@ -306,7 +306,7 @@ export default function CallSheet({ onSaved }: { onSaved?: () => void }) {
                   <button
                     key={opt} type="button" aria-pressed={active}
                     onClick={() => setField(phase.score.id, active ? '' : opt)}
-                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    className={`max-lg:min-h-11 rounded-full border px-3 py-1 text-xs transition-colors ${
                       active ? `${TONE_CHIP[tone]} font-semibold` : 'border-border text-muted-foreground hover:border-muted-foreground'}`}
                   >{opt}</button>
                 );

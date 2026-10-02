@@ -270,7 +270,7 @@ export const RecommendationPairs: React.FC = () => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-800 dark:hover:bg-white/10 dark:text-slate-300"
+            className="max-lg:min-h-11 max-lg:min-w-11 p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-800 dark:hover:bg-white/10 dark:text-slate-300"
             title={isExpanded ? 'Collapse' : 'Expand'}
           >
             <ChevronDown 
@@ -294,7 +294,7 @@ export const RecommendationPairs: React.FC = () => {
               value={selectedWeeks}
               onChange={e => setSelectedWeeks(Number(e.target.value))}
               disabled={isGenerating}
-              className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none cursor-pointer disabled:opacity-60 dark:text-slate-100"
+              className="max-lg:min-h-11 text-sm font-semibold text-slate-800 bg-transparent border-none outline-none cursor-pointer disabled:opacity-60 dark:text-slate-100"
             >
               {WEEK_OPTIONS.map(n => (
                 <option key={n} value={n}>{n} {n === 1 ? 'week' : 'weeks'}</option>
@@ -309,7 +309,7 @@ export const RecommendationPairs: React.FC = () => {
               onClick={() => setShowCoordinate(true)}
               disabled={isGenerating}
               title="Send each member a slot offer for their pick that day and open the negotiation"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="max-lg:min-h-11 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-4 h-4" />
               Coordinate 1-2-1s
@@ -318,7 +318,7 @@ export const RecommendationPairs: React.FC = () => {
               onClick={() => setShowMessageSender(true)}
               disabled={isGenerating}
               title="Send an informational template (no slots, no negotiation)"
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 transition-colors dark:text-slate-300 dark:bg-white/10"
+              className="max-lg:min-h-11 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 transition-colors dark:text-slate-300 dark:bg-white/10"
             >
               Info message
             </button>
@@ -329,7 +329,7 @@ export const RecommendationPairs: React.FC = () => {
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="max-lg:min-h-11 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {isGenerating ? (
               <>
@@ -400,7 +400,7 @@ export const RecommendationPairs: React.FC = () => {
                 <button
                   key={w.week_number}
                   onClick={() => setActiveWeek(w.week_number)}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                  className={`max-lg:min-h-11 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     activeWeek === w.week_number
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'
@@ -425,12 +425,12 @@ export const RecommendationPairs: React.FC = () => {
                 placeholder="Search members..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 pl-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700 dark:text-slate-100"
+                className="max-lg:min-h-11 w-full px-4 pl-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700 dark:text-slate-100"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded transition-colors text-slate-500 hover:text-slate-600 dark:text-slate-400"
+                  className="max-lg:min-h-11 max-lg:min-w-11 absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded transition-colors text-slate-500 hover:text-slate-600 dark:text-slate-400"
                   title="Clear search"
                 >
                   <X className="w-4 h-4" />
