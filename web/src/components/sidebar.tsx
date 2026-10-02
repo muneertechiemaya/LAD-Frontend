@@ -195,19 +195,18 @@ export function Sidebar() {
     } catch { /* localStorage blocked - fine, default is unpinned */ }
   }, []);
   const togglePinned = () => {
-    setIsPinned(prev => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem('sidebar.pinned', next ? '1' : '0');
-        // Notify the app-shell (or any other listener) so the main content
-        // can reflow to ml-64 (pinned) vs ml-16 (collapsed default).
-        window.dispatchEvent(new CustomEvent('sidebar:pinned-changed', { detail: { pinned: next } }));
-      } catch { /* ignore */ }
-      // Also drop the hover state when unpinning so the sidebar collapses
-      // immediately rather than waiting for the mouse to leave.
-      if (!next) setIsHovered(false);
-      return next;
-    });
+    const next = !isPinned;
+    setIsPinned(next);
+    // Drop the hover state when unpinning so the sidebar collapses
+    // immediately rather than waiting for the mouse to leave.
+    if (!next) setIsHovered(false);
+    try {
+      window.localStorage.setItem('sidebar.pinned', next ? '1' : '0');
+    } catch { /* ignore */ }
+    // Notify the layout so the main content reflows to ml-64 (pinned) vs
+    // ml-16 (rail). Dispatched from the click, not inside a state updater:
+    // updaters run during render, and the listener sets the layout's state.
+    window.dispatchEvent(new CustomEvent('sidebar:pinned-changed', { detail: { pinned: next } }));
   };
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(true);
