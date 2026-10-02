@@ -1,7 +1,5 @@
 import { safeStorage } from '@lad/shared/storage';  
-import { getApiUrl, defaultFetchOptions } from '../config/api';
 import { logger } from '../lib/logger';
-import { fetchWithTenant } from '../lib/fetch-with-tenant';
 import { io, Socket } from 'socket.io-client';
 import store from '../store/store';
 import {
@@ -9,8 +7,6 @@ import {
   updateConversation
 } from '../store/slices/conversationSlice';
 import { addNotification } from '../store/slices/notificationSlice';
-// Use backend URL directly
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || '';
 let socket: Socket | null = null;
 interface Conversation {
@@ -51,30 +47,12 @@ interface ConversationListener {
 interface MessageListener {
   (msg: Message): void;
 }
-interface SendChannelMessageParams {
-  channel: string;
-  phone_number: string;
-  message_text: string;
-  conversation_id?: string;
-  lead_id?: string;
-  human_agent_id?: string;
-  role?: string;
-}
-interface CurrentUser {
-  id?: string;
-  name?: string;
-  [key: string]: unknown;
-}
 interface SocketStatus {
   connected: boolean;
   id: string | null;
   readyState: number | null;
   url: string;
   timestamp: string;
-}
-interface AssignHandlerParams {
-  handler: string;
-  humanAgentId: string | null;
 }
 class ChatService {
   conversationListeners: Set<ConversationListener>;
@@ -231,140 +209,6 @@ class ChatService {
       throw error;
     }
   }
-  async getConversation(id: string): Promise<Conversation> {
-    try {
-      const response = await fetchWithTenant(`/api/whatsapp-conversations/conversations/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversation');
-      }
-      const result = await response.json();
-      return (result.data || result) as Conversation;
-    } catch (error) {
-      logger.error('Error fetching conversation', error);
-      throw error;
-    }
-  }
-  async sendChannelMessage({ channel, phone_number, message_text, conversation_id, lead_id, human_agent_id, role }: SendChannelMessageParams): Promise<unknown> {
-    const response = await fetch(`${API_BASE_URL}/api/chat/send-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel, phone_number, message_text, conversation_id, lead_id, human_agent_id, role })
-    });
-    if (!response.ok) {
-      throw new Error('Failed to send channel message');
-    }
-    if (response.headers.get('content-length') === '0' || response.status === 204) {
-      return null;
-    }
-    return response.json();
-  }
-  async sendMessage(conversationId: string, message: string, currentUser: CurrentUser = { name: 'Agent' }, role = 'user'): Promise<Message> {
-    try {
-      // Always set message_status to 'sent' if sender is current user
-      const payload = {
-        conversationId: conversationId,
-        human_agent_id: currentUser.id,
-        role: role,
-        content: message,
-        type: 'text',
-        metadata: {
-          tags: [],
-          read_receipt: false,
-          delivery_status: 'sent',
-        },
-        message_status: 'sent',
-      };
-      const response = await fetch(getApiUrl(`/api/chat`), {
-        ...defaultFetchOptions(),
-        method: 'POST',
-        headers: {
-          ...defaultFetchOptions().headers,
-          'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-      const newMessage = await response.json() as Message;
-      this.notifyMessageListeners(conversationId, newMessage);
-      // Emit message:new for local echo with required fields
-      if (socket && newMessage) {
-        // Force message_status to 'sent' for outgoing messages from current user
-        socket.emit('message:new', {
-          ...newMessage,
-          human_agent_id: currentUser.id,
-          message_status: 'sent',
-          delivery_status: (newMessage.metadata && newMessage.metadata.delivery_status) || 'sent',
-          read_receipt: (newMessage.metadata && newMessage.metadata.read_receipt) || false,
-        });
-      }
-      return newMessage;
-    } catch (error) {
-      logger.error('Error sending message', error);
-      throw error;
-    }
-  }
-  async sendMessageWithAttachment(formData: FormData): Promise<unknown> {
-    // formData should include: file, conversationId, sender, type, etc.
-    const response = await fetch(getApiUrl('/api/messages/upload-attachment'), {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`
-      },
-      body: formData
-    });
-    if (!response.ok) {
-      throw new Error('Failed to upload attachment');
-    }
-    return await response.json();
-  }
-  async markAsRead(conversationId: string): Promise<unknown> {
-    try {
-      const response = await fetch(getApiUrl(`/api/conversations/${conversationId}/read`), {
-        ...defaultFetchOptions(),
-        method: 'POST',
-        headers: {
-          ...defaultFetchOptions().headers,
-          'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to mark conversation as read');
-      }
-      return await response.json();
-    } catch (error) {
-      logger.error('Error marking conversation as read', error);
-      throw error;
-    }
-  }
-  async searchConversations(query: string): Promise<Conversation[]> {
-    try {
-      const response = await fetchWithTenant(`/api/whatsapp-conversations/conversations?search=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search conversations');
-      }
-      const result = await response.json();
-      return (result.data || result) as Conversation[];
-    } catch (error) {
-      logger.error('Error searching conversations', error);
-      throw error;
-    }
-  }
-  async getOlderMessages(conversationId: string, page = 1, limit = 20): Promise<Message[]> {
-    if (!conversationId) return [];
-    const params = new URLSearchParams({
-      conversationId,
-      page: String(page),
-      limit: String(limit),
-    });
-    const url = getApiUrl(`/api/messages?${params.toString()}`);
-    const response = await fetch(url, defaultFetchOptions());
-    if (!response.ok) {
-      throw new Error('Failed to fetch messages');
-    }
-    return await response.json();
-  }
   // Get socket connection status
   getSocketStatus(): SocketStatus {
     const status: SocketStatus = {
@@ -438,34 +282,6 @@ class ChatService {
       updatePayload.unread = payload.unread;
     }
     store.dispatch(updateConversation(updatePayload));
-  }
-  async assignConversationHandler(conversationId: string, { handler, humanAgentId }: AssignHandlerParams): Promise<unknown> {
-    try {
-      const payload = { 
-        handler, 
-        humanAgentId: humanAgentId === null ? null : humanAgentId 
-      };
-      logger.debug('Assigning conversation handler', { conversationId, handler, humanAgentId });
-      const response = await fetch(getApiUrl(`/api/conversations/${conversationId}/handler`), {
-        ...defaultFetchOptions(),
-        method: 'PATCH',
-        headers: {
-          ...defaultFetchOptions().headers,
-          'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to assign conversation handler: ${errorText}`);
-      }
-      const result = await response.json();
-      logger.debug('Conversation handler assigned successfully', { conversationId });
-      return result;
-    } catch (error) {
-      logger.error('Error assigning conversation handler', error);
-      throw error;
-    }
   }
 }
 const chatService = new ChatService();
