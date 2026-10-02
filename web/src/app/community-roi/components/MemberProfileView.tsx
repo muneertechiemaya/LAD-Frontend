@@ -339,12 +339,12 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
     <div className="max-w-[1600px] mx-auto space-y-8">
       {/* Navigation & Actions */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack} className="gap-2 text-slate-600 hover:text-slate-900 group">
+        <Button variant="ghost" onClick={onBack} className="gap-2 text-slate-600 hover:text-slate-900 group dark:text-slate-300">
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> Back to Dashboard
         </Button>
         <div className="flex gap-3">
-          <Button variant="outline" size="sm" className="gap-2 rounded-lg border-slate-200 shadow-sm">
-            <Mail className="w-4 h-4 text-slate-500" /> Share Insights
+          <Button variant="outline" size="sm" className="gap-2 rounded-lg border-slate-200 shadow-sm dark:border-slate-700">
+            <Mail className="w-4 h-4 text-slate-500 dark:text-slate-400" /> Share Insights
           </Button>
           <Button
             size="sm"
@@ -400,7 +400,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
         <div className="px-8 -mt-20">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-end bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 shadow-2xl">
             <div className="w-40 h-40 rounded-[2.5rem] bg-gradient-to-br from-white to-slate-100 p-1 shadow-2xl ring-4 ring-white/10">
-              <div className="w-full h-full bg-slate-50 rounded-[2.4rem] flex items-center justify-center text-5xl font-bold text-slate-300">
+              <div className="w-full h-full bg-slate-50 rounded-[2.4rem] flex items-center justify-center text-5xl font-bold text-slate-300 dark:bg-white/5">
                 {member.name.split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
             </div>
@@ -408,20 +408,20 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             <div className="flex-1 pb-2">
               <div className="flex flex-col mb-4">
                 <div className="flex items-center gap-4">
-                  <h1 className="text-4xl font-bold text-slate-900 tracking-tight">{member.name}</h1>
+                  <h1 className="text-4xl font-bold text-slate-900 tracking-tight dark:text-white">{member.name}</h1>
                   <Badge className={`${(kpis?.impactScore || 0) > 500 ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'} font-bold px-4 py-1 rounded-full border-none shadow-lg whitespace-nowrap`}>
                     {(kpis?.impactScore || 0) > 500 ? 'Top Contributor' : 'Active Member'}
                   </Badge>
                   {member.current_streak > 0 && (
-                    <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-600 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse border border-orange-200">
+                    <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse border border-orange-200 dark:text-orange-300">
                       <Flame className="w-4 h-4 fill-orange-500 animate-bounce" />
                       {member.current_streak} Day Streak
                     </div>
                   )}
                 </div>
-                <p className="text-2xl font-semibold text-slate-500 tracking-tight mt-1">({member.company_name || 'BNI Rising Phoenix'})</p>
+                <p className="text-2xl font-semibold text-slate-500 tracking-tight mt-1 dark:text-slate-400">({member.company_name || 'BNI Rising Phoenix'})</p>
               </div>
-              <div className="flex flex-wrap gap-6 text-slate-400 font-medium text-sm">
+              <div className="flex flex-wrap gap-6 text-slate-500 font-medium text-sm dark:text-slate-400">
                 <span className="flex items-center gap-2.5"><Target className="w-4 h-4 text-slate-300" /> {member.designation || 'Member'}</span>
                 <span className="flex items-center gap-2.5"><MapPin className="w-4 h-4 text-slate-300" /> Dubai, UAE</span>
                 <span className="flex items-center gap-2.5"><Mail className="w-4 h-4 text-slate-300" /> {member.email || 'N/A'}</span>
@@ -429,7 +429,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             </div>
 
             <div className="flex gap-4 pb-2">
-              <Button variant="outline" size="icon" className="w-14 h-14 bg-white border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 dark:bg-slate-800 hover:text-slate-900 transition-all shadow-sm">
+              <Button variant="outline" size="icon" className="w-14 h-14 bg-white border-slate-200 text-slate-500 rounded-2xl hover:bg-slate-50 dark:bg-slate-800 hover:text-slate-900 transition-all shadow-sm dark:border-slate-700 dark:text-slate-400 dark:hover:bg-white/5">
                 <ExternalLink className="w-6 h-6" />
               </Button>
               <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all hover:-translate-y-1">
@@ -445,80 +445,80 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
 
         {/* Card 1: Referrals Given OR Unique Partners (if no referrals yet) */}
         {(kpis?.referralsGiven ?? 0) > 0 ? (
-          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all">
-            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 mb-1">
+          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
+            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 mb-1 dark:bg-emerald-500/10">
               <Handshake className="w-6 h-6" />
             </div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Referrals Given</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Referrals Given</span>
             <span className="text-4xl font-bold text-emerald-600">+{kpis?.referralsGiven}</span>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-500 bg-emerald-50/50 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500 bg-emerald-50/50 px-3 py-1 rounded-full">
               <ArrowUpRight className="w-3.5 h-3.5" /> Active Giver
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all">
+          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
             <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 mb-1">
               <Users className="w-6 h-6" />
             </div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Unique Partners</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Partners</span>
             <span className="text-4xl font-bold text-violet-600">{kpis?.uniquePartners ?? 0}</span>
-            <Badge variant="outline" className="text-[10px] font-semibold uppercase px-3 py-0.5 text-slate-400 border-slate-200">1-to-1 Network</Badge>
+            <Badge variant="outline" className="text-xs font-semibold uppercase px-3 py-0.5 text-slate-500 border-slate-200 dark:text-slate-400 dark:border-slate-700">1-to-1 Network</Badge>
           </div>
         )}
 
         {/* Card 2: Meetings Logged (from live interaction data) */}
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all">
-          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 mb-1">
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 mb-1 dark:bg-blue-500/10">
             <MessageSquare className="w-6 h-6" />
           </div>
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Meetings Logged</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Meetings Logged</span>
           <span className="text-4xl font-bold text-blue-600">+{kpis?.meetingsCount ?? 0}</span>
-          <Badge variant="outline" className="text-[10px] font-semibold uppercase px-3 py-0.5 text-slate-400 border-slate-200">Target: 20+</Badge>
+          <Badge variant="outline" className="text-xs font-semibold uppercase px-3 py-0.5 text-slate-500 border-slate-200 dark:text-slate-400 dark:border-slate-700">Target: 20+</Badge>
         </div>
 
         {/* Card 3: Growth Streak */}
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all group">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Growth Streak</span>
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all group dark:bg-[#071131] dark:border-slate-800">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Growth Streak</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-black text-orange-500 italic">{member?.current_streak || 0}</span>
             <Flame className="w-6 h-6 text-orange-500 fill-orange-500 animate-pulse group-hover:scale-125 transition-transform" />
           </div>
           {(member?.current_streak || 0) === 0 ? (
-            <span className="text-[10px] font-bold text-slate-400 uppercase italic">Log a meeting to start</span>
+            <span className="text-xs font-bold text-slate-500 uppercase italic dark:text-slate-400">Log a meeting to start</span>
           ) : (
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Best: {member?.max_streak || 0}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase dark:text-slate-400">Best: {member?.max_streak || 0}</span>
           )}
         </div>
 
         {/* Card 4: Business Value OR Last 1-to-1 date (if value is 0) */}
         {(kpis?.businessValue ?? 0) > 0 ? (
-          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all">
-            <div className="p-2.5 rounded-xl bg-slate-50 text-slate-900 mb-1">
+          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
+            <div className="p-2.5 rounded-xl bg-slate-50 text-slate-900 mb-1 dark:bg-white/5 dark:text-white">
               <TrendingUp className="w-6 h-6" />
             </div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Business Value</span>
-            <span className="text-4xl font-bold text-slate-900">AED {(kpis?.businessValue).toLocaleString()}</span>
-            <span className="text-[11px] font-medium text-slate-400 italic">Net Generated Impact</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Business Value</span>
+            <span className="text-4xl font-bold text-slate-900 dark:text-white">AED {(kpis?.businessValue).toLocaleString()}</span>
+            <span className="text-xs font-medium text-slate-500 italic dark:text-slate-400">Net Generated Impact</span>
           </div>
         ) : (
-          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all">
-            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 mb-1">
+          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
+            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 mb-1 dark:bg-amber-500/10">
               <Calendar className="w-6 h-6" />
             </div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Last 1-to-1</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Last 1-to-1</span>
             {memberStats?.last_meeting_at ? (
               <>
                 <span className="text-2xl font-bold text-amber-600 leading-tight">
                   {format(new Date(memberStats.last_meeting_at), 'MMM d')}
                 </span>
-                <span className="text-[11px] font-medium text-slate-400 italic">
+                <span className="text-xs font-medium text-slate-500 italic dark:text-slate-400">
                   {formatDistanceToNow(new Date(memberStats.last_meeting_at), { addSuffix: true })}
                 </span>
               </>
             ) : (
               <>
                 <span className="text-2xl font-bold text-slate-300 leading-tight">-</span>
-                <span className="text-[11px] font-medium text-slate-400 italic">No meetings yet</span>
+                <span className="text-xs font-medium text-slate-500 italic dark:text-slate-400">No meetings yet</span>
               </>
             )}
           </div>
@@ -529,35 +529,35 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           <div className="p-2.5 rounded-xl bg-white/10 text-blue-100 mb-1">
             <Target className="w-6 h-6" />
           </div>
-          <span className="text-[11px] font-bold text-blue-100/80 uppercase tracking-widest">Total Impact Score</span>
+          <span className="text-xs font-bold text-blue-100/80 uppercase tracking-widest">Total Impact Score</span>
           <span className="text-5xl font-bold text-white tracking-tight">{kpis?.impactScore ?? 0}</span>
-          <div className="text-[11px] font-bold text-blue-200 uppercase tracking-tighter">
+          <div className="text-xs font-bold text-blue-200 uppercase tracking-tighter">
             {(kpis?.impactScore ?? 0) === 0 ? 'Building Profile' : 'Elite Member Status'}
           </div>
         </div>
       </div>
 
       {/* Contribution Report / Heatmap Section */}
-      <Card className="rounded-[2.5rem] border-slate-100 shadow-xl overflow-hidden bg-white">
+      <Card className="rounded-[2.5rem] border-slate-100 shadow-xl overflow-hidden bg-white dark:border-slate-800 dark:bg-[#071131]">
         <CardHeader className="p-8 pb-0 border-none">
           <div className="flex items-start justify-between gap-6">
             {/* Left: title + pills row */}
             <div className="flex flex-col gap-4">
               <div>
-                <CardTitle className="text-3xl font-bold text-slate-900 tracking-tight">Contribution Report</CardTitle>
+                <CardTitle className="text-3xl font-bold text-slate-900 tracking-tight dark:text-white">Contribution Report</CardTitle>
                 {!contributionCollapsed && (
-                  <CardDescription className="text-slate-500 font-medium text-base mt-1">Weekly engagement footprint and revenue impact analysis</CardDescription>
+                  <CardDescription className="text-slate-500 font-medium text-base mt-1 dark:text-slate-400">Weekly engagement footprint and revenue impact analysis</CardDescription>
                 )}
               </div>
               {!contributionCollapsed && (
                 <div className="flex flex-wrap gap-3">
-                  <div className="px-5 py-2.5 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Segment</span>
-                    <span className="text-sm font-bold text-slate-700">All Communities</span>
+                  <div className="px-5 py-2.5 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center gap-3 dark:border-slate-800">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Segment</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">All Communities</span>
                   </div>
-                  <div className="px-5 py-2.5 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Period</span>
-                    <span className="text-sm font-bold text-slate-700">Last 12 Months</span>
+                  <div className="px-5 py-2.5 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center gap-3 dark:border-slate-800">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Period</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Last 12 Months</span>
                   </div>
                 </div>
               )}
@@ -566,7 +566,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             {/* Right: toggle always anchored top-right */}
             <button
               onClick={() => setContributionCollapsed(v => !v)}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-widest"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-widest dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
             >
               {contributionCollapsed
                 ? <><ChevronDown className="w-4 h-4" /> Expand</>
@@ -593,30 +593,30 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           <MemberMessageStatusCard memberName={member.name} memberPhone={member.phone} />
 
           {/* ── Member Intelligence Section ─────────────────────────────── */}
-          <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
-            <CardHeader className="p-6 pb-4 border-b border-slate-50">
+          <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white dark:border-slate-800 dark:bg-[#071131]">
+            <CardHeader className="p-6 pb-4 border-b border-slate-50 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-violet-100 text-violet-600">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-slate-900">Member Intelligence</CardTitle>
-                    <CardDescription className="text-slate-400 text-xs font-medium mt-0.5">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Member Intelligence</CardTitle>
+                    <CardDescription className="text-slate-500 text-xs font-medium mt-0.5 dark:text-slate-400">
                       Latest achievements, posts &amp; company signals
                     </CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {researchData?.cached && (
-                    <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200">
+                    <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200">
                       {researchData.data_age_days != null ? `${researchData.data_age_days}d ago` : 'Cached'}
                     </Badge>
                   )}
                   <button
                     onClick={runResearch}
                     disabled={researchLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors text-xs font-bold text-slate-500 hover:text-slate-800 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors text-xs font-bold text-slate-500 hover:text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
                   >
                     {researchLoading
                       ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Researching…</>
@@ -632,10 +632,10 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
               {researchLoading && !researchData && (
                 <div className="space-y-4 animate-pulse">
                   <div className="grid grid-cols-3 gap-4">
-                    {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-2xl" />)}
+                    {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-2xl dark:bg-white/10" />)}
                   </div>
-                  <div className="h-24 bg-slate-100 rounded-2xl" />
-                  <div className="h-16 bg-slate-100 rounded-2xl" />
+                  <div className="h-24 bg-slate-100 rounded-2xl dark:bg-white/10" />
+                  <div className="h-16 bg-slate-100 rounded-2xl dark:bg-white/10" />
                 </div>
               )}
 
@@ -645,8 +645,8 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   <div className="p-4 rounded-2xl bg-violet-50 text-violet-400">
                     <Sparkles className="w-8 h-8" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-500">Research is loading…</p>
-                  <p className="text-xs text-slate-400">Company intel, social posts and achievements will appear here.</p>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Research is loading…</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Company intel, social posts and achievements will appear here.</p>
                 </div>
               )}
 
@@ -661,8 +661,8 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Industry */}
                         {(cp.industry || cp.sector) && (
-                          <div className="bg-blue-50 rounded-2xl p-4 space-y-1 border border-blue-100/60">
-                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                          <div className="bg-blue-50 rounded-2xl p-4 space-y-1 border border-blue-100/60 dark:bg-blue-500/10">
+                            <p className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
                               <Building2 className="w-3 h-3" /> Industry
                             </p>
                             <p className="text-sm font-bold text-blue-800">{cp.industry || cp.sector}</p>
@@ -670,26 +670,26 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                         )}
                         {/* Employees */}
                         {cp.employee_count && (
-                          <div className="bg-slate-50 rounded-2xl p-4 space-y-1 border border-slate-100">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <div className="bg-slate-50 rounded-2xl p-4 space-y-1 border border-slate-100 dark:bg-white/5 dark:border-slate-800">
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                               <Users className="w-3 h-3" /> Team Size
                             </p>
-                            <p className="text-sm font-bold text-slate-800">{Number(cp.employee_count).toLocaleString()} employees</p>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{Number(cp.employee_count).toLocaleString()} employees</p>
                           </div>
                         )}
                         {/* Founded */}
                         {cp.founded_year && (
-                          <div className="bg-slate-50 rounded-2xl p-4 space-y-1 border border-slate-100">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <div className="bg-slate-50 rounded-2xl p-4 space-y-1 border border-slate-100 dark:bg-white/5 dark:border-slate-800">
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                               <Calendar className="w-3 h-3" /> Founded
                             </p>
-                            <p className="text-sm font-bold text-slate-800">{cp.founded_year}</p>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{cp.founded_year}</p>
                           </div>
                         )}
                         {/* Hiring signal */}
                         {cp.hiring_signals?.is_hiring && (
-                          <div className="bg-emerald-50 rounded-2xl p-4 space-y-1 border border-emerald-100">
-                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Signal</p>
+                          <div className="bg-emerald-50 rounded-2xl p-4 space-y-1 border border-emerald-100 dark:bg-emerald-500/10">
+                            <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">Signal</p>
                             <p className="text-sm font-bold text-emerald-700">🚀 Actively Hiring</p>
                           </div>
                         )}
@@ -699,11 +699,11 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
 
                   {/* ── Company description ──────────────────────────────── */}
                   {(researchData.company_profile?.description || researchData.company_profile?.short_description || researchData.profile_summary?.summary || researchData.profile_summary?.about) && (
-                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 dark:bg-white/5 dark:border-slate-800">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1 dark:text-slate-400">
                         <Building2 className="w-3 h-3" /> About
                       </p>
-                      <p className="text-sm text-slate-700 leading-relaxed">
+                      <p className="text-sm text-slate-700 leading-relaxed dark:text-slate-200">
                         {String(
                           researchData.company_profile?.description ||
                           researchData.company_profile?.short_description ||
@@ -717,16 +717,16 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   {/* ── Recent News ──────────────────────────────────────── */}
                   {Array.isArray(researchData.company_profile?.recent_news) && researchData.company_profile.recent_news.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                         <Newspaper className="w-3 h-3" /> Recent News &amp; Achievements
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {researchData.company_profile.recent_news.slice(0, 4).map((news: any, i: number) => (
-                          <div key={i} className="flex gap-3 bg-white rounded-xl border border-slate-100 p-4 hover:border-slate-200 transition-colors">
-                            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <div key={i} className="flex gap-3 bg-white rounded-xl border border-slate-100 p-4 hover:border-slate-200 transition-colors dark:bg-[#071131] dark:border-slate-800">
+                            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 dark:bg-amber-500/10">
                               <Trophy className="w-4 h-4" />
                             </div>
-                            <p className="text-xs text-slate-700 leading-relaxed line-clamp-3">
+                            <p className="text-xs text-slate-700 leading-relaxed line-clamp-3 dark:text-slate-200">
                               {news.title || news.headline || String(news).slice(0, 120)}
                             </p>
                           </div>
@@ -738,7 +738,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   {/* ── LinkedIn Posts ───────────────────────────────────── */}
                   {Array.isArray(researchData.recent_posts) && researchData.recent_posts.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                         <Zap className="w-3 h-3 text-amber-500" /> Recent Social Posts
                       </p>
                       <div className="space-y-3">
@@ -746,12 +746,12 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                           const text = post.text || post.content || post.body || ''
                           if (!text) return null
                           return (
-                            <div key={i} className="bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-100 p-4 hover:border-violet-100 transition-colors">
+                            <div key={i} className="bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-100 p-4 hover:border-violet-100 transition-colors dark:border-slate-800">
                               <div className="flex items-start gap-3">
-                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-black">
+                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black">
                                   {i + 1}
                                 </div>
-                                <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4">
+                                <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4 dark:text-slate-200">
                                   &quot;{String(text).slice(0, 280)}&quot;
                                 </p>
                               </div>
@@ -766,23 +766,23 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   {researchData.web_presence && Object.keys(researchData.web_presence).length > 0 && (
                     (researchData.web_presence.website || researchData.web_presence.twitter || researchData.web_presence.summary) && (
                       <div className="space-y-3">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                           <ExternalLink className="w-3 h-3" /> Web Presence
                         </p>
                         <div className="flex flex-wrap gap-3">
                           {researchData.web_presence.website && (
-                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600">
+                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 dark:bg-[#071131] dark:border-slate-700 dark:text-slate-300">
                               🌐 {String(researchData.web_presence.website).replace(/^https?:\/\//, '').slice(0, 40)}
                             </div>
                           )}
                           {researchData.web_presence.twitter && (
-                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600">
+                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 dark:bg-[#071131] dark:border-slate-700 dark:text-slate-300">
                               𝕏 {researchData.web_presence.twitter}
                             </div>
                           )}
                         </div>
                         {researchData.web_presence.summary && (
-                          <p className="text-xs text-slate-500 leading-relaxed">
+                          <p className="text-xs text-slate-500 leading-relaxed dark:text-slate-400">
                             {String(researchData.web_presence.summary).slice(0, 250)}
                           </p>
                         )}
@@ -794,7 +794,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   {Array.isArray(researchData.company_profile?.metadata?.next_best_actions) &&
                     researchData.company_profile.metadata.next_best_actions.length > 0 && (
                     <div className="bg-violet-50 rounded-2xl p-5 border border-violet-100 space-y-2">
-                      <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
+                      <p className="text-xs font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" /> Suggested Actions
                       </p>
                       <ul className="space-y-2">
@@ -819,31 +819,31 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
         <div className="lg:col-span-4 space-y-8">
           
           {/* Quick Actions / Bio */}
-          <Card className="rounded-[1.5rem] border-slate-100 shadow-sm">
+          <Card className="rounded-[1.5rem] border-slate-100 shadow-sm dark:border-slate-800">
             <CardContent className="p-8 space-y-6">
               <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Member Insights</h3>
-                <p className="text-slate-600 leading-relaxed text-sm">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 dark:text-white">Member Insights</h3>
+                <p className="text-slate-600 leading-relaxed text-sm dark:text-slate-300">
                   {member.name} is a {kpis?.impactScore && kpis.impactScore > 500 ? 'leading contributor' : 'dedicated member'} within the {member.company_name} ecosystem. 
                   Maintaining a network strength of {kpis?.networkStrength || 0}%, they have generated approximately 
                   AED {(kpis?.businessValue || 0).toLocaleString()} in business value through {kpis?.referralsGiven || 0} referrals.
                 </p>
               </div>
-              <div className="pt-6 border-t border-slate-50 space-y-4">
+              <div className="pt-6 border-t border-slate-50 space-y-4 dark:border-slate-800">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 font-medium">Join Date</span>
-                  <span className="text-slate-900 font-black">{new Date(member.created_at).toLocaleDateString()}</span>
+                  <span className="text-slate-500 font-medium dark:text-slate-400">Join Date</span>
+                  <span className="text-slate-900 font-black dark:text-white">{new Date(member.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 font-medium">Last Interaction</span>
-                  <span className="text-slate-900 font-black">{lastInteractionDate}</span>
+                  <span className="text-slate-500 font-medium dark:text-slate-400">Last Interaction</span>
+                  <span className="text-slate-900 font-black dark:text-white">{lastInteractionDate}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Engagement Feed Component */}
-          <Card className="rounded-[1.5rem] border-slate-100 shadow-sm">
+          <Card className="rounded-[1.5rem] border-slate-100 shadow-sm dark:border-slate-800">
             <CardContent className="p-8">
               <EngagementFeed memberId={memberId} />
             </CardContent>
@@ -878,9 +878,9 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                 <div className="p-1.5 rounded-lg bg-violet-100 text-violet-600">
                   <MessageSquare className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Draft 1-2-1 Message</h3>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest dark:text-white">Draft 1-2-1 Message</h3>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 leading-relaxed dark:text-slate-400">
                 Generate a personalised opener using {member?.name?.split(' ')[0]}&apos;s latest research and company signals.
               </p>
               <Button
@@ -893,13 +893,13 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                 {draftLoading ? 'Drafting…' : researchLoading ? 'Waiting for research…' : 'Draft Message'}
               </Button>
               {draftMessage?.message && (
-                <div className="relative bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap pr-6">
+                <div className="relative bg-white rounded-xl border border-slate-200 p-4 dark:bg-[#071131] dark:border-slate-700">
+                  <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap pr-6 dark:text-slate-200">
                     {draftMessage.message}
                   </p>
                   <button
                     onClick={() => copyToClipboard(draftMessage.message)}
-                    className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 transition-colors"
+                    className="absolute top-3 right-3 text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400"
                     title="Copy to clipboard"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}

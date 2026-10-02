@@ -22,7 +22,7 @@ export default function AnalyticsDashboard() {
   // Show error state
   if (error) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded">
+      <div className="p-6 bg-red-50 border border-red-200 rounded dark:bg-red-500/10">
         <h3 className="text-red-800 font-bold text-lg">Error Loading Data</h3>
         <p className="text-red-600 mt-2">{String(error)}</p>
       </div>
@@ -51,8 +51,8 @@ export default function AnalyticsDashboard() {
   return (
     <div className="space-y-6 p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Community Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-2">Real-time insights into your community network</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Community Analytics Dashboard</h1>
+        <p className="text-gray-600 mt-2 dark:text-slate-300">Real-time insights into your community network</p>
       </div>
 
       {/* KPI Cards Grid */}
@@ -109,32 +109,32 @@ export default function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-orange-900">{density.toFixed(1)}%</div>
-            <p className="text-xs text-orange-600 mt-2">Connection strength</p>
+            <p className="text-xs text-orange-700 mt-2 dark:text-orange-300">Connection strength</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Debug Info Card - Remove this once working */}
-      <Card className="bg-gray-50 border-gray-300">
+      <Card className="bg-gray-50 border-gray-300 dark:bg-white/5">
         <CardHeader>
           <CardTitle className="text-sm">🔍 Debug Information (Check Console for Full Details)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-xs font-mono">
             <div className="flex justify-between">
-              <span className="text-gray-600">Has Data:</span>
+              <span className="text-gray-600 dark:text-slate-300">Has Data:</span>
               <span className="font-bold">{data ? '✅ YES' : '❌ NO'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Has networkBreakdown:</span>
+              <span className="text-gray-600 dark:text-slate-300">Has networkBreakdown:</span>
               <span className="font-bold">{data?.networkBreakdown ? '✅ YES' : '❌ NO'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Has connectivityAnalysis:</span>
+              <span className="text-gray-600 dark:text-slate-300">Has connectivityAnalysis:</span>
               <span className="font-bold">{data?.connectivityAnalysis ? '✅ YES' : '❌ NO'}</span>
             </div>
-            <div className="mt-4 p-3 bg-white rounded border border-gray-200">
-              <p className="text-gray-700 font-semibold mb-2">Raw Data Structure:</p>
+            <div className="mt-4 p-3 bg-white rounded border border-gray-200 dark:bg-[#071131] dark:border-slate-700">
+              <p className="text-gray-700 font-semibold mb-2 dark:text-slate-200">Raw Data Structure:</p>
               <pre className="text-xs overflow-auto max-h-40">
                 {JSON.stringify(data, null, 2)}
               </pre>

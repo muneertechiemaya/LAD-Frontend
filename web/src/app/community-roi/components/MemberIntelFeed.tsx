@@ -202,7 +202,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
   return (
     <div
       ref={cardRef}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+      className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col dark:bg-[#071131] dark:border-slate-800"
     >
       {/* ── Card Header ── */}
       <div className="p-5 flex items-start justify-between gap-3">
@@ -211,23 +211,23 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {initials}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-slate-900 text-sm truncate">{member.name}</p>
-            <p className="text-[11px] text-slate-500 truncate">{member.company_name || '-'}</p>
+            <p className="font-bold text-slate-900 text-sm truncate dark:text-white">{member.name}</p>
+            <p className="text-xs text-slate-500 truncate dark:text-slate-400">{member.company_name || '-'}</p>
             {member.designation && (
-              <p className="text-[10px] text-slate-400 truncate italic">{member.designation}</p>
+              <p className="text-xs text-slate-500 truncate italic dark:text-slate-400">{member.designation}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {intel.cached && intel.status === 'done' && (
-            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">Cached</span>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full dark:bg-emerald-500/10">Cached</span>
           )}
           {(intel.status === 'loading' || intel.status === 'researching') && (
             <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
           )}
           {intel.status === 'idle'  && <Sparkles className="w-4 h-4 text-slate-300" />}
           {intel.status === 'done'  && <Sparkles className="w-4 h-4 text-violet-500" />}
-          {intel.status === 'error' && <span className="text-[9px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full">Error</span>}
+          {intel.status === 'error' && <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full dark:text-rose-300 dark:bg-rose-500/10">Error</span>}
         </div>
       </div>
 
@@ -238,16 +238,16 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
         {intel.status === 'loading' && (
           <div className="space-y-2 animate-pulse">
             <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
-            <div className="h-3 bg-slate-100 rounded w-full" />
-            <div className="h-3 bg-slate-100 rounded w-2/3" />
-            <div className="h-3 bg-slate-100 rounded w-5/6" />
+            <div className="h-3 bg-slate-100 rounded w-full dark:bg-white/10" />
+            <div className="h-3 bg-slate-100 rounded w-2/3 dark:bg-white/10" />
+            <div className="h-3 bg-slate-100 rounded w-5/6 dark:bg-white/10" />
           </div>
         )}
 
         {/* Researching skeleton - running ABM */}
         {intel.status === 'researching' && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[11px] text-violet-500 font-medium">
+            <div className="flex items-center gap-2 text-xs text-violet-500 font-medium">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               Running ABM research…
             </div>
@@ -261,18 +261,18 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
 
         {/* Idle */}
         {intel.status === 'idle' && (
-          <p className="text-[11px] text-slate-400 italic">Loading on scroll…</p>
+          <p className="text-xs text-slate-500 italic dark:text-slate-400">Loading on scroll…</p>
         )}
 
         {/* Error */}
         {intel.status === 'error' && (
           <div className="space-y-1">
             {intel.errorMsg && (
-              <p className="text-[10px] text-rose-400 truncate">{intel.errorMsg}</p>
+              <p className="text-xs text-rose-400 truncate">{intel.errorMsg}</p>
             )}
             <button
               onClick={runResearch}
-              className="text-[11px] text-rose-500 flex items-center gap-1 hover:underline"
+              className="text-xs text-rose-600 flex items-center gap-1 hover:underline dark:text-rose-300"
             >
               <RefreshCw className="w-3 h-3" /> Retry research
             </button>
@@ -285,22 +285,22 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {/* Firmographic badges row */}
             <div className="flex flex-wrap gap-1.5">
               {industry && (
-                <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-100 bg-blue-50 px-2 py-0.5 gap-1">
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-100 bg-blue-50 px-2 py-0.5 gap-1 dark:bg-blue-500/10">
                   <Building2 className="w-2.5 h-2.5" />{industry}
                 </Badge>
               )}
               {hq && (
-                <Badge variant="outline" className="text-[10px] text-slate-500 border-slate-100 px-2 py-0.5 gap-1">
+                <Badge variant="outline" className="text-xs text-slate-500 border-slate-100 px-2 py-0.5 gap-1 dark:text-slate-400 dark:border-slate-800">
                   <MapPin className="w-2.5 h-2.5" />{hq}
                 </Badge>
               )}
               {sizeRange && (
-                <Badge variant="outline" className="text-[10px] text-slate-500 border-slate-100 px-2 py-0.5 gap-1">
+                <Badge variant="outline" className="text-xs text-slate-500 border-slate-100 px-2 py-0.5 gap-1 dark:text-slate-400 dark:border-slate-800">
                   <Users className="w-2.5 h-2.5" />{sizeRange}
                 </Badge>
               )}
               {fundingStage && (
-                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-100 bg-emerald-50 px-2 py-0.5 gap-1">
+                <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-100 bg-emerald-50 px-2 py-0.5 gap-1 dark:bg-emerald-500/10">
                   <DollarSign className="w-2.5 h-2.5" />{fundingStage}
                 </Badge>
               )}
@@ -308,7 +308,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
 
             {/* Company overview */}
             {overview && (
-              <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-4">
+              <p className="text-xs text-slate-600 leading-relaxed line-clamp-4 dark:text-slate-300">
                 {String(overview).slice(0, 280)}
               </p>
             )}
@@ -316,11 +316,11 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {/* Recent funding */}
             {recentFunding.length > 0 && (
               <div className="space-y-1">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                   <DollarSign className="w-3 h-3 text-emerald-500" /> Recent Funding
                 </p>
                 {recentFunding.map((f, i) => (
-                  <p key={i} className="text-[11px] text-slate-600 line-clamp-1">
+                  <p key={i} className="text-xs text-slate-600 line-clamp-1 dark:text-slate-300">
                     💰 {f.title || f.snippet || 'Funding round'}
                   </p>
                 ))}
@@ -330,11 +330,11 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {/* Achievements */}
             {achievements.length > 0 && (
               <div className="space-y-1">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 dark:text-slate-400">
                   <Trophy className="w-3 h-3 text-amber-500" /> Achievements
                 </p>
                 {achievements.map((a, i) => (
-                  <p key={i} className="text-[11px] text-slate-600 line-clamp-1">
+                  <p key={i} className="text-xs text-slate-600 line-clamp-1 dark:text-slate-300">
                     🏆 {typeof a === 'string' ? a : a.title || a.snippet || ''}
                   </p>
                 ))}
@@ -344,24 +344,24 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {/* Top next best action */}
             {topAction && (
               <div className="bg-violet-50 rounded-xl border border-violet-100 p-3 space-y-1">
-                <p className="text-[9px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
+                <p className="text-xs font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Suggested Action
                 </p>
-                <p className="text-[11px] font-semibold text-violet-800 leading-snug">
+                <p className="text-xs font-semibold text-violet-800 leading-snug">
                   {topAction.action}
                 </p>
                 {topAction.rationale && (
-                  <p className="text-[10px] text-violet-600 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-violet-600 leading-relaxed line-clamp-2">
                     {topAction.rationale}
                   </p>
                 )}
                 {topAction.suggested_message_hook && (
-                  <p className="text-[10px] text-violet-500 italic line-clamp-2 border-t border-violet-100 pt-1 mt-1">
+                  <p className="text-xs text-violet-500 italic line-clamp-2 border-t border-violet-100 pt-1 mt-1 dark:border-slate-800">
                     &quot;{topAction.suggested_message_hook}&quot;
                   </p>
                 )}
                 {topAction.channel && (
-                  <span className="inline-flex text-[9px] font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full">
+                  <span className="inline-flex text-xs font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full">
                     via {topAction.channel}
                   </span>
                 )}
@@ -374,7 +374,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
                 href={websiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 transition-colors dark:text-slate-400"
               >
                 <Globe className="w-3 h-3" />
                 <span className="truncate">{websiteUrl.replace(/^https?:\/\//, '')}</span>
@@ -386,10 +386,10 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
         {/* No cached data - prompt user to run research */}
         {intel.status === 'done' && !hasContent && (
           <div className="flex flex-col items-start gap-2 py-1">
-            <p className="text-[11px] text-slate-400 italic">No research data yet.</p>
+            <p className="text-xs text-slate-500 italic dark:text-slate-400">No research data yet.</p>
             <button
               onClick={runResearch}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" /> Run Research
             </button>
@@ -398,23 +398,23 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
       </div>
 
       {/* ── Footer ── */}
-      <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-between">
+      <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-between dark:border-slate-800">
         <button
           onClick={() => onViewProfile(member.id)}
-          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+          className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
         >
           <Users className="w-3.5 h-3.5" /> View Profile
         </button>
 
         {intel.status === 'researching' ? (
-          <span className="text-[10px] text-violet-500 flex items-center gap-1">
+          <span className="text-xs text-violet-500 flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" /> Researching…
           </span>
         ) : intel.status === 'done' && hasContent ? (
           /* Data exists - show Refresh to re-run ABM */
           <button
             onClick={runResearch}
-            className="text-[10px] text-slate-400 hover:text-violet-600 flex items-center gap-1 transition-colors"
+            className="text-xs text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors dark:text-slate-400"
             title="Re-run fresh ABM research"
           >
             <RefreshCw className="w-3 h-3" /> Refresh
@@ -449,13 +449,13 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Member Intelligence</h2>
-            <p className="text-xs text-slate-500 font-medium">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Member Intelligence</h2>
+            <p className="text-xs text-slate-500 font-medium dark:text-slate-400">
               ABM research - company overview, decision makers &amp; next best actions
             </p>
           </div>
         </div>
-        <Badge variant="outline" className="text-[10px] font-bold text-violet-600 border-violet-200 px-3">
+        <Badge variant="outline" className="text-xs font-bold text-violet-600 border-violet-200 px-3">
           {members.length} members
         </Badge>
       </div>
@@ -478,7 +478,7 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
             variant="outline"
             size="sm"
             onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-            className="gap-2 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="gap-2 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-white/5"
           >
             <ChevronDown className="w-4 h-4" />
             Load more ({members.length - visibleCount} remaining)

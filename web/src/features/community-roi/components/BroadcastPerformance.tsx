@@ -120,7 +120,7 @@ const SCOPED_CSS = `
 .lad-bp-table thead th {
   text-align: left;
   font-family: ${FONT_UI};
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -292,7 +292,7 @@ const SCOPED_CSS = `
     display: block;
     margin-bottom: 4px;
     font-family: ${FONT_UI};
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -332,7 +332,7 @@ function EmptyState({ chromeless = false }: { chromeless?: boolean }) {
         <header style={{ marginBottom: 12 }}>
           <div
             style={{
-              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+              fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,
             }}
           >
@@ -398,7 +398,7 @@ export function BroadcastPerformance({
         <header style={{ marginBottom: 12 }}>
           <div
             style={{
-              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+              fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,
             }}
           >
@@ -488,7 +488,7 @@ export function BroadcastPerformance({
                         marginLeft: 8,
                         padding: '2px 8px',
                         borderRadius: 999,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 600,
                         letterSpacing: '0.02em',
                         background: CHANNEL_CHIP[t.channel].bg,

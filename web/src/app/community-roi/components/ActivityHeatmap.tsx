@@ -83,12 +83,12 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
   const getDotStyle = (date: Date): { className: string; style?: React.CSSProperties } => {
     const dateStr = format(date, 'yyyy-MM-dd')
     const dayData = activityMap[dateStr]
-    if (!dayData) return { className: 'bg-slate-50 border-slate-100' }
+    if (!dayData) return { className: 'bg-slate-50 border-slate-100 dark:bg-white/5 dark:border-slate-800' }
 
     const hasMeeting = dayData.meetings > 0
     const hasReferral = dayData.referrals > 0
 
-    if (!hasMeeting && !hasReferral) return { className: 'bg-slate-50 border-slate-100' }
+    if (!hasMeeting && !hasReferral) return { className: 'bg-slate-50 border-slate-100 dark:bg-white/5 dark:border-slate-800' }
 
     if (hasMeeting && hasReferral) {
       return { className: 'border-[#10B981]', style: { backgroundColor: '#10B981' } }
@@ -115,7 +115,7 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
 
               return (
                 <div key={mIdx} className="flex flex-col gap-3 min-w-[100px]">
-                  <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest pl-1">
+                  <span className="text-[11px] font-bold uppercase text-slate-500 tracking-widest pl-1 dark:text-slate-400">
                     {format(month, 'MMM')}
                   </span>
 
@@ -145,9 +145,9 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="flex items-center gap-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">
             <div className="flex items-center gap-1.5">
-              <div className="w-3.5 h-3.5 rounded-sm bg-slate-50 border border-slate-100" />
+              <div className="w-3.5 h-3.5 rounded-sm bg-slate-50 border border-slate-100 dark:bg-white/5 dark:border-slate-800" />
               <span>No activity</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -172,7 +172,7 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
         !isCollapsed && "pt-10 border-t border-slate-100"
       )}>
         <div className="space-y-3">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Unique Meetings</p>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Meetings</p>
           <div className="flex items-center gap-3">
             <span className="text-4xl font-bold text-emerald-600 tracking-tight">
               +{totals.meetings}
@@ -181,25 +181,25 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Unique Referrals Passed</p>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Referrals Passed</p>
           <div className="flex items-center gap-3">
-            <span className="text-4xl font-bold text-rose-500 tracking-tight">
+            <span className="text-4xl font-bold text-rose-600 tracking-tight dark:text-rose-300">
               +{totals.referrals}
             </span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Impact Generated (AED)</p>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Impact Generated (AED)</p>
           <div className="flex items-center gap-3">
-            <span className="text-4xl font-bold text-slate-900 tracking-tight">
+            <span className="text-4xl font-bold text-slate-900 tracking-tight dark:text-white">
               {totals.revenue.toLocaleString()}
             </span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Avg. Monthly Unique Engagements</p>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Avg. Monthly Unique Engagements</p>
           <div className="flex items-center gap-3">
             <span className="text-4xl font-bold text-blue-600 tracking-tight">
               {Math.round(totals.uniqueEngagements / 12)}

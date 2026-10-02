@@ -261,16 +261,16 @@ export const RecommendationPairs: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden dark:bg-[#071131] dark:border-slate-700">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+      <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between cursor-pointer dark:border-slate-800" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center gap-3 flex-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-800"
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-800 dark:hover:bg-white/10 dark:text-slate-300"
             title={isExpanded ? 'Collapse' : 'Expand'}
           >
             <ChevronDown 
@@ -278,8 +278,8 @@ export const RecommendationPairs: React.FC = () => {
             />
           </button>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">1-to-1 Meeting Recommendations</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">1-to-1 Meeting Recommendations</h2>
+            <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
               Each member gets two suggestions a week — one for each coordination day — chosen so nobody is booked twice on a day. Pick a partner per day, then send that day&apos;s slot offers.
             </p>
           </div>
@@ -288,13 +288,13 @@ export const RecommendationPairs: React.FC = () => {
         {/* Controls: week selector + generate button */}
         <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* Week count selector */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-            <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Next</span>
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 dark:bg-white/5 dark:border-slate-700">
+            <span className="text-xs text-slate-500 font-medium whitespace-nowrap dark:text-slate-400">Next</span>
             <select
               value={selectedWeeks}
               onChange={e => setSelectedWeeks(Number(e.target.value))}
               disabled={isGenerating}
-              className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none cursor-pointer disabled:opacity-60"
+              className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none cursor-pointer disabled:opacity-60 dark:text-slate-100"
             >
               {WEEK_OPTIONS.map(n => (
                 <option key={n} value={n}>{n} {n === 1 ? 'week' : 'weeks'}</option>
@@ -318,7 +318,7 @@ export const RecommendationPairs: React.FC = () => {
               onClick={() => setShowMessageSender(true)}
               disabled={isGenerating}
               title="Send an informational template (no slots, no negotiation)"
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 transition-colors"
+              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 transition-colors dark:text-slate-300 dark:bg-white/10"
             >
               Info message
             </button>
@@ -347,7 +347,7 @@ export const RecommendationPairs: React.FC = () => {
           {isLoading && (
             <div className="flex items-center justify-center py-16 gap-3">
               <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
-              <span className="text-sm text-slate-500">Loading recommendations&hellip;</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Loading recommendations&hellip;</span>
             </div>
           )}
 
@@ -355,17 +355,17 @@ export const RecommendationPairs: React.FC = () => {
           {isGenerating && (
             <div className="flex items-center justify-center py-16 gap-3">
               <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
-              <span className="text-sm text-slate-500">Analysing industries and building conflict-free pairs&hellip;</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Analysing industries and building conflict-free pairs&hellip;</span>
             </div>
           )}
 
           {/* Empty state - only after load completes and nothing found */}
           {!isLoading && !isGenerating && (!data || !data.weeks?.length) && (
             <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-3xl">🤝</div>
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-3xl dark:bg-indigo-500/10">🤝</div>
               <div>
-                <p className="text-sm font-semibold text-slate-700">No recommendations yet</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No recommendations yet</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs dark:text-slate-400">
                   Select how many weeks ahead to plan, then click <strong>Generate Recommendations</strong>.
                   Each member gets two 1-to-1 suggestions per week, one for each coordination day.
                 </p>
@@ -378,11 +378,11 @@ export const RecommendationPairs: React.FC = () => {
           <>
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-indigo-50 rounded-xl p-4 text-center">
+              <div className="bg-indigo-50 rounded-xl p-4 text-center dark:bg-indigo-500/10">
                 <p className="text-2xl font-bold text-indigo-700">{data.totalPairs}</p>
                 <p className="text-xs text-indigo-500 font-medium mt-0.5">Total recommendations ({data.weeks?.length} weeks)</p>
               </div>
-              <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <div className="bg-emerald-50 rounded-xl p-4 text-center dark:bg-emerald-500/10">
                 <p className="text-2xl font-bold text-emerald-700">{data.totalMembers}</p>
                 <p className="text-xs text-emerald-500 font-medium mt-0.5">Members with options</p>
               </div>
@@ -403,14 +403,14 @@ export const RecommendationPairs: React.FC = () => {
                   className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     activeWeek === w.week_number
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'
                   }`}
                 >
                   Week {w.week_number}
-                  <span className={`ml-1.5 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-400'}`}>
+                  <span className={`ml-1.5 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>
                     · {getWeekMonday(w.week_number, (w as any).week_start_date)}
                   </span>
-                  <span className={`ml-1 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-400'}`}>
+                  <span className={`ml-1 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>
                     ({w.pairs.length})
                   </span>
                 </button>
@@ -419,18 +419,18 @@ export const RecommendationPairs: React.FC = () => {
 
             {/* Search Filter */}
             <div className="mb-6 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Search members..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 pl-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-4 pl-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700 dark:text-slate-100"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded transition-colors text-slate-500 hover:text-slate-600 dark:text-slate-400"
                   title="Clear search"
                 >
                   <X className="w-4 h-4" />
@@ -442,10 +442,10 @@ export const RecommendationPairs: React.FC = () => {
             {weekData?.pairs?.length ? (
               <div className="flex flex-col gap-2">
                 {pickError && (
-                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pickError}</p>
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 dark:bg-red-500/10">{pickError}</p>
                 )}
                 {notice && (
-                  <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">{notice}</p>
+                  <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 dark:bg-emerald-500/10">{notice}</p>
                 )}
                 {memberRows
                   .filter(({ member }) => member.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -466,7 +466,7 @@ export const RecommendationPairs: React.FC = () => {
                   ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-8">
+              <p className="text-sm text-slate-500 text-center py-8 dark:text-slate-400">
                 {searchQuery ? 'No members match your search.' : 'No options for this week.'}
               </p>
             )}

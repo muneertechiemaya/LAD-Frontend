@@ -158,7 +158,7 @@ export function MemberAvailabilityPanel() {
 
       <CardContent>
         {error && (
-          <div className="mb-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>
+          <div className="mb-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10">{error}</div>
         )}
 
         <div className="grid gap-6 md:grid-cols-[minmax(0,18rem)_1fr]">
@@ -169,11 +169,11 @@ export function MemberAvailabilityPanel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search members…"
-              className="mb-2 w-full rounded-md border border-slate-200 px-3 py-1.5 text-sm"
+              className="mb-2 w-full rounded-md border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700"
             />
-            <div className="max-h-80 overflow-y-auto rounded-md border border-slate-200">
+            <div className="max-h-80 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700">
               {visible.length === 0 && (
-                <p className="px-3 py-6 text-center text-sm text-slate-500">
+                <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
                   {loading ? 'Loading…' : 'No members found'}
                 </p>
               )}
@@ -182,7 +182,7 @@ export function MemberAvailabilityPanel() {
                   key={m.member_id}
                   type="button"
                   onClick={() => select(m)}
-                  className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50 ${
+                  className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50  dark:border-slate-800 dark:hover:bg-white/5 ${
                     m.member_id === selectedId ? 'bg-indigo-50 font-medium' : ''
                   }`}
                 >
@@ -192,7 +192,7 @@ export function MemberAvailabilityPanel() {
                       {m.windows.length}
                     </Badge>
                   ) : (
-                    <span className="shrink-0 text-xs text-slate-400">chapter default</span>
+                    <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">chapter default</span>
                   )}
                 </button>
               ))}
@@ -202,13 +202,13 @@ export function MemberAvailabilityPanel() {
           {/* Editor */}
           <div className="min-w-0">
             {!selected ? (
-              <p className="py-10 text-center text-sm text-slate-500">
+              <p className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 Select a member to set the times they prefer for 1-2-1s.
               </p>
             ) : (
               <>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h4 className="truncate font-medium text-slate-800">{selected.member_name}</h4>
+                  <h4 className="truncate font-medium text-slate-800 dark:text-slate-100">{selected.member_name}</h4>
                   <div className="flex items-center gap-2">
                     {saved && (
                       <span className="flex items-center gap-1 text-xs text-emerald-600">
@@ -223,7 +223,7 @@ export function MemberAvailabilityPanel() {
                 </div>
 
                 {errors.length > 0 && (
-                  <ul className="mb-3 list-disc space-y-0.5 rounded-md bg-amber-50 px-5 py-2 text-sm text-amber-800">
+                  <ul className="mb-3 list-disc space-y-0.5 rounded-md bg-amber-50 px-5 py-2 text-sm text-amber-800 dark:bg-amber-500/10">
                     {errors.map((e) => (
                       <li key={e}>{e}</li>
                     ))}
@@ -232,7 +232,7 @@ export function MemberAvailabilityPanel() {
 
                 <div className="space-y-2">
                   {draft.length === 0 && (
-                    <p className="rounded-md bg-slate-50 px-3 py-4 text-sm text-slate-600">
+                    <p className="rounded-md bg-slate-50 px-3 py-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
                       No windows set — this member is offered the chapter&apos;s default working
                       hours. Add a window to steer the agent toward times they prefer.
                     </p>
@@ -243,7 +243,7 @@ export function MemberAvailabilityPanel() {
                       <select
                         value={w.weekday}
                         onChange={(e) => update(i, { weekday: Number(e.target.value) })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       >
                         {DAYS.map((d) => (
                           <option key={d.value} value={d.value}>
@@ -255,14 +255,14 @@ export function MemberAvailabilityPanel() {
                         type="time"
                         value={toInput(w.start_time)}
                         onChange={(e) => update(i, { start_time: e.target.value })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       />
-                      <span className="text-sm text-slate-400">to</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-400">to</span>
                       <input
                         type="time"
                         value={toInput(w.end_time)}
                         onChange={(e) => update(i, { end_time: e.target.value })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       />
                       <Button
                         variant="ghost"
@@ -270,7 +270,7 @@ export function MemberAvailabilityPanel() {
                         onClick={() => setDraft((d) => d.filter((_, idx) => idx !== i))}
                         aria-label="Remove window"
                       >
-                        <Trash2 className="h-4 w-4 text-slate-400" />
+                        <Trash2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                       </Button>
                     </div>
                   ))}
