@@ -104,7 +104,7 @@ export default function ContributionReport() {
       case 'both':
         return 'bg-green-500'; // Both
       default:
-        return 'bg-gray-100'; // No activity
+        return 'bg-gray-100 dark:bg-white/10'; // No activity
     }
   };
 
@@ -177,7 +177,7 @@ export default function ContributionReport() {
                   return (
                     <div
                       key={`${month}-${week}`}
-                      className={`w-6 h-6 rounded ${item ? getColorForType(item.type) : 'bg-gray-100'}`}
+                      className={`w-6 h-6 rounded ${item ? getColorForType(item.type) : 'bg-gray-100 dark:bg-white/10'}`}
                       title={`${month} Week ${week}: ${item?.type || 'No activity'}`}
                     />
                   );
@@ -229,7 +229,7 @@ export default function ContributionReport() {
           </div>
 
           {/* Unique Referrals - REAL DATA */}
-          <div className="bg-pink-50 border border-pink-200 rounded-lg p-6">
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-6 dark:bg-pink-500/10">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Unique Referrals Passed</p>
             <p className="text-4xl font-bold text-pink-600 dark:text-pink-300">
               {stats.uniqueReferrals > 0 ? `+${stats.uniqueReferrals}` : '0'}

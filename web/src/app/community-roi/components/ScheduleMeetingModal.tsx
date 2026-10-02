@@ -460,7 +460,7 @@ export default function ScheduleMeetingModal({
 
           {/* Conflict status */}
           {(checkingConflicts || conflicts.length > 0) && (
-            <div className={`rounded-xl p-4 border ${conflicts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-100'}`}>
+            <div className={`rounded-xl p-4 border ${conflicts.length > 0 ? 'bg-red-50 border-red-200 dark:bg-red-500/10' : 'bg-blue-50 border-blue-100 dark:bg-blue-500/10'}`}>
               {checkingConflicts ? (
                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300">
                   <Loader2 className="w-4 h-4 animate-spin" />

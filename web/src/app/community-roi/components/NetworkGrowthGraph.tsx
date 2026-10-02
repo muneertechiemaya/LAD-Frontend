@@ -435,7 +435,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         const dMeet = prev ? delta(w.uniqueMeetings, prev.uniqueMeetings) : null
                         const dRef  = prev ? delta(w.uniqueReferrals, prev.uniqueReferrals) : null
                         const dMem  = prev ? delta(w.activeMembers, prev.activeMembers) : null
-                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-700' : 'text-slate-300')
+                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-slate-300')
                         const signTxt = (n: number) => `${n > 0 ? '+' : ''}${n}`
                         return (
                           <tr key={w.month} className="hover:bg-slate-50 transition-colors dark:hover:bg-white/5">

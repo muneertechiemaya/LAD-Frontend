@@ -51,9 +51,9 @@ const STATUS_TABS: Array<{ key: StatusFilter; label: string }> = [
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 dark:text-amber-300',
-  approved: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
-  rejected: 'bg-rose-100 text-rose-700 dark:text-rose-300',
+  pending: 'bg-amber-100 text-amber-700 dark:text-amber-300 dark:bg-amber-500/15',
+  approved: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300 dark:bg-emerald-500/15',
+  rejected: 'bg-rose-100 text-rose-700 dark:text-rose-300 dark:bg-rose-500/15',
 };
 
 export function VerificationClaimsPanel() {
@@ -128,7 +128,7 @@ export function VerificationClaimsPanel() {
           <ShieldCheck className="w-5 h-5 text-indigo-500" />
           <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">1-2-1 Verification Claims</CardTitle>
           {(counts.pending || 0) > 0 && (
-            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs font-semibold ml-1 dark:text-amber-300">
+            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs font-semibold ml-1 dark:text-amber-300 dark:bg-amber-500/15">
               {counts.pending} to review
             </Badge>
           )}
@@ -159,7 +159,7 @@ export function VerificationClaimsPanel() {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'
               }`}
             >
-              {t.label} <span className="opacity-60">({counts[t.key] || 0})</span>
+              {t.label} <span className="font-normal">({counts[t.key] || 0})</span>
             </button>
           ))}
         </div>

@@ -76,7 +76,7 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
   if (error) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="text-sm text-red-700">Error: {error}</div>
+        <div className="text-sm text-red-700 dark:text-red-300">Error: {error}</div>
       </div>
     );
   }

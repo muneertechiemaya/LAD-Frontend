@@ -32,7 +32,7 @@ export default function AnalyticsDashboard() {
   // Show no data state
   if (!data) {
     return (
-      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded">
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded dark:bg-yellow-500/10">
         <h3 className="text-yellow-800 font-bold text-lg">No Data Available</h3>
         <p className="text-yellow-600 mt-2 dark:text-yellow-300">The API returned no analytics data.</p>
       </div>

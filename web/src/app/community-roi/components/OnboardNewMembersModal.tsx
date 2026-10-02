@@ -237,7 +237,7 @@ export default function OnboardNewMembersModal({
                         key={originalIndex}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-blue-50 border-blue-300'
+                            ? 'bg-blue-50 border-blue-300 dark:bg-blue-500/10'
                             : 'bg-white border-gray-200 hover:border-gray-300 dark:bg-[#071131] dark:border-slate-700'
                         }`}
                         onClick={() => handleToggleSelect(originalIndex)}

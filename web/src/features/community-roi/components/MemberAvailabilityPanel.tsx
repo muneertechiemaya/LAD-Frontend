@@ -183,7 +183,7 @@ export function MemberAvailabilityPanel() {
                   type="button"
                   onClick={() => select(m)}
                   className={`max-lg:min-h-11 flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50  dark:border-slate-800 dark:hover:bg-white/5 ${
-                    m.member_id === selectedId ? 'bg-indigo-50 font-medium' : ''
+                    m.member_id === selectedId ? 'bg-indigo-50 font-medium dark:bg-indigo-500/10' : ''
                   }`}
                 >
                   <span className="truncate">{m.member_name}</span>

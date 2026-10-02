@@ -372,7 +372,7 @@ function FailedRecipientsButton({
 function highlightBody(body: string): React.ReactNode[] {
   return body.split(/(\{\{[^}]+\}\})/).map((part, i) =>
     /^\{\{[^}]+\}\}$/.test(part)
-      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs dark:text-indigo-300">{part}</span>
+      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs dark:text-indigo-300 dark:bg-indigo-500/15">{part}</span>
       : <span key={i}>{part}</span>
   );
 }
@@ -381,11 +381,11 @@ const displayName = (key: string) =>
   key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 const statusColor = (s: string, qualityPending?: boolean) => {
-  if (qualityPending)   return 'bg-amber-100 text-amber-700 dark:text-amber-300';
-  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700 dark:text-green-300';
-  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700 dark:text-yellow-300';
-  if (s === 'REJECTED') return 'bg-red-100 text-red-700 dark:text-red-300';
-  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700 dark:text-orange-300';
+  if (qualityPending)   return 'bg-amber-100 text-amber-700 dark:text-amber-300 dark:bg-amber-500/15';
+  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-500/15';
+  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700 dark:text-yellow-300 dark:bg-yellow-500/15';
+  if (s === 'REJECTED') return 'bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-500/15';
+  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700 dark:text-orange-300 dark:bg-orange-500/15';
   return 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400';
 };
 
@@ -680,7 +680,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     onClick={() => setSelectedTemplate(t)}
                     className={`max-lg:min-h-11 w-full text-left p-4 border rounded-xl transition ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                        ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:bg-indigo-500/10'
                         : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5'
                     }`}
                   >
@@ -838,7 +838,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               return (
                 <div key={i} className="p-4 border border-slate-200 rounded-xl bg-white dark:border-slate-700 dark:bg-[#071131]">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold dark:text-indigo-300">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold dark:text-indigo-300 dark:bg-indigo-500/15">
                       {`{{${paramNum}}}`}
                     </span>
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Parameter {paramNum}</span>

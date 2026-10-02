@@ -98,7 +98,7 @@ export default function NetworkStatsPanel() {
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-500/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Referrals</span>
-                <Badge variant="outline" className="bg-blue-100">{stats?.total_referrals || 0}</Badge>
+                <Badge variant="outline" className="bg-blue-100 dark:bg-blue-500/15">{stats?.total_referrals || 0}</Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300">Referrals made between members</p>
             </div>
@@ -106,7 +106,7 @@ export default function NetworkStatsPanel() {
             <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 dark:bg-purple-500/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Total Business Value</span>
-                <Badge variant="outline" className="bg-purple-100">
+                <Badge variant="outline" className="bg-purple-100 dark:bg-purple-500/15">
                   AED {stats?.total_business_aed?.toFixed(2) || 0}
                 </Badge>
               </div>
@@ -124,7 +124,7 @@ export default function NetworkStatsPanel() {
             <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 dark:bg-orange-500/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Avg Strength Score</span>
-                <Badge variant="outline" className="bg-orange-100">
+                <Badge variant="outline" className="bg-orange-100 dark:bg-orange-500/15">
                   {stats?.average_relationship_strength?.toFixed(1) || 0}/100
                 </Badge>
               </div>
@@ -139,17 +139,17 @@ export default function NetworkStatsPanel() {
             <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 dark:bg-emerald-500/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Max Engagement Score</span>
-                <Badge variant="outline" className="bg-emerald-100">
+                <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-500/15">
                   {stats?.maxEngagementScore?.toFixed(1) || 0}/100
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300">Highest engagement in network</p>
             </div>
 
-            <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+            <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200 dark:bg-cyan-500/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Min Engagement Score</span>
-                <Badge variant="outline" className="bg-cyan-100">
+                <Badge variant="outline" className="bg-cyan-100 dark:bg-cyan-500/15">
                   {stats?.minEngagementScore?.toFixed(1) || 0}/100
                 </Badge>
               </div>
