@@ -206,6 +206,21 @@ const SMART_REPLIES: Record<string, string[]> = {
   proposal: ['Looks good to me!', 'I have a few questions', "Let's discuss further"],
 };
 
+/**
+ * Plain text for a forward quote. The pane renders body_html, but a forward is
+ * composed in a textarea, so the markup has to come out first.
+ */
+function htmlToText(html?: string | null): string {
+  if (!html) return '';
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<br\s*\/?>|<\/p>|<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean).join('\n');
+}
+
 function getSmartReplies(subject: string): string[] {
   const l = subject.toLowerCase();
   if (l.includes('inquiry') || l.includes('request')) return SMART_REPLIES.inquiry;
@@ -1367,9 +1382,11 @@ function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup 
 // EmailComposePanel - email thread + reply box
 // ─────────────────────────────────────────────────────────────────────────────
 
-function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBack, onSentSuccess, onForward }: {
+function EmailComposePanel({ contact, provider, connectedEmail, onShowDetails, showDetails, onBack, onSentSuccess, onForward }: {
   contact: EmailContact;
   provider: EmailProvider;
+  /** The mailbox we send from - the From address on an outbound message. */
+  connectedEmail?: string;
   onShowDetails: () => void;
   showDetails: boolean;
   onBack: () => void;
@@ -1398,6 +1415,19 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const providerLabel = PROVIDER_LABEL[provider];
   const emailDetails = getEmailDetails(contact);
   const smartReplies = getSmartReplies(emailDetails.subject);
+
+  // The header and body below describe ONE message: the newest in the thread.
+  // `emailDetails` comes from the contact row's rolled-up summary, whose
+  // `last_preview` is the mirror's `preview_text` - 200 characters, cut
+  // mid-word. The full body is already in `messages`, so prefer it and keep
+  // the summary only for the moment before the thread arrives.
+  // The API returns sent_at ASC, but don't rely on the server's ordering.
+  const latestMessage = useMemo<EmailMessage | null>(() => (
+    messages.length
+      ? messages.reduce((a, b) => (new Date(b.sent_at).getTime() >= new Date(a.sent_at).getTime() ? b : a))
+      : null
+  ), [messages]);
+  const latestIsOutbound = latestMessage?.direction === 'outbound';
 
   const loadThread = useCallback(async () => {
     if (!contact.id) return;
@@ -1534,7 +1564,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const handleForward = () => {
     onForward?.({
       subject: `Fwd: ${emailDetails.subject}`,
-      body: `\n\n---------- Forwarded message ----------\nFrom: ${contact.contact_name ?? contact.email}\nSubject: ${emailDetails.subject}\n\n${emailDetails.snippet}`,
+      body: `\n\n---------- Forwarded message ----------\nFrom: ${contact.contact_name ?? contact.email}\nSubject: ${emailDetails.subject}\n\n${htmlToText(latestMessage?.body_html) || emailDetails.snippet}`,
     });
   };
 
@@ -1603,14 +1633,24 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
         <div className="px-4 sm:px-8 py-6">
           {/* Sender row */}
           <div className="flex items-start gap-3">
-            <Avatar name={contact.contact_name} id={contact.id} size="md" />
+            <Avatar
+              name={latestIsOutbound ? (connectedEmail ?? 'You') : contact.contact_name}
+              id={contact.id}
+              size="md"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm text-[#202124] dark:text-[#e8eaed]">{contact.contact_name ?? 'Unknown'}</span>
-                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">&lt;{contact.email}&gt;</span>
+                <span className="font-semibold text-sm text-[#202124] dark:text-[#e8eaed]">
+                  {latestIsOutbound ? 'You' : (contact.contact_name ?? 'Unknown')}
+                </span>
+                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+                  &lt;{latestIsOutbound ? (connectedEmail ?? 'me') : contact.email}&gt;
+                </span>
                 <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] ml-auto whitespace-nowrap flex-shrink-0">{emailDetails.date}</span>
               </div>
-              <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">to me ▾</p>
+              <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">
+                to {latestIsOutbound ? (contact.contact_name ?? contact.email) : 'me'} ▾
+              </p>
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <button title="Star" aria-label="Star this email"
@@ -1629,9 +1669,20 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
             </div>
           </div>
 
-          {/* Email body */}
-          <div className="mt-5 ml-12 text-sm text-[#202124] dark:text-[#e8eaed] leading-relaxed whitespace-pre-wrap">
-            {emailDetails.snippet}
+          {/* Email body - the stored body_html, never the 200-char preview */}
+          <div className="mt-5 ml-12 text-sm text-[#202124] dark:text-[#e8eaed] leading-relaxed">
+            {latestMessage?.body_html
+              ? <div
+                className="prose prose-sm max-w-none text-sm dark:prose-invert"
+                // sanitizeHtml strips dangerous content - replace with DOMPurify.sanitize() in production
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(latestMessage.body_html) }}
+              />
+              : <div className="whitespace-pre-wrap">
+                {latestMessage?.preview_text || emailDetails.snippet}
+                {loadingThread && !latestMessage && (
+                  <span className="ml-2 text-xs text-[#5f6368] dark:text-[#9aa0a6] italic">loading…</span>
+                )}
+              </div>}
           </div>
 
           {/* Smart reply chips */}
@@ -3106,6 +3157,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               <EmailComposePanel
                 contact={activeContact}
                 provider={provider}
+                connectedEmail={connectedEmail}
                 showDetails={showDetails}
                 onShowDetails={() => setShowDetails(v => !v)}
                 onBack={() => setActiveContact(null)}
