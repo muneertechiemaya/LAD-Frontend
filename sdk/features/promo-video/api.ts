@@ -45,6 +45,7 @@ export async function startPromoVideo(input: StartPromoVideoInput): Promise<Star
   if (input.ctaLabel) form.append('cta_label', input.ctaLabel);
   if (input.ctaUrl) form.append('cta_url', input.ctaUrl);
   if (input.writer) form.append('writer', input.writer);
+  if (input.style) form.append('style', input.style);
   form.append('voice', input.narration ? 'default' : 'none');
   for (const shot of input.screenshots) {
     form.append('screenshots', shot.file, shot.file.name);
