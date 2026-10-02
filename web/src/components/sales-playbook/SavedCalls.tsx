@@ -81,7 +81,7 @@ export default function SavedCalls() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search prospect or company" aria-label="Search saved calls"
-            className="w-64 rounded-md border border-border bg-background py-1.5 pl-8 pr-3 text-sm focus:border-primary focus:outline-none"
+            className="w-64 max-lg:min-h-11 rounded-md border border-border bg-background py-1.5 pl-8 pr-3 text-sm focus:border-primary focus:outline-none"
           />
         </div>
         <button type="button" onClick={exportCsv} disabled={!rows.length}

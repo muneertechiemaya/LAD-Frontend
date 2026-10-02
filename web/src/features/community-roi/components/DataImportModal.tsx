@@ -416,7 +416,7 @@ export function DataImportModal() {
 
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" />
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
@@ -505,7 +505,7 @@ export function DataImportModal() {
           {/* ── Non-select errors ── */}
           {error && step !== 'select' && (
             <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" />
               <div className="text-sm text-red-700">
                 <p className="font-medium">Import failed</p>
                 <p className="text-xs mt-1">{error}</p>

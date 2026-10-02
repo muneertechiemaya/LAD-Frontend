@@ -364,7 +364,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             variant="outline"
             onClick={() => setShowDeleteDialog(true)}
             disabled={isDeleting}
-            className="gap-2 rounded-lg border-red-200 text-red-600 hover:bg-red-50 shadow-sm"
+            className="gap-2 rounded-lg border-red-200 text-red-600 hover:bg-red-50 shadow-sm dark:text-red-300"
           >
             {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             {isDeleting ? 'Deleting...' : 'Remove Member'}
@@ -566,7 +566,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             {/* Right: toggle always anchored top-right */}
             <button
               onClick={() => setContributionCollapsed(v => !v)}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-widest dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
+              className="max-lg:min-h-11 flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-widest dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
             >
               {contributionCollapsed
                 ? <><ChevronDown className="w-4 h-4" /> Expand</>
@@ -616,7 +616,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   <button
                     onClick={runResearch}
                     disabled={researchLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors text-xs font-bold text-slate-500 hover:text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
+                    className="max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors text-xs font-bold text-slate-500 hover:text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-white/10 dark:text-slate-400"
                   >
                     {researchLoading
                       ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Researching…</>
@@ -899,7 +899,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   </p>
                   <button
                     onClick={() => copyToClipboard(draftMessage.message)}
-                    className="absolute top-3 right-3 text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400"
+                    className="max-lg:min-h-11 absolute top-3 right-3 text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400"
                     title="Copy to clipboard"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}

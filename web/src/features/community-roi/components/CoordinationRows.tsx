@@ -155,7 +155,7 @@ const DayRow: React.FC<DayRowProps> = ({
         disabled={saving || locked}
         onChange={(e) => onPick(e.target.value || null)}
         title={locked ? 'Already coordinated — the members have the message' : undefined}
-        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed dark:bg-[#071131] dark:border-slate-700 dark:text-slate-100"
+        className="max-lg:min-h-11 flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed dark:bg-[#071131] dark:border-slate-700 dark:text-slate-100"
       >
         <option value="">— no meeting this day —</option>
         {options.map((m) => {
@@ -179,7 +179,7 @@ const DayRow: React.FC<DayRowProps> = ({
           onClick={onCoordinate}
           disabled={saving || coordinating}
           title={`Send ${member.name} the ${DAY_LABEL[day]} slot offer now — only this pair is messaged`}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500/10"
+          className="max-lg:min-h-11 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500/10"
         >
           <Send className="w-3 h-3" /> {coordinating ? 'Sending…' : selection?.status === 'failed' ? 'Retry' : 'Coordinate'}
         </button>
@@ -287,7 +287,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
         <div className="flex gap-2 mt-4">
           {DAY_SLOTS.map((d) => (
             <button key={d} onClick={() => pickDay(d)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${day === d ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
+              className={`max-lg:min-h-11 px-3 py-1.5 rounded-lg text-sm font-semibold ${day === d ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
               {DAY_LABEL[d]} <span className="opacity-70 text-xs">· {generatedCount[d] ?? 0} pairs</span>
             </button>
           ))}
@@ -302,7 +302,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
         {/* Step 1 — seed */}
         {!seedResult && !sendResult && (
           <button onClick={doSeed} disabled={isSeeding}
-            className="mt-4 w-full px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60">
+            className="max-lg:min-h-11 mt-4 w-full px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60">
             {isSeeding ? 'Preparing…' : `Prepare ${DAY_LABEL[day]} — turn generated pairs into selections`}
           </button>
         )}
@@ -324,7 +324,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
               This will message <strong>{pending + failed + seedResult.created}</strong> member{pending + failed + seedResult.created === 1 ? '' : 's'} on WhatsApp. Already-sent pairs are not re-sent; pairs whose message never arrived are.
             </p>
             <button onClick={doSend} disabled={isSending}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60">
+              className="max-lg:min-h-11 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60">
               <Send className="w-4 h-4" /> {isSending ? 'Sending…' : `Send ${DAY_LABEL[day]} slot offers`}
             </button>
           </div>
@@ -346,7 +346,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-white/10">
+          <button onClick={onClose} className="max-lg:min-h-11 px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-white/10">
             {sendResult ? 'Done' : 'Cancel'}
           </button>
         </div>

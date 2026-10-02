@@ -124,7 +124,7 @@ export default function ContributionReport() {
             <select
               value={segment}
               onChange={(e) => setSegment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
+              className="max-lg:min-h-11 px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
             >
               <option>All Communities</option>
               <option>Community A</option>
@@ -136,7 +136,7 @@ export default function ContributionReport() {
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
+              className="max-lg:min-h-11 px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
             >
               <option>Last 12 Months</option>
               <option>Last 6 Months</option>
@@ -216,7 +216,7 @@ export default function ContributionReport() {
         </div>
       ) : error ? (
         <div className="text-center py-8 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600 dark:text-red-300">{error}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

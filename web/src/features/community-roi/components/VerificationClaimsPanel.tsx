@@ -134,7 +134,7 @@ export function VerificationClaimsPanel() {
           )}
           <button
             onClick={() => fetchData(filter)}
-            className="ml-auto text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400"
+            className="max-lg:min-h-11 max-lg:min-w-11 inline-flex items-center justify-center ml-auto text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -153,7 +153,7 @@ export function VerificationClaimsPanel() {
             <button
               key={t.key}
               onClick={() => setFilter(t.key)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              className={`max-lg:min-h-11 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                 filter === t.key
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'

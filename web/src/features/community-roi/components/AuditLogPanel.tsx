@@ -101,7 +101,7 @@ export function AuditLogPanel() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilter('')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              className={`max-lg:min-h-11 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                 filter === '' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'
               }`}
             >
@@ -111,7 +111,7 @@ export function AuditLogPanel() {
               <button
                 key={s.action}
                 onClick={() => setFilter(s.action === filter ? '' : s.action)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                className={`max-lg:min-h-11 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                   filter === s.action ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300'
                 }`}
               >

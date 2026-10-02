@@ -158,7 +158,7 @@ export function MemberAvailabilityPanel() {
 
       <CardContent>
         {error && (
-          <div className="mb-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10">{error}</div>
+          <div className="mb-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{error}</div>
         )}
 
         <div className="grid gap-6 md:grid-cols-[minmax(0,18rem)_1fr]">
@@ -169,7 +169,7 @@ export function MemberAvailabilityPanel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search members…"
-              className="mb-2 w-full rounded-md border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700"
+              className="max-lg:min-h-11 mb-2 w-full rounded-md border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700"
             />
             <div className="max-h-80 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700">
               {visible.length === 0 && (
@@ -182,7 +182,7 @@ export function MemberAvailabilityPanel() {
                   key={m.member_id}
                   type="button"
                   onClick={() => select(m)}
-                  className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50  dark:border-slate-800 dark:hover:bg-white/5 ${
+                  className={`max-lg:min-h-11 flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50  dark:border-slate-800 dark:hover:bg-white/5 ${
                     m.member_id === selectedId ? 'bg-indigo-50 font-medium' : ''
                   }`}
                 >
@@ -243,7 +243,7 @@ export function MemberAvailabilityPanel() {
                       <select
                         value={w.weekday}
                         onChange={(e) => update(i, { weekday: Number(e.target.value) })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
+                        className="max-lg:min-h-11 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       >
                         {DAYS.map((d) => (
                           <option key={d.value} value={d.value}>
@@ -255,14 +255,14 @@ export function MemberAvailabilityPanel() {
                         type="time"
                         value={toInput(w.start_time)}
                         onChange={(e) => update(i, { start_time: e.target.value })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
+                        className="max-lg:min-h-11 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       />
                       <span className="text-sm text-slate-500 dark:text-slate-400">to</span>
                       <input
                         type="time"
                         value={toInput(w.end_time)}
                         onChange={(e) => update(i, { end_time: e.target.value })}
-                        className="rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
+                        className="max-lg:min-h-11 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700"
                       />
                       <Button
                         variant="ghost"

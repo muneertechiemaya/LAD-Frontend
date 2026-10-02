@@ -272,7 +272,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             )}
             <button
               onClick={runResearch}
-              className="text-xs text-rose-600 flex items-center gap-1 hover:underline dark:text-rose-300"
+              className="max-lg:min-h-11 text-xs text-rose-600 flex items-center gap-1 hover:underline dark:text-rose-300"
             >
               <RefreshCw className="w-3 h-3" /> Retry research
             </button>
@@ -389,7 +389,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             <p className="text-xs text-slate-500 italic dark:text-slate-400">No research data yet.</p>
             <button
               onClick={runResearch}
-              className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="max-lg:min-h-11 flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" /> Run Research
             </button>
@@ -401,7 +401,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
       <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-between dark:border-slate-800">
         <button
           onClick={() => onViewProfile(member.id)}
-          className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+          className="max-lg:min-h-11 text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
         >
           <Users className="w-3.5 h-3.5" /> View Profile
         </button>
@@ -414,7 +414,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
           /* Data exists - show Refresh to re-run ABM */
           <button
             onClick={runResearch}
-            className="text-xs text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors dark:text-slate-400"
+            className="max-lg:min-h-11 text-xs text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors dark:text-slate-400"
             title="Re-run fresh ABM research"
           >
             <RefreshCw className="w-3 h-3" /> Refresh

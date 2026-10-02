@@ -139,7 +139,7 @@ const Legend: React.FC<LegendProps> = ({ selectedMember, breakdownData, onClearS
           </div>
           <button
             onClick={onClearSelection}
-            className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors dark:text-slate-300 dark:hover:bg-white/10"
+            className="max-lg:min-h-11 px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors dark:text-slate-300 dark:hover:bg-white/10"
           >
             Clear
           </button>
@@ -328,7 +328,7 @@ export const RelationshipHeatmap: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-800 mb-4 dark:text-slate-100">Relationship Matrix</h2>
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-500/10">
-          <p className="text-sm text-red-600">{error?.message ?? 'Failed to load heatmap data.'}</p>
+          <p className="text-sm text-red-600 dark:text-red-300">{error?.message ?? 'Failed to load heatmap data.'}</p>
         </div>
       </div>
     );
