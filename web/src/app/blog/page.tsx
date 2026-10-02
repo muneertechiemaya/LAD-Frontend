@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import type { Metadata } from 'next';
+import { BlogUnavailable, logBlogQueryFailure } from './_components/BlogUnavailable';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -19,8 +20,8 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
-export default async function BlogIndexPage() {
-  const posts = await prisma.blogPost.findMany({
+async function loadPublishedPosts() {
+  return prisma.blogPost.findMany({
     where: { published: true },
     orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
     select: {
@@ -35,6 +36,16 @@ export default async function BlogIndexPage() {
       createdAt: true,
     },
   });
+}
+
+export default async function BlogIndexPage() {
+  // null = the query failed (DB down / bad creds), distinct from [] = no posts.
+  let posts: Awaited<ReturnType<typeof loadPublishedPosts>> | null = null;
+  try {
+    posts = await loadPublishedPosts();
+  } catch (error) {
+    logBlogQueryFailure('Blog index query', error);
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -54,7 +65,9 @@ export default async function BlogIndexPage() {
       </section>
 
       <section className="container mx-auto px-4 py-16 max-w-5xl">
-        {posts.length === 0 ? (
+        {posts === null ? (
+          <BlogUnavailable retryHref="/blog" />
+        ) : posts.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg">No posts yet. Check back soon.</p>
           </div>
