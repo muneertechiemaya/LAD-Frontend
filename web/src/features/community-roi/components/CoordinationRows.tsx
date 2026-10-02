@@ -37,7 +37,7 @@ function avatarColor(name: string): string {
 
 const Avatar: React.FC<{ name: string; size?: 'sm' | 'md' }> = ({ name, size = 'md' }) => (
   <div
-    className={`rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${size === 'sm' ? 'w-8 h-8 text-[10px]' : 'w-10 h-10 text-[11px]'}`}
+    className={`rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-xs'}`}
     style={{ backgroundColor: avatarColor(name) }}
     title={name}
   >
@@ -48,7 +48,7 @@ const Avatar: React.FC<{ name: string; size?: 'sm' | 'md' }> = ({ name, size = '
 const IndustryTag: React.FC<{ industry?: string }> = ({ industry }) => {
   if (!industry) return null;
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium truncate max-w-[120px]">
+    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium truncate max-w-[120px] dark:bg-white/10 dark:text-slate-400">
       {industry}
     </span>
   );
@@ -102,7 +102,7 @@ export function partnerOf(sel: CoordinationSelection, memberId: string): { id: s
 const StatusChip: React.FC<{ sel?: CoordinationSelection }> = ({ sel }) => {
   if (!sel) return null;
   const map: Record<CoordinationSelection['status'], { icon: typeof Clock; cls: string; text: string }> = {
-    pending: { icon: Clock, cls: 'text-slate-500 bg-slate-100', text: 'selected' },
+    pending: { icon: Clock, cls: 'text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-white/10', text: 'selected' },
     sent:    { icon: CheckCircle2, cls: 'text-emerald-700 bg-emerald-50', text: 'sent' },
     skipped: { icon: AlertTriangle, cls: 'text-amber-700 bg-amber-50', text: `skipped${sel.skip_reason ? ` · ${sel.skip_reason}` : ''}` },
     failed:  { icon: XCircle, cls: 'text-red-700 bg-red-50', text: `failed${sel.skip_reason ? ` · ${sel.skip_reason}` : ''}` },
@@ -110,7 +110,7 @@ const StatusChip: React.FC<{ sel?: CoordinationSelection }> = ({ sel }) => {
   const m = map[sel.status] ?? map.pending;
   const Icon = m.icon;
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${m.cls}`} title={m.text}>
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded ${m.cls}`} title={m.text}>
       <Icon className="w-3 h-3" /> {m.text}
     </span>
   );
@@ -149,13 +149,13 @@ const DayRow: React.FC<DayRowProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] font-bold text-slate-500 w-20 flex-shrink-0">{DAY_LABEL[day]}</span>
+      <span className="text-xs font-bold text-slate-500 w-20 flex-shrink-0 dark:text-slate-400">{DAY_LABEL[day]}</span>
       <select
         value={current}
         disabled={saving || locked}
         onChange={(e) => onPick(e.target.value || null)}
         title={locked ? 'Already coordinated — the members have the message' : undefined}
-        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed"
+        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed dark:bg-[#071131] dark:border-slate-700 dark:text-slate-100"
       >
         <option value="">— no meeting this day —</option>
         {options.map((m) => {
@@ -179,7 +179,7 @@ const DayRow: React.FC<DayRowProps> = ({
           onClick={onCoordinate}
           disabled={saving || coordinating}
           title={`Send ${member.name} the ${DAY_LABEL[day]} slot offer now — only this pair is messaged`}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500/10"
         >
           <Send className="w-3 h-3" /> {coordinating ? 'Sending…' : selection?.status === 'failed' ? 'Retry' : 'Coordinate'}
         </button>
@@ -205,12 +205,12 @@ export interface MemberCoordinationCardProps {
 export const MemberCoordinationCard: React.FC<MemberCoordinationCardProps> = ({
   index, member, generatedByDay, selections, takenByDay, allMembers, saving, coordinatingDay, onPick, onCoordinate,
 }) => (
-  <div className="flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all">
+  <div className="flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all dark:bg-[#071131] dark:border-slate-800">
     <span className="text-xs font-bold text-slate-300 w-5 flex-shrink-0 text-center pt-2">{index + 1}</span>
     <div className="flex items-center gap-2 flex-shrink-0 min-w-[180px] pt-0.5">
       <Avatar name={member.name} />
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-800 truncate">{member.name}</p>
+        <p className="text-sm font-semibold text-slate-800 truncate dark:text-slate-100">{member.name}</p>
         <IndustryTag industry={member.industry ?? undefined} />
       </div>
     </div>
@@ -278,25 +278,25 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-bold text-slate-900">Coordinate 1-2-1s — week {weekNumber}</h3>
-        <p className="text-xs text-slate-500 mt-1">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6 dark:bg-[#071131]" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Coordinate 1-2-1s — week {weekNumber}</h3>
+        <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">
           Sends each member a slot offer for their pick that day and opens the negotiation. Members reply with a time; partners confirm.
         </p>
 
         <div className="flex gap-2 mt-4">
           {DAY_SLOTS.map((d) => (
             <button key={d} onClick={() => pickDay(d)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${day === d ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${day === d ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
               {DAY_LABEL[d]} <span className="opacity-70 text-xs">· {generatedCount[d] ?? 0} pairs</span>
             </button>
           ))}
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="bg-slate-50 rounded-lg p-2"><p className="text-lg font-bold text-slate-800">{generatedCount[day] ?? 0}</p><p className="text-[10px] text-slate-500">generated pairs</p></div>
-          <div className="bg-slate-50 rounded-lg p-2"><p className="text-lg font-bold text-slate-800">{pending + failed}</p><p className="text-[10px] text-slate-500">{failed > 0 ? `to send (${failed} not delivered, will retry)` : 'selected, not sent'}</p></div>
-          <div className="bg-emerald-50 rounded-lg p-2"><p className="text-lg font-bold text-emerald-700">{sent}</p><p className="text-[10px] text-emerald-600">already sent</p></div>
+          <div className="bg-slate-50 rounded-lg p-2 dark:bg-white/5"><p className="text-lg font-bold text-slate-800 dark:text-slate-100">{generatedCount[day] ?? 0}</p><p className="text-xs text-slate-500 dark:text-slate-400">generated pairs</p></div>
+          <div className="bg-slate-50 rounded-lg p-2 dark:bg-white/5"><p className="text-lg font-bold text-slate-800 dark:text-slate-100">{pending + failed}</p><p className="text-xs text-slate-500 dark:text-slate-400">{failed > 0 ? `to send (${failed} not delivered, will retry)` : 'selected, not sent'}</p></div>
+          <div className="bg-emerald-50 rounded-lg p-2 dark:bg-emerald-500/10"><p className="text-lg font-bold text-emerald-700">{sent}</p><p className="text-xs text-emerald-600">already sent</p></div>
         </div>
 
         {/* Step 1 — seed */}
@@ -310,7 +310,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
         {/* Step 2 — review, then send */}
         {seedResult && !sendResult && (
           <div className="mt-4 space-y-3">
-            <div className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">
+            <div className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 dark:text-slate-200 dark:bg-white/5">
               <p><strong>{seedResult.created}</strong> new selection{seedResult.created === 1 ? '' : 's'} created,
                 {' '}<strong>{seedResult.alreadySelected}</strong> already there.</p>
               {seedResult.skippedConflict > 0 && (
@@ -320,7 +320,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
                 </p>
               )}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               This will message <strong>{pending + failed + seedResult.created}</strong> member{pending + failed + seedResult.created === 1 ? '' : 's'} on WhatsApp. Already-sent pairs are not re-sent; pairs whose message never arrived are.
             </p>
             <button onClick={doSend} disabled={isSending}
@@ -332,7 +332,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
 
         {/* Done */}
         {sendResult && (
-          <div className="mt-4 text-sm text-slate-700 bg-emerald-50 rounded-lg p-3 space-y-1">
+          <div className="mt-4 text-sm text-slate-700 bg-emerald-50 rounded-lg p-3 space-y-1 dark:text-slate-200 dark:bg-emerald-500/10">
             <p><CheckCircle2 className="inline w-4 h-4 text-emerald-600 mr-1" /><strong>{sendResult.notified}</strong> slot offer{sendResult.notified === 1 ? '' : 's'} delivered, <strong>{sendResult.proposed}</strong> negotiation{sendResult.proposed === 1 ? '' : 's'} opened.</p>
             {sendResult.skipped > 0 && <p className="text-amber-700">{sendResult.skipped} skipped (a live negotiation already exists, or no bookable slots).</p>}
             {sendResult.failed > 0 && <p className="text-red-700">{sendResult.failed} failed — see each row&apos;s status.</p>}
@@ -346,7 +346,7 @@ export const SendCoordinationPanel: React.FC<SendCoordinationPanelProps> = ({
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-white/10">
             {sendResult ? 'Done' : 'Cancel'}
           </button>
         </div>

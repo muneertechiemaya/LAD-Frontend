@@ -13,14 +13,14 @@ export default function SimpleAnalyticsCards() {
     return (
       <div className="text-center p-8">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderBottomColor: '#172461' }}></div>
-        <p className="text-gray-600 mt-2">Loading analytics...</p>
+        <p className="text-gray-600 mt-2 dark:text-slate-300">Loading analytics...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center p-8 bg-red-50 border border-red-200 rounded-lg">
+      <div className="text-center p-8 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
         <p className="text-red-600 font-semibold">Unable to load analytics data</p>
         <p className="text-red-500 text-sm mt-2">{String(error)}</p>
       </div>
@@ -29,8 +29,8 @@ export default function SimpleAnalyticsCards() {
 
   if (!data) {
     return (
-      <div className="text-center p-8 bg-orange-50 border border-orange-200 rounded-lg">
-        <p className="text-orange-600 font-semibold">No analytics data available</p>
+      <div className="text-center p-8 bg-orange-50 border border-orange-200 rounded-lg dark:bg-orange-500/10">
+        <p className="text-orange-700 font-semibold dark:text-orange-300">No analytics data available</p>
       </div>
     );
   }
@@ -54,8 +54,8 @@ export default function SimpleAnalyticsCards() {
     <div className="space-y-4">
       {/* Header with Last Refreshed */}
       <div className="px-4 pt-4">
-        <h2 className="text-lg font-semibold text-gray-800">Network Analytics</h2>
-        <p className="text-sm text-gray-500">Last refreshed: {refreshedAt}</p>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100">Network Analytics</h2>
+        <p className="text-sm text-gray-500 dark:text-slate-400">Last refreshed: {refreshedAt}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
@@ -105,7 +105,7 @@ export default function SimpleAnalyticsCards() {
         <div className="bg-orange-100 border-2 border-orange-300 rounded-lg p-6 text-center">
           <div className="text-5xl font-bold text-orange-900">{density.toFixed(1)}%</div>
           <div className="text-sm text-orange-700 mt-2 font-medium">Network Density</div>
-          <div className="text-xs text-orange-600 mt-1">Connection strength</div>
+          <div className="text-xs text-orange-700 mt-1 dark:text-orange-300">Connection strength</div>
         </div>
 
         {/* Avg Referral Value */}
