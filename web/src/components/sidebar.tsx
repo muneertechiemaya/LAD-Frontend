@@ -768,7 +768,7 @@ export function Sidebar() {
         <div
           className={cn(
             "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
-            isExpanded ? "my-6" : "my-4",
+            "shrink-0", isExpanded ? "my-5" : "my-4",
           )}
         >
           <img
@@ -779,7 +779,7 @@ export function Sidebar() {
             decoding="async"
             className={cn(
               "object-contain transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
-              isExpanded ? "w-45 h-45" : "w-30 h-30",
+              isExpanded ? "h-14 w-auto max-w-[180px]" : "h-10 w-10",
             )}
             onError={(e) => {
               (e.target as HTMLImageElement).src = isDark ? (isExpanded ? "/MrLAD-logo-dark.svg" : "/logo-white.svg") : (isExpanded ? "/MrLAD-logo.svg" : "/logo.svg");
@@ -811,7 +811,9 @@ export function Sidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 flex flex-col px-2 space-y-1 py-2">
+        {/* The page list scrolls on its own; the logo above and the profile
+            block below stay put, so a long nav can't push items under them. */}
+        <nav className="flex-1 min-h-0 flex flex-col px-2 space-y-1 py-2 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:thin]">
           {(() => {
             // Set of every URL claimed as a child anywhere in the nav tree  - 
             // prevents a top-level item from greedily lighting up when the
@@ -851,7 +853,7 @@ export function Sidebar() {
             return (
               <div key={n.href}>
               {groupStart && (isExpanded ? (
-                <span className="block px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <span className="block px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {NAV_GROUP_LABEL[n.group!]}
                 </span>
               ) : (
@@ -872,8 +874,8 @@ export function Sidebar() {
                     "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
                     "hover:-translate-y-[2px] hover:scale-[1.01]",
                     isExpanded
-                      ? "pl-3 pr-4 h-12 w-full"
-                      : "h-12 w-12 mx-auto justify-center",
+                      ? "pl-3 pr-4 h-11 w-full shrink-0"
+                      : "h-11 w-11 mx-auto justify-center shrink-0",
                   )}
                 >
                   {/* Active / section-active / hover glass background */}
@@ -1048,7 +1050,7 @@ export function Sidebar() {
           })()}
         </nav>
         {/* User Profile Inline Section */}
-        <div className={cn("border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
+        <div className={cn("shrink-0 border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Avatar / profile row - click to toggle inline panel */}
           <div
             onClick={() => setIsUserPanelOpen((v) => !v)}
