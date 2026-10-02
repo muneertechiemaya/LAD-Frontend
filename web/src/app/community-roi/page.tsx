@@ -57,14 +57,33 @@ export default function CommunityROIDashboard() {
     return localStorage.getItem('sidebar-pinned') !== 'false'
   })
 
+  // Below md the 320px member list can't sit beside the dashboard - on a 390px
+  // phone it left the whole dashboard 70px wide. There it becomes a slide-over
+  // drawer, closed by default; pinning is a desktop-only idea.
+  const [isPhone, setIsPhone] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => {
+      setIsPhone(mq.matches)
+      if (mq.matches) setSidebarVisible(false)
+    }
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  const pinned = sidebarPinned && !isPhone
+
   // Immediate auto-hide sidebar logic
   useEffect(() => {
     const handleMainContentInteraction = (e: Event) => {
       // Don't hide if sidebar is pinned
-      if (sidebarPinned) return
+      if (pinned) return
 
       // Check if the click/interaction is outside the sidebar
       const target = e.target as HTMLElement
+      // The toggle's own click must not be read as "clicked outside" - this
+      // window listener runs after its onClick and would close it again.
+      if (target?.closest?.('[data-sidebar-toggle="true"]')) return
       const sidebar = document.querySelector('[data-sidebar="true"]')
 
       if (sidebar && !sidebar.contains(target)) {
@@ -91,7 +110,7 @@ export default function CommunityROIDashboard() {
       window.removeEventListener('click', handleMainContentInteraction)
       window.removeEventListener('scroll', handleMainContentInteraction)
     }
-  }, [sidebarPinned])
+  }, [pinned])
 
   // Handle sidebar pin toggle
   const handleTogglePin = () => {
@@ -125,7 +144,10 @@ export default function CommunityROIDashboard() {
       {/* Member Sidebar */}
       <div
         data-sidebar="true"
-        className={`${sidebarVisible ? 'w-80' : 'w-0'} border-r bg-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden shadow-lg dark:bg-[#071131] dark:border-slate-800 ${!sidebarVisible && !sidebarPinned ? 'fixed left-0 top-0 bottom-0 z-50 w-80' : ''}`}
+        className={isPhone
+          ? `fixed inset-y-0 left-0 z-[70] w-[85vw] max-w-80 border-r bg-white flex flex-col overflow-hidden shadow-2xl transition-transform duration-300 dark:bg-[#071131] dark:border-slate-800 ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}`
+          : `${sidebarVisible ? 'w-80' : 'w-0'} border-r bg-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden shadow-lg dark:bg-[#071131] dark:border-slate-800 ${!sidebarVisible && !sidebarPinned ? 'fixed left-0 top-0 bottom-0 z-50 w-80' : ''}`}
+        aria-hidden={isPhone && !sidebarVisible ? true : undefined}
       >
         {/* Channel Selection */}
         <div className="p-4 flex gap-3 border-b overflow-x-auto no-scrollbar bg-slate-50/50 dark:border-slate-800">
@@ -157,7 +179,7 @@ export default function CommunityROIDashboard() {
               </Badge>
               <button
                 onClick={handleTogglePin}
-                className="max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
+                className="max-md:hidden max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                 title={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
               >
                 {sidebarPinned ? (
@@ -166,9 +188,10 @@ export default function CommunityROIDashboard() {
                   <PinOff className="w-4 h-4" />
                 )}
               </button>
-              {!sidebarPinned && (
+              {!pinned && (
                 <button
                   onClick={() => setSidebarVisible(false)}
+                  aria-label="Close members"
                   className="max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                   title="Close sidebar"
                 >
@@ -199,7 +222,7 @@ export default function CommunityROIDashboard() {
               {filteredMembers.map((member: any) => (
                 <button
                   key={member.id}
-                  onClick={() => setSelectedMemberId(member.id)}
+                  onClick={() => { setSelectedMemberId(member.id); if (isPhone) setSidebarVisible(false) }}
                   className={`max-lg:min-h-11 w-full p-4 text-left transition-all group flex items-center justify-between ${
                     selectedMemberId === member.id 
                       ? 'bg-blue-50 border-r-4 border-blue-600 dark:bg-blue-500/10' 
@@ -231,7 +254,18 @@ export default function CommunityROIDashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
+          {isPhone && !sidebarVisible && (
+            <button
+              type="button"
+              data-sidebar-toggle="true"
+              onClick={() => setSidebarVisible(true)}
+              className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/15"
+            >
+              <Users className="w-4 h-4" aria-hidden="true" />
+              Members
+            </button>
+          )}
           {selectedMemberId ? (
             <MemberProfileView memberId={selectedMemberId} onBack={() => setSelectedMemberId(null)} />
           ) : (activeView as ActiveView) === 'calendar' ? (
@@ -379,13 +413,23 @@ export default function CommunityROIDashboard() {
       </div>
     </div>
 
+    {/* Phone drawer backdrop */}
+    {isPhone && sidebarVisible && (
+      <div
+        aria-hidden="true"
+        onClick={() => setSidebarVisible(false)}
+        className="fixed inset-0 z-[65] bg-black/40"
+      />
+    )}
+
     {/* Floating button to show sidebar when hidden */}
-    {!sidebarVisible && !sidebarPinned && (
+    {!sidebarVisible && !isPhone && !sidebarPinned && (
       <button
         data-sidebar-toggle="true"
         onClick={() => setSidebarVisible(true)}
         className="max-lg:min-h-11 fixed left-4 top-4 p-3 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800 transition-all z-40"
         title="Show members sidebar"
+        aria-label="Show members"
       >
         <Users className="w-5 h-5" />
       </button>
