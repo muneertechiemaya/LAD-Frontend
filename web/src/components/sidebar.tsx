@@ -37,6 +37,8 @@ import {
 import { NavLink } from "./NavLink";
 import { MobileBottomNav } from "./layout/MobileBottomNav";
 import { ThemeToggle } from "./ThemeToggle";
+import AgentVisualizer from "@/components/ui/AgentVisualizer";
+import { useMyTasksCount } from "@lad/frontend-features/tasks";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -111,6 +113,11 @@ const NAV_GROUP_LABEL: Record<NavGroup, string> = {
   measure: 'Measure',
   setup: 'Setup',
 };
+/** Pinned to the top of the desktop sidebar, in the phone bottom bar's order. */
+const PINNED_HREFS = ['/overview', '/tasks', '/conversations', '/campaigns'];
+const ASK_HREF = '/onboarding/advanced-search-ai';
+const TASKS_HREF = '/tasks';
+
 type NavItem = {
   href: string;
   group?: NavGroup;
@@ -188,19 +195,18 @@ export function Sidebar() {
     } catch { /* localStorage blocked - fine, default is unpinned */ }
   }, []);
   const togglePinned = () => {
-    setIsPinned(prev => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem('sidebar.pinned', next ? '1' : '0');
-        // Notify the app-shell (or any other listener) so the main content
-        // can reflow to ml-64 (pinned) vs ml-16 (collapsed default).
-        window.dispatchEvent(new CustomEvent('sidebar:pinned-changed', { detail: { pinned: next } }));
-      } catch { /* ignore */ }
-      // Also drop the hover state when unpinning so the sidebar collapses
-      // immediately rather than waiting for the mouse to leave.
-      if (!next) setIsHovered(false);
-      return next;
-    });
+    const next = !isPinned;
+    setIsPinned(next);
+    // Drop the hover state when unpinning so the sidebar collapses
+    // immediately rather than waiting for the mouse to leave.
+    if (!next) setIsHovered(false);
+    try {
+      window.localStorage.setItem('sidebar.pinned', next ? '1' : '0');
+    } catch { /* ignore */ }
+    // Notify the layout so the main content reflows to ml-64 (pinned) vs
+    // ml-16 (rail). Dispatched from the click, not inside a state updater:
+    // updaters run during render, and the listener sets the layout's state.
+    window.dispatchEvent(new CustomEvent('sidebar:pinned-changed', { detail: { pinned: next } }));
   };
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(true);
@@ -447,6 +453,23 @@ export function Sidebar() {
         },
       ]
     : baseNav;
+
+  // Desktop order mirrors the phone bottom bar: the most-used pages first,
+  // then Ask Mr LAD with the animated logo, then everything else in its group.
+  // Pinned rows drop their group so the group headings start below them.
+  const pinnedItems = PINNED_HREFS.flatMap((h) => nav.filter((n) => n.href === h));
+  const askItem = nav.find((n) => n.href === ASK_HREF);
+  const desktopNav: NavItem[] = [
+    ...pinnedItems.map((n) => ({ ...n, group: undefined })),
+    ...(askItem ? [{ ...askItem, group: undefined }] : []),
+    ...nav.filter((n) => !PINNED_HREFS.includes(n.href) && n.href !== ASK_HREF),
+  ];
+
+  // Same badge as the phone bar (shares its query cache).
+  const hasTasksNav = nav.some((n) => n.href === TASKS_HREF);
+  const { count: taskCount, capped: taskCapped } = useMyTasksCount(isHydrated && hasTasksNav);
+  const taskBadge = taskCount ? (taskCount > 99 ? '99+' : `${taskCount}${taskCapped ? '+' : ''}`) : null;
+
   return (
     <>
       <MobileBottomNav nav={nav} />
@@ -745,7 +768,7 @@ export function Sidebar() {
         <div
           className={cn(
             "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
-            isExpanded ? "my-6" : "my-4",
+            "shrink-0", isExpanded ? "my-5" : "my-4",
           )}
         >
           <img
@@ -756,7 +779,7 @@ export function Sidebar() {
             decoding="async"
             className={cn(
               "object-contain transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
-              isExpanded ? "w-45 h-45" : "w-30 h-30",
+              isExpanded ? "h-14 w-auto max-w-[180px]" : "h-10 w-10",
             )}
             onError={(e) => {
               (e.target as HTMLImageElement).src = isDark ? (isExpanded ? "/MrLAD-logo-dark.svg" : "/logo-white.svg") : (isExpanded ? "/MrLAD-logo.svg" : "/logo.svg");
@@ -788,7 +811,9 @@ export function Sidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 flex flex-col px-2 space-y-1 py-2">
+        {/* The page list scrolls on its own; the logo above and the profile
+            block below stay put, so a long nav can't push items under them. */}
+        <nav className="flex-1 min-h-0 flex flex-col px-2 space-y-1 py-2 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:thin]">
           {(() => {
             // Set of every URL claimed as a child anywhere in the nav tree  - 
             // prevents a top-level item from greedily lighting up when the
@@ -806,8 +831,10 @@ export function Sidebar() {
             const shadowedByDeeperTop = (href: string) =>
               nav.some(o => o.href !== href && o.href.startsWith(href + '/') &&
                 (pathname === o.href || pathname.startsWith(o.href + '/')));
-            return nav.map((n, idx) => {
-              const groupStart = !!n.group && n.group !== nav[idx - 1]?.group;
+            return desktopNav.map((n, idx) => {
+              const groupStart = !!n.group && n.group !== desktopNav[idx - 1]?.group;
+              const isAsk = n.href === ASK_HREF;
+              const badge = n.href === TASKS_HREF ? taskBadge : null;
               const Icon = n.icon;
               const ownChildHrefs = new Set((n.children ?? []).map(c => c.href));
               const matchesOwnRoute = pathname === n.href || pathname.startsWith(n.href + '/');
@@ -826,7 +853,7 @@ export function Sidebar() {
             return (
               <div key={n.href}>
               {groupStart && (isExpanded ? (
-                <span className="block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                <span className="block px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {NAV_GROUP_LABEL[n.group!]}
                 </span>
               ) : (
@@ -840,15 +867,15 @@ export function Sidebar() {
                   // link has NO accessible name and screen readers announce
                   // eight identical "link"s. The title also gives sighted
                   // users a hover tooltip telling them where each icon goes.
-                  aria-label={n.label}
+                  aria-label={badge ? `${n.label}, ${badge} waiting` : n.label}
                   title={!isExpanded ? n.label : undefined}
                   className={cn(
                     "relative flex items-center rounded-2xl overflow-visible",
                     "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
                     "hover:-translate-y-[2px] hover:scale-[1.01]",
                     isExpanded
-                      ? "pl-3 pr-4 h-12 w-full"
-                      : "h-12 w-12 mx-auto justify-center",
+                      ? "pl-3 pr-4 h-11 w-full shrink-0"
+                      : "h-11 w-11 mx-auto justify-center shrink-0",
                   )}
                 >
                   {/* Active / section-active / hover glass background */}
@@ -860,7 +887,11 @@ export function Sidebar() {
                         ? "bg-primary"
                         : childOnPath
                           ? "bg-primary/10 backdrop-blur-sm"  // soft tint - works on light & dark
-                          : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
+                          : isAsk
+                            // Ask Mr LAD reads as the call to action, as on the phone bar.
+                            ? "bg-gradient-to-r from-[#0b1957]/[0.06] to-[#2563eb]/[0.10] ring-1 ring-[#2563eb]/20 group-hover:to-[#2563eb]/[0.16] dark:from-blue-400/10 dark:to-blue-500/15 dark:ring-blue-400/25"
+                            // white/10 on a white sidebar was no hover feedback at all.
+                            : "bg-transparent group-hover:bg-slate-100 dark:group-hover:bg-white/10 group-hover:backdrop-blur-sm",
                     )}
                   />
                   {/* Icon wrapper */}
@@ -875,6 +906,10 @@ export function Sidebar() {
                       // "group-hover:translate-x-[1px]"
                     )}
                   >
+                    {isAsk ? (
+                      // The same animated LAD logo as the phone bar's Ask button.
+                      <AgentVisualizer state="idle" size={30} />
+                    ) : (
                     <Icon
                       className={cn(
                         "h-5 w-5 transition-colors duration-300 relative z-10",
@@ -889,6 +924,15 @@ export function Sidebar() {
                         !selfActive ? { color: undefined } : undefined
                       }
                     />
+                    )}
+                    {badge && !isExpanded && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-0.5 -right-1 z-20 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[10px] leading-[18px] font-bold text-white tabular-nums ring-2 ring-white dark:ring-[#000724]"
+                      >
+                        {badge}
+                      </span>
+                    )}
                   </div>
                   {/* Label */}
                   {isExpanded && (
@@ -902,6 +946,14 @@ export function Sidebar() {
                       )}
                     >
                       {n.label}
+                    </span>
+                  )}
+                  {isExpanded && badge && (
+                    <span
+                      aria-hidden="true"
+                      className="relative z-10 ml-auto min-w-[22px] rounded-full bg-red-600 px-1.5 text-center text-xs leading-5 font-semibold text-white tabular-nums"
+                    >
+                      {badge}
                     </span>
                   )}
                 </NavLink>
@@ -923,7 +975,7 @@ export function Sidebar() {
                       {n.label}
                     </span>
                     {n.details && (
-                      <span className="block mt-0.5 text-[11px] text-muted-foreground/80 max-w-[200px]">
+                      <span className="block mt-0.5 max-w-[220px] whitespace-normal text-xs text-gray-600 dark:text-gray-400">
                         {n.details}
                       </span>
                     )}
@@ -941,7 +993,7 @@ export function Sidebar() {
                                 "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium pointer-events-auto",
                                 childActive
                                   ? "bg-primary/90 text-white"
-                                  : "hover:bg-white/10 text-gray-900 dark:text-gray-300",
+                                  : "hover:bg-slate-100 dark:hover:bg-white/10 text-gray-900 dark:text-gray-300",
                               )}
                             >
                               <ChildIcon className={cn("h-3.5 w-3.5 flex-shrink-0", childActive ? "text-white" : "text-gray-700 dark:text-gray-400")} />
@@ -977,7 +1029,7 @@ export function Sidebar() {
                             "transition-all duration-200",
                             childActive
                               ? "bg-primary/90 text-white shadow-md before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[18px] before:h-5 before:w-0.5 before:bg-primary before:rounded-full"
-                              : "hover:bg-white/10 dark:hover:bg-white/5 text-gray-900 dark:text-gray-300",
+                              : "hover:bg-slate-100 dark:hover:bg-white/5 text-gray-900 dark:text-gray-300",
                           )}
                         >
                           <ChildIcon className={cn("h-4 w-4 flex-shrink-0", childActive ? "text-white" : "text-gray-700 dark:text-gray-400")} />
@@ -998,12 +1050,12 @@ export function Sidebar() {
           })()}
         </nav>
         {/* User Profile Inline Section */}
-        <div className={cn("border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
+        <div className={cn("shrink-0 border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Avatar / profile row - click to toggle inline panel */}
           <div
             onClick={() => setIsUserPanelOpen((v) => !v)}
             className={cn(
-              "flex items-center p-3 transition-all duration-500 cursor-pointer hover:bg-white/5 dark:hover:bg-white/10 active:scale-95 select-none",
+              "flex items-center p-3 transition-all duration-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 active:scale-95 select-none",
               isExpanded ? "justify-start gap-3" : "justify-center",
             )}
           >
@@ -1026,7 +1078,7 @@ export function Sidebar() {
                   <div className="text-sm text-gray-900 dark:text-gray-300 font-medium leading-tight truncate w-full">
                     {displayName}
                   </div>
-                  <div className="text-xs text-muted-foreground/80 leading-tight">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
                     {user?.role || "admin"}
                   </div>
                 </div>
@@ -1055,7 +1107,7 @@ export function Sidebar() {
                   workspaces. Closed, it costs one row whatever the count. */}
               {tenants.length > 1 && (
                 <div className="px-2 pt-1 pb-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-bold">Tenant</span>
+                  <span className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">Tenant</span>
                   <button
                     type="button"
                     onClick={() => setIsTenantListOpen((open) => !open)}
@@ -1063,7 +1115,7 @@ export function Sidebar() {
                     // The current tenant is the label, so the closed state still
                     // answers "which workspace am I in?" without opening it.
                     className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1 max-lg:min-h-11 rounded-lg text-xs
-                               text-foreground/90 hover:bg-white/5 transition active:scale-95 select-none"
+                               text-foreground/90 hover:bg-slate-100 dark:hover:bg-white/5 transition active:scale-95 select-none"
                   >
                     <span className="truncate font-semibold">{tenant.name}</span>
                     <ChevronDown
@@ -1088,7 +1140,7 @@ export function Sidebar() {
                             "w-full flex items-center justify-between px-2 py-1 max-lg:min-h-11 rounded-lg text-xs transition active:scale-95 select-none",
                             tenant.id === t.id
                               ? "bg-primary/20 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-white/5",
+                              : "text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5",
                           )}
                         >
                           <span className="truncate">{t.name}</span>
@@ -1109,7 +1161,7 @@ export function Sidebar() {
                 title={!isExpanded ? "Settings" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 h-10 max-lg:h-11 text-sm font-medium transition-all",
-                  "text-gray-700 dark:text-gray-300 hover:bg-white/5 dark:hover:bg-white/10 active:scale-95 select-none",
+                  "text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 active:scale-95 select-none",
                   isExpanded ? "w-full" : "w-10 max-lg:w-11 mx-auto justify-center",
                 )}
               >
@@ -1146,7 +1198,7 @@ export function Sidebar() {
                 title="Logout"
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 h-10 max-lg:h-11 text-sm font-medium transition-all w-full",
-                  "text-red-500 hover:bg-red-500/10 active:scale-95 select-none",
+                  "text-red-600 dark:text-red-400 hover:bg-red-500/10 active:scale-95 select-none",
                   !isExpanded && "justify-center",
                 )}
               >
@@ -1159,7 +1211,7 @@ export function Sidebar() {
           {/* Version Number */}
           <div className="h-10 flex items-center justify-center border-t border-sidebar-border/50">
             {isExpanded && (
-              <span className="text-[11px] tracking-wide text-muted-foreground/80 transition-opacity duration-500">
+              <span className="text-xs tracking-wide text-gray-500 dark:text-gray-400 transition-opacity duration-500">
                 v1.0.0
               </span>
             )}
