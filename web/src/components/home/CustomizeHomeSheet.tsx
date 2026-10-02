@@ -152,7 +152,7 @@ export function CustomizeHomeSheet({ open, onOpenChange, draft, onChange, onRese
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className={cn('inline-flex min-h-11 items-center rounded-lg bg-[#0b1957] px-5 text-sm font-semibold text-white hover:bg-[#13246e] dark:bg-blue-500 dark:hover:bg-blue-400')}
+            className={cn('inline-flex min-h-11 items-center rounded-lg bg-[#0b1957] px-5 text-sm font-semibold text-white hover:bg-[#13246e] dark:bg-blue-600 dark:hover:bg-blue-500')}
           >
             Done
           </button>
