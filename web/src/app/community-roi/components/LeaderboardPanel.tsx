@@ -44,10 +44,10 @@ export default function LeaderboardPanel() {
           <CardHeader className="bg-gradient-to-br from-amber-50 to-orange-50/50 border-b border-amber-100/50 pb-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-amber-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-amber-600" />
+                <TrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-300" />
                 Top 10 - TYFCB Total
               </CardTitle>
-              <Badge className="bg-white/80 text-amber-700 hover:bg-white text-xs font-bold">AED</Badge>
+              <Badge className="bg-white/80 text-amber-700 hover:bg-white text-xs font-bold dark:bg-white/10 dark:text-amber-300">AED</Badge>
             </div>
             <p className="text-xs text-amber-600/80 font-medium mt-1">Highest revenue generators</p>
           </CardHeader>
@@ -63,7 +63,7 @@ export default function LeaderboardPanel() {
                     <p className="text-xs text-slate-500 truncate dark:text-slate-400">{member.company_name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-amber-600 text-sm tabular-nums">
+                    <p className="font-bold text-amber-700 text-sm tabular-nums dark:text-amber-300">
                       {(member.value || 0).toLocaleString()}
                     </p>
                   </div>
@@ -81,10 +81,10 @@ export default function LeaderboardPanel() {
           <CardHeader className="bg-gradient-to-br from-emerald-50 to-green-50/50 border-b border-emerald-100/50 pb-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-emerald-900 flex items-center gap-2">
-                <Handshake className="w-5 h-5 text-emerald-600" />
+                <Handshake className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
                 Top 10 - Referrals
               </CardTitle>
-              <Badge className="bg-white/80 text-emerald-700 hover:bg-white text-xs font-bold">Unique Recipients</Badge>
+              <Badge className="bg-white/80 text-emerald-700 hover:bg-white text-xs font-bold dark:bg-white/10 dark:text-emerald-300">Unique Recipients</Badge>
             </div>
             <p className="text-xs text-emerald-600/80 font-medium mt-1">Most diverse referral givers</p>
           </CardHeader>
@@ -100,7 +100,7 @@ export default function LeaderboardPanel() {
                     <p className="text-xs text-slate-500 truncate dark:text-slate-400">{member.company_name}</p>
                   </div>
                   <div className="text-right">
-                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-bold tabular-nums dark:bg-emerald-500/10">
+                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-bold tabular-nums dark:bg-emerald-500/10 dark:text-emerald-300">
                       {member.value}
                     </Badge>
                   </div>
@@ -119,10 +119,10 @@ export default function LeaderboardPanel() {
           <CardHeader className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border-b border-blue-100/50 pb-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-blue-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-600" />
+                <Users className="w-5 h-5 text-blue-600 dark:text-blue-300" />
                 Top 10 - One-to-Ones
               </CardTitle>
-              <Badge className="bg-white/80 text-blue-700 hover:bg-white text-xs font-bold">Unique Partners</Badge>
+              <Badge className="bg-white/80 text-blue-700 hover:bg-white text-xs font-bold dark:bg-white/10 dark:text-blue-300">Unique Partners</Badge>
             </div>
             <p className="text-xs text-blue-600/80 font-medium mt-1">Most connected networkers</p>
           </CardHeader>
@@ -138,7 +138,7 @@ export default function LeaderboardPanel() {
                     <p className="text-xs text-slate-500 truncate dark:text-slate-400">{member.company_name}</p>
                   </div>
                   <div className="text-right">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 font-bold tabular-nums dark:bg-blue-500/10">
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 font-bold tabular-nums dark:bg-blue-500/10 dark:text-blue-300">
                       {member.value}
                     </Badge>
                   </div>

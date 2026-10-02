@@ -13,7 +13,7 @@ export default function AnalyticsDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
         <span className="ml-3 text-lg">Loading analytics...</span>
       </div>
     );
@@ -24,7 +24,7 @@ export default function AnalyticsDashboard() {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded dark:bg-red-500/10">
         <h3 className="text-red-800 font-bold text-lg">Error Loading Data</h3>
-        <p className="text-red-600 mt-2 dark:text-red-300">{String(error)}</p>
+        <p className="text-red-700 mt-2 dark:text-red-300">{String(error)}</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function AnalyticsDashboard() {
     return (
       <div className="p-6 bg-yellow-50 border border-yellow-200 rounded">
         <h3 className="text-yellow-800 font-bold text-lg">No Data Available</h3>
-        <p className="text-yellow-600 mt-2">The API returned no analytics data.</p>
+        <p className="text-yellow-600 mt-2 dark:text-yellow-300">The API returned no analytics data.</p>
       </div>
     );
   }
@@ -60,49 +60,49 @@ export default function AnalyticsDashboard() {
         {/* Total Members Card */}
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2 dark:text-blue-300">
               <Users className="h-5 w-5" />
               Total Members
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-blue-900">{members}</div>
-            <p className="text-xs text-blue-600 mt-2">Active community members</p>
+            <p className="text-xs text-blue-600 mt-2 dark:text-blue-300">Active community members</p>
           </CardContent>
         </Card>
 
         {/* Meetings Card */}
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2 dark:text-green-300">
               <MessageSquare className="h-5 w-5" />
               Meetings
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-green-900">{meetings.toLocaleString()}</div>
-            <p className="text-xs text-green-600 mt-2">One-to-one interactions</p>
+            <p className="text-xs text-green-600 mt-2 dark:text-green-300">One-to-one interactions</p>
           </CardContent>
         </Card>
 
         {/* Referrals Card */}
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-2 dark:text-purple-300">
               <GitBranch className="h-5 w-5" />
               Referrals
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-purple-900">{referrals.toLocaleString()}</div>
-            <p className="text-xs text-purple-600 mt-2">Business referrals exchanged</p>
+            <p className="text-xs text-purple-600 mt-2 dark:text-purple-300">Business referrals exchanged</p>
           </CardContent>
         </Card>
 
         {/* Network Density Card */}
         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-orange-700 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-orange-700 flex items-center gap-2 dark:text-orange-300">
               <Network className="h-5 w-5" />
               Network Density
             </CardTitle>

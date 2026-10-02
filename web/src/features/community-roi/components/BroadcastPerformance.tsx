@@ -265,6 +265,7 @@ const SCOPED_CSS = `
 .dark .lad-bp-template-sub { color: #94a3b8; }
 /* the heading's colour is an inline style (C.ink), so dark needs !important */
 .dark #lad-bp-heading { color: #f8fafc !important; }
+.dark .lad-bp-eyebrow { color: #94a3b8 !important; }
 .dark .lad-bp-template-sub .lad-bp-mono { color: #e2e8f0 !important; }
 .dark .lad-bp-empty {
   background: #071131;
@@ -332,7 +333,7 @@ function EmptyState({ chromeless = false }: { chromeless?: boolean }) {
       <style>{SCOPED_CSS}</style>
       {!chromeless && (
         <header style={{ marginBottom: 12 }}>
-          <div
+          <div className="lad-bp-eyebrow"
             style={{
               fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,
@@ -398,7 +399,7 @@ export function BroadcastPerformance({
       {/* Section heading - suppressed when host provides its own chrome */}
       {!chromeless && (
         <header style={{ marginBottom: 12 }}>
-          <div
+          <div className="lad-bp-eyebrow"
             style={{
               fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,

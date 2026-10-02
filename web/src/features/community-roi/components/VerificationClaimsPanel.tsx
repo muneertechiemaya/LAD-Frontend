@@ -51,9 +51,9 @@ const STATUS_TABS: Array<{ key: StatusFilter; label: string }> = [
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  approved: 'bg-emerald-100 text-emerald-700',
-  rejected: 'bg-rose-100 text-rose-700',
+  pending: 'bg-amber-100 text-amber-700 dark:text-amber-300',
+  approved: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
+  rejected: 'bg-rose-100 text-rose-700 dark:text-rose-300',
 };
 
 export function VerificationClaimsPanel() {
@@ -128,7 +128,7 @@ export function VerificationClaimsPanel() {
           <ShieldCheck className="w-5 h-5 text-indigo-500" />
           <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">1-2-1 Verification Claims</CardTitle>
           {(counts.pending || 0) > 0 && (
-            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs font-semibold ml-1">
+            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs font-semibold ml-1 dark:text-amber-300">
               {counts.pending} to review
             </Badge>
           )}
@@ -165,11 +165,11 @@ export function VerificationClaimsPanel() {
         </div>
 
         {note && (
-          <div className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 dark:bg-emerald-500/10">
+          <div className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 dark:bg-emerald-500/10 dark:text-emerald-300">
             {note}
           </div>
         )}
-        {error && <div className="text-sm text-rose-600 dark:text-rose-300">⚠ {error}</div>}
+        {error && <div className="text-sm text-rose-700 dark:text-rose-300">⚠ {error}</div>}
         {loading && <div className="text-sm text-slate-500 dark:text-slate-400">Loading…</div>}
         {!loading && !error && claims.length === 0 && (
           <div className="text-sm text-slate-500 dark:text-slate-400">No {filter} claims.</div>
@@ -242,7 +242,7 @@ function ClaimRow({
             size="sm"
             onClick={onApprove}
             disabled={busy}
-            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white"
           >
             <Check className="w-4 h-4" /> Approve
           </Button>
@@ -251,7 +251,7 @@ function ClaimRow({
             variant="outline"
             onClick={onReject}
             disabled={busy}
-            className="h-8 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+            className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300"
           >
             <X className="w-4 h-4" /> Reject
           </Button>

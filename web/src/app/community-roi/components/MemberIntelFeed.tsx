@@ -220,14 +220,14 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {intel.cached && intel.status === 'done' && (
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full dark:bg-emerald-500/10">Cached</span>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full dark:bg-emerald-500/10 dark:text-emerald-300">Cached</span>
           )}
           {(intel.status === 'loading' || intel.status === 'researching') && (
             <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
           )}
           {intel.status === 'idle'  && <Sparkles className="w-4 h-4 text-slate-300" />}
           {intel.status === 'done'  && <Sparkles className="w-4 h-4 text-violet-500" />}
-          {intel.status === 'error' && <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full dark:text-rose-300 dark:bg-rose-500/10">Error</span>}
+          {intel.status === 'error' && <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full dark:text-rose-300 dark:bg-rose-500/10">Error</span>}
         </div>
       </div>
 
@@ -272,7 +272,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             )}
             <button
               onClick={runResearch}
-              className="max-lg:min-h-11 text-xs text-rose-600 flex items-center gap-1 hover:underline dark:text-rose-300"
+              className="max-lg:min-h-11 text-xs text-rose-700 flex items-center gap-1 hover:underline dark:text-rose-300"
             >
               <RefreshCw className="w-3 h-3" /> Retry research
             </button>
@@ -285,7 +285,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             {/* Firmographic badges row */}
             <div className="flex flex-wrap gap-1.5">
               {industry && (
-                <Badge variant="outline" className="text-xs text-blue-600 border-blue-100 bg-blue-50 px-2 py-0.5 gap-1 dark:bg-blue-500/10">
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-100 bg-blue-50 px-2 py-0.5 gap-1 dark:bg-blue-500/10 dark:text-blue-300">
                   <Building2 className="w-2.5 h-2.5" />{industry}
                 </Badge>
               )}
@@ -300,7 +300,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
                 </Badge>
               )}
               {fundingStage && (
-                <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-100 bg-emerald-50 px-2 py-0.5 gap-1 dark:bg-emerald-500/10">
+                <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-100 bg-emerald-50 px-2 py-0.5 gap-1 dark:bg-emerald-500/10 dark:text-emerald-300">
                   <DollarSign className="w-2.5 h-2.5" />{fundingStage}
                 </Badge>
               )}
@@ -351,7 +351,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
                   {topAction.action}
                 </p>
                 {topAction.rationale && (
-                  <p className="text-xs text-violet-600 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-violet-600 leading-relaxed line-clamp-2 dark:text-violet-300">
                     {topAction.rationale}
                   </p>
                 )}
@@ -389,7 +389,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             <p className="text-xs text-slate-500 italic dark:text-slate-400">No research data yet.</p>
             <button
               onClick={runResearch}
-              className="max-lg:min-h-11 flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="max-lg:min-h-11 flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors dark:text-violet-300"
             >
               <Sparkles className="w-3.5 h-3.5" /> Run Research
             </button>
@@ -401,7 +401,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
       <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-between dark:border-slate-800">
         <button
           onClick={() => onViewProfile(member.id)}
-          className="max-lg:min-h-11 text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+          className="max-lg:min-h-11 text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors dark:text-blue-300"
         >
           <Users className="w-3.5 h-3.5" /> View Profile
         </button>
@@ -445,7 +445,7 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-violet-100 text-violet-600">
+          <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
@@ -455,7 +455,7 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
             </p>
           </div>
         </div>
-        <Badge variant="outline" className="text-xs font-bold text-violet-600 border-violet-200 px-3">
+        <Badge variant="outline" className="text-xs font-bold text-violet-600 border-violet-200 px-3 dark:text-violet-300">
           {members.length} members
         </Badge>
       </div>

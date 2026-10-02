@@ -70,7 +70,7 @@ const KpiCard = ({ icon, label, value, growth, color }: KpiCardProps) => (
   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-3 dark:bg-[#071131] dark:border-slate-800">
     <div className="flex items-center justify-between">
       <div className={`p-2 rounded-xl ${color}`}>{icon}</div>
-      <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
+      <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold dark:text-emerald-300">
         <ArrowUpRight className="w-3 h-3" /> {growth}
       </span>
     </div>
@@ -227,7 +227,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
               {/* KPI summary row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <KpiCard
-                  icon={<Users className="w-4 h-4 text-blue-600" />}
+                  icon={<Users className="w-4 h-4 text-blue-600 dark:text-blue-300" />}
                   label={`Unique Meetings (${last.weekLabel})`}
                   value={currentMeetings.toString()}
                   growth={meetingGrowth}
@@ -241,7 +241,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                   color="bg-orange-50"
                 />
                 <KpiCard
-                  icon={<Zap className="w-4 h-4 text-violet-600" />}
+                  icon={<Zap className="w-4 h-4 text-violet-600 dark:text-violet-300" />}
                   label="Net Relationship Change"
                   value={`${netUpgrades >= 0 ? '+' : ''}${netUpgrades}`}
                   growth={isLive ? `${totalUpgrades} up · ${totalDowngrades} down` : '-'}
@@ -249,7 +249,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                 />
                 {showTyfcb ? (
                   <KpiCard
-                    icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+                    icon={<DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />}
                     label="Total TYFCB (AED)"
                     value={totalTyfcb >= 1000 ? `${(totalTyfcb / 1000).toFixed(0)}K` : totalTyfcb.toString()}
                     growth={tyfcbGrowth}
@@ -435,7 +435,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         const dMeet = prev ? delta(w.uniqueMeetings, prev.uniqueMeetings) : null
                         const dRef  = prev ? delta(w.uniqueReferrals, prev.uniqueReferrals) : null
                         const dMem  = prev ? delta(w.activeMembers, prev.activeMembers) : null
-                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-500' : 'text-slate-300')
+                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-700' : 'text-slate-300')
                         const signTxt = (n: number) => `${n > 0 ? '+' : ''}${n}`
                         return (
                           <tr key={w.month} className="hover:bg-slate-50 transition-colors dark:hover:bg-white/5">
@@ -448,7 +448,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                                 <span className={`ml-1 text-[9px] ${signCls(dMem)}`}>{signTxt(dMem)}</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right font-bold text-blue-600">
+                            <td className="px-4 py-3 text-right font-bold text-blue-600 dark:text-blue-300">
                               {w.uniqueMeetings}
                               {dMeet !== null && dMeet !== 0 && (
                                 <span className={`ml-1 text-[9px] ${signCls(dMeet)}`}>{signTxt(dMeet)}</span>
@@ -469,7 +469,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                               ) : (
                                 <span
                                   className={`inline-flex items-center gap-0.5 ${
-                                    w.netUpgrades >= 0 ? 'text-violet-600' : 'text-rose-600'
+                                    w.netUpgrades >= 0 ? 'text-violet-600 dark:text-violet-300' : 'text-rose-700 dark:text-rose-300'
                                   }`}
                                   title={`${w.upgrades} improved, ${w.downgrades} degraded`}
                                 >
@@ -484,7 +484,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                               )}
                             </td>
                             {showTyfcb && (
-                              <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                              <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-300">
                                 {w.tyfcbAed.toLocaleString()}
                               </td>
                             )}
@@ -492,7 +492,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                               {momMeetings !== null ? (
                                 <span
                                   className={`inline-flex items-center gap-0.5 font-bold ${
-                                    momMeetings >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                                    momMeetings >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'
                                   }`}
                                 >
                                   {momMeetings >= 0

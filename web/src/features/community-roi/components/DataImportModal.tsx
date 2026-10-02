@@ -416,8 +416,8 @@ export function DataImportModal() {
 
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" />
-                  <p className="text-sm text-red-700">{error}</p>
+                  <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5 dark:text-red-300" />
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               )}
 
@@ -443,7 +443,7 @@ export function DataImportModal() {
           {/* ── Step: Extract (loading) ── */}
           {step === 'extract' && !extractedData && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <p className="text-sm font-medium">
                 {memberMode ? 'Processing member report files...' : 'Extracting data from Excel...'}
               </p>
@@ -454,7 +454,7 @@ export function DataImportModal() {
           {/* ── Step: Execute (loading) ── */}
           {step === 'execute' && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <p className="text-sm font-medium">Importing data to database...</p>
               {extractedData?.recordCounts && (
                 <div className="text-xs text-gray-600 space-y-1 text-center dark:text-slate-300">
@@ -469,7 +469,7 @@ export function DataImportModal() {
           {/* ── Step: Complete ── */}
           {step === 'complete' && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-300" />
               <p className="text-sm font-medium">Import completed successfully!</p>
               <p className="text-xs text-gray-600 text-center dark:text-slate-300">
                 The modal will close in a few seconds.
@@ -505,8 +505,8 @@ export function DataImportModal() {
           {/* ── Non-select errors ── */}
           {error && step !== 'select' && (
             <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" />
-              <div className="text-sm text-red-700">
+              <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5 dark:text-red-300" />
+              <div className="text-sm text-red-700 dark:text-red-300">
                 <p className="font-medium">Import failed</p>
                 <p className="text-xs mt-1">{error}</p>
               </div>

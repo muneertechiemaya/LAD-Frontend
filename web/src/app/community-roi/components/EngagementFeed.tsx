@@ -66,7 +66,7 @@ export const EngagementFeed: React.FC<EngagementFeedProps> = ({ memberId }) => {
           {activity.map((item: any) => (
             <div key={item.id} className="relative flex gap-4 items-start group">
               <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${
-                item.type === 'meeting' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'
+                item.type === 'meeting' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300'
               }`}>
                 {item.type === 'meeting' ? (
                   <Users className="w-4 h-4" />

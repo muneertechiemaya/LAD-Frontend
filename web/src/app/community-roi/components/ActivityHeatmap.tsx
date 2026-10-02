@@ -174,7 +174,7 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
         <div className="space-y-3">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Meetings</p>
           <div className="flex items-center gap-3">
-            <span className="text-4xl font-bold text-emerald-600 tracking-tight">
+            <span className="text-4xl font-bold text-emerald-600 tracking-tight dark:text-emerald-300">
               +{totals.meetings}
             </span>
           </div>
@@ -183,7 +183,7 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
         <div className="space-y-3">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Referrals Passed</p>
           <div className="flex items-center gap-3">
-            <span className="text-4xl font-bold text-rose-600 tracking-tight dark:text-rose-300">
+            <span className="text-4xl font-bold text-rose-700 tracking-tight dark:text-rose-300">
               +{totals.referrals}
             </span>
           </div>
@@ -201,7 +201,7 @@ export function ActivityHeatmap({ data, member, isCollapsed = false }: ActivityH
         <div className="space-y-3">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Avg. Monthly Unique Engagements</p>
           <div className="flex items-center gap-3">
-            <span className="text-4xl font-bold text-blue-600 tracking-tight">
+            <span className="text-4xl font-bold text-blue-600 tracking-tight dark:text-blue-300">
               {Math.round(totals.uniqueEngagements / 12)}
             </span>
           </div>

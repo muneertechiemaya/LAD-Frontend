@@ -362,7 +362,7 @@ function FailedRecipientsButton({
       <span className="text-sm font-medium text-rose-700 dark:text-rose-300">
         ⚠ Resend to failed only ({count})
       </span>
-      <span className="text-xs text-rose-600 dark:text-rose-300">
+      <span className="text-xs text-rose-700 dark:text-rose-300">
         {loading ? 'Selecting…' : 'Preselect →'}
       </span>
     </button>
@@ -372,7 +372,7 @@ function FailedRecipientsButton({
 function highlightBody(body: string): React.ReactNode[] {
   return body.split(/(\{\{[^}]+\}\})/).map((part, i) =>
     /^\{\{[^}]+\}\}$/.test(part)
-      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs">{part}</span>
+      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs dark:text-indigo-300">{part}</span>
       : <span key={i}>{part}</span>
   );
 }
@@ -381,11 +381,11 @@ const displayName = (key: string) =>
   key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 const statusColor = (s: string, qualityPending?: boolean) => {
-  if (qualityPending)   return 'bg-amber-100 text-amber-700';
-  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700';
-  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700';
-  if (s === 'REJECTED') return 'bg-red-100 text-red-700';
-  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700';
+  if (qualityPending)   return 'bg-amber-100 text-amber-700 dark:text-amber-300';
+  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700 dark:text-green-300';
+  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700 dark:text-yellow-300';
+  if (s === 'REJECTED') return 'bg-red-100 text-red-700 dark:text-red-300';
+  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700 dark:text-orange-300';
   return 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400';
 };
 
@@ -685,14 +685,14 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      {isSelected && <CheckCircle className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
+                      {isSelected && <CheckCircle className="w-4 h-4 text-indigo-600 flex-shrink-0 dark:text-indigo-300" />}
                       <span className="font-semibold text-slate-900 text-sm dark:text-white">{displayName(t.name)}</span>
                       <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor(t.status, t.quality_pending)}`}>
                         {statusLabel(t.status, t.quality_pending, t.quality_score)}
                       </span>
                     </div>
                     {t.quality_pending && (
-                      <p className="text-xs text-amber-600 mt-1 mb-1">
+                      <p className="text-xs text-amber-600 mt-1 mb-1 dark:text-amber-300">
                         ⚠️ Meta is assessing quality - delivery may be limited until approved.
                       </p>
                     )}
@@ -720,7 +720,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               <button
                 onClick={() => setSendMode('instant')}
                 className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
-                  sendMode === 'instant' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
+                  sendMode === 'instant' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
                 <Send className="w-4 h-4" />Send Instantly
@@ -728,7 +728,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               <button
                 onClick={() => setSendMode('schedule')}
                 className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
-                  sendMode === 'schedule' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
+                  sendMode === 'schedule' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
                 <Clock className="w-4 h-4" />Schedule for Later
@@ -772,7 +772,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1 dark:text-white">Map Parameters</h2>
           <p className="text-sm text-slate-500 mb-5 dark:text-slate-400">
-            Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
+            Template: <span className="font-semibold text-indigo-600 dark:text-indigo-300">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
 
           {/* Scrollable middle: template body, media header, parameter rows,
@@ -838,7 +838,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               return (
                 <div key={i} className="p-4 border border-slate-200 rounded-xl bg-white dark:border-slate-700 dark:bg-[#071131]">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold dark:text-indigo-300">
                       {`{{${paramNum}}}`}
                     </span>
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Parameter {paramNum}</span>
@@ -922,7 +922,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           {/* Live message preview using first member */}
           {previewMember && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl dark:bg-green-500/10">
-              <p className="text-xs font-medium text-green-700 mb-1">
+              <p className="text-xs font-medium text-green-700 mb-1 dark:text-green-300">
                 Preview for <span className="font-bold">{previewMember.name}</span>
               </p>
               <p className="text-xs text-green-900 font-mono whitespace-pre-wrap leading-relaxed">
@@ -959,7 +959,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1 dark:text-white">Select Recipients</h2>
           <p className="text-sm text-slate-500 mb-5 dark:text-slate-400">
-            Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
+            Template: <span className="font-semibold text-indigo-600 dark:text-indigo-300">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
 
           <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
@@ -1021,7 +1021,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 text-sm text-blue-900 dark:bg-blue-500/10">
             📱 Will send to <strong>{recipientCount}</strong> {recipientCount === 1 ? 'member' : 'members'}
             {noPhoneCount > 0 && (
-              <span className="block mt-1 text-xs text-amber-700">
+              <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
                 ⚠ {noPhoneCount} member{noPhoneCount > 1 ? 's' : ''} skipped - no phone number on file
               </span>
             )}
@@ -1088,7 +1088,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               <div className="space-y-1">
                 {paramMapping.map((m, i) => (
                   <p key={i} className="text-xs flex items-center gap-1.5">
-                    <span className="font-mono text-indigo-600 bg-indigo-50 px-1 rounded dark:bg-indigo-500/10">{`{{${i + 1}}}`}</span>
+                    <span className="font-mono text-indigo-600 bg-indigo-50 px-1 rounded dark:bg-indigo-500/10 dark:text-indigo-300">{`{{${i + 1}}}`}</span>
                     <span className="text-slate-500 dark:text-slate-400">→</span>
                     <span className="font-semibold text-slate-700 dark:text-slate-200">
                       {m.field === 'custom' ? `"${m.customValue}"` : (FIELD_OPTIONS.find(f => f.value === m.field)?.label ?? m.field)}

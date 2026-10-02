@@ -94,13 +94,13 @@ export default function NetworkStatsPanel() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-300">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertCircle className="h-4 w-4" />
               <span className="font-semibold">Error loading network stats</span>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700 dark:bg-red-500/10">
+            <div className="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
               <p className="font-mono">{error instanceof Error ? error.message : String(error)}</p>
-              <p className="text-xs text-red-600 mt-2 dark:text-red-300">
+              <p className="text-xs text-red-700 mt-2 dark:text-red-300">
                 Check the browser console for more details. Look for [ApiClient] and [NetworkStatsPanel] logs.
               </p>
             </div>
@@ -178,12 +178,12 @@ export default function NetworkStatsPanel() {
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2 dark:text-slate-300">
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-blue-600 dark:text-blue-300" />
               Total Members
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-blue-600">
+            <div className="text-4xl font-bold text-blue-600 dark:text-blue-300">
               {connectivityAnalysis?.memberCount ?? '?'}
             </div>
             <p className="text-xs text-slate-600 mt-1 dark:text-slate-300">Active community members</p>
@@ -194,12 +194,12 @@ export default function NetworkStatsPanel() {
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2 dark:text-slate-300">
-              <Share2 className="h-4 w-4 text-green-600" />
+              <Share2 className="h-4 w-4 text-green-600 dark:text-green-300" />
               Interactions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-green-600">
+            <div className="text-4xl font-bold text-green-600 dark:text-green-300">
               {(networkBreakdown?.meetings ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-slate-600 mt-1 dark:text-slate-300">One-to-one meetings conducted</p>
@@ -210,12 +210,12 @@ export default function NetworkStatsPanel() {
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2 dark:text-slate-300">
-              <GitBranch className="h-4 w-4 text-purple-600" />
+              <GitBranch className="h-4 w-4 text-purple-600 dark:text-purple-300" />
               Referrals
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-purple-600">
+            <div className="text-4xl font-bold text-purple-600 dark:text-purple-300">
               {(networkBreakdown?.referrals ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-slate-600 mt-1 dark:text-slate-300">Referrals exchanged</p>
@@ -251,33 +251,33 @@ export default function NetworkStatsPanel() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Average Connections Per Member */}
             <div className="p-4 bg-blue-50 rounded border border-blue-200 dark:bg-blue-500/10">
-              <div className="text-xs text-blue-600 uppercase font-semibold">Avg Connections per Member</div>
+              <div className="text-xs text-blue-600 uppercase font-semibold dark:text-blue-300">Avg Connections per Member</div>
               <div className="text-3xl font-bold text-blue-900 mt-1">
                 {connectivityAnalysis.avgConnectionsPerMember.toFixed(1)}
               </div>
-              <div className="text-xs text-blue-700 mt-2">
+              <div className="text-xs text-blue-700 mt-2 dark:text-blue-300">
                 Average number of unique members each person has met
               </div>
             </div>
 
             {/* Total Interactions */}
             <div className="p-4 bg-green-50 rounded border border-green-200 dark:bg-green-500/10">
-              <div className="text-xs text-green-600 uppercase font-semibold">Total Interactions</div>
+              <div className="text-xs text-green-600 uppercase font-semibold dark:text-green-300">Total Interactions</div>
               <div className="text-3xl font-bold text-green-900 mt-1">
                 {networkBreakdown.totalInteractions.toLocaleString()}
               </div>
-              <div className="text-xs text-green-700 mt-2">
+              <div className="text-xs text-green-700 mt-2 dark:text-green-300">
                 Meetings ({networkBreakdown.meetings.toLocaleString()}) + Referrals ({networkBreakdown.referrals.toLocaleString()})
               </div>
             </div>
 
             {/* Network Density */}
             <div className="p-4 bg-purple-50 rounded border border-purple-200 dark:bg-purple-500/10">
-              <div className="text-xs text-purple-600 uppercase font-semibold">Network Density</div>
+              <div className="text-xs text-purple-600 uppercase font-semibold dark:text-purple-300">Network Density</div>
               <div className="text-3xl font-bold text-purple-900 mt-1">
                 {connectivityAnalysis.networkDensity.toFixed(1)}%
               </div>
-              <div className="text-xs text-purple-700 mt-2">
+              <div className="text-xs text-purple-700 mt-2 dark:text-purple-300">
                 Percentage of possible connections realized
               </div>
             </div>
@@ -300,15 +300,15 @@ export default function NetworkStatsPanel() {
               <span className="text-lg font-bold text-slate-900 dark:text-white">{connectivityAnalysis.memberCount}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-blue-50 rounded border border-blue-200 dark:bg-blue-500/10">
-              <span className="text-sm font-medium text-blue-700">One-to-One Meetings</span>
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">One-to-One Meetings</span>
               <span className="text-lg font-bold text-blue-900">{networkBreakdown.meetings.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-purple-50 rounded border border-purple-200 dark:bg-purple-500/10">
-              <span className="text-sm font-medium text-purple-700">Referrals Exchanged</span>
+              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Referrals Exchanged</span>
               <span className="text-lg font-bold text-purple-900">{networkBreakdown.referrals.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-orange-50 rounded border border-orange-200 dark:bg-orange-500/10">
-              <span className="text-sm font-medium text-orange-700">Network Connectivity</span>
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Network Connectivity</span>
               <span className="text-lg font-bold text-orange-900">{connectivityAnalysis.avgConnectionsPerMember.toFixed(1)} avg connections/member</span>
             </div>
           </div>

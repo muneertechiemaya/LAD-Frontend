@@ -351,7 +351,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             variant="outline"
             onClick={runResearch}
             disabled={researchLoading}
-            className="gap-2 rounded-lg border-violet-200 text-violet-700 hover:bg-violet-50 shadow-sm"
+            className="gap-2 rounded-lg border-violet-200 text-violet-700 hover:bg-violet-50 shadow-sm dark:text-violet-300"
           >
             {researchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {researchLoading ? 'Researching…' : 'Research'}
@@ -364,7 +364,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             variant="outline"
             onClick={() => setShowDeleteDialog(true)}
             disabled={isDeleting}
-            className="gap-2 rounded-lg border-red-200 text-red-600 hover:bg-red-50 shadow-sm dark:text-red-300"
+            className="gap-2 rounded-lg border-red-200 text-red-700 hover:bg-red-50 shadow-sm dark:text-red-300"
           >
             {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             {isDeleting ? 'Deleting...' : 'Remove Member'}
@@ -409,7 +409,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
               <div className="flex flex-col mb-4">
                 <div className="flex items-center gap-4">
                   <h1 className="text-4xl font-bold text-slate-900 tracking-tight dark:text-white">{member.name}</h1>
-                  <Badge className={`${(kpis?.impactScore || 0) > 500 ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'} font-bold px-4 py-1 rounded-full border-none shadow-lg whitespace-nowrap`}>
+                  <Badge className={`${(kpis?.impactScore || 0) > 500 ? 'bg-emerald-700 text-white' : 'bg-blue-600 text-white'} font-bold px-4 py-1 rounded-full border-none shadow-lg whitespace-nowrap`}>
                     {(kpis?.impactScore || 0) > 500 ? 'Top Contributor' : 'Active Member'}
                   </Badge>
                   {member.current_streak > 0 && (
@@ -446,33 +446,33 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
         {/* Card 1: Referrals Given OR Unique Partners (if no referrals yet) */}
         {(kpis?.referralsGiven ?? 0) > 0 ? (
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
-            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 mb-1 dark:bg-emerald-500/10">
+            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 mb-1 dark:bg-emerald-500/10 dark:text-emerald-300">
               <Handshake className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Referrals Given</span>
-            <span className="text-4xl font-bold text-emerald-600">+{kpis?.referralsGiven}</span>
+            <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-300">+{kpis?.referralsGiven}</span>
             <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500 bg-emerald-50/50 px-3 py-1 rounded-full">
               <ArrowUpRight className="w-3.5 h-3.5" /> Active Giver
             </div>
           </div>
         ) : (
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
-            <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 mb-1">
+            <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 mb-1 dark:text-violet-300">
               <Users className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Partners</span>
-            <span className="text-4xl font-bold text-violet-600">{kpis?.uniquePartners ?? 0}</span>
+            <span className="text-4xl font-bold text-violet-600 dark:text-violet-300">{kpis?.uniquePartners ?? 0}</span>
             <Badge variant="outline" className="text-xs font-semibold uppercase px-3 py-0.5 text-slate-500 border-slate-200 dark:text-slate-400 dark:border-slate-700">1-to-1 Network</Badge>
           </div>
         )}
 
         {/* Card 2: Meetings Logged (from live interaction data) */}
         <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
-          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 mb-1 dark:bg-blue-500/10">
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 mb-1 dark:bg-blue-500/10 dark:text-blue-300">
             <MessageSquare className="w-6 h-6" />
           </div>
           <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Meetings Logged</span>
-          <span className="text-4xl font-bold text-blue-600">+{kpis?.meetingsCount ?? 0}</span>
+          <span className="text-4xl font-bold text-blue-600 dark:text-blue-300">+{kpis?.meetingsCount ?? 0}</span>
           <Badge variant="outline" className="text-xs font-semibold uppercase px-3 py-0.5 text-slate-500 border-slate-200 dark:text-slate-400 dark:border-slate-700">Target: 20+</Badge>
         </div>
 
@@ -502,13 +502,13 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           </div>
         ) : (
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
-            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 mb-1 dark:bg-amber-500/10">
+            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 mb-1 dark:bg-amber-500/10 dark:text-amber-300">
               <Calendar className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Last 1-to-1</span>
             {memberStats?.last_meeting_at ? (
               <>
-                <span className="text-2xl font-bold text-amber-600 leading-tight">
+                <span className="text-2xl font-bold text-amber-600 leading-tight dark:text-amber-300">
                   {format(new Date(memberStats.last_meeting_at), 'MMM d')}
                 </span>
                 <span className="text-xs font-medium text-slate-500 italic dark:text-slate-400">
@@ -597,7 +597,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             <CardHeader className="p-6 pb-4 border-b border-slate-50 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-violet-100 text-violet-600">
+                  <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
@@ -609,7 +609,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                 </div>
                 <div className="flex items-center gap-2">
                   {researchData?.cached && (
-                    <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200">
+                    <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 dark:text-emerald-300">
                       {researchData.data_age_days != null ? `${researchData.data_age_days}d ago` : 'Cached'}
                     </Badge>
                   )}
@@ -690,7 +690,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                         {cp.hiring_signals?.is_hiring && (
                           <div className="bg-emerald-50 rounded-2xl p-4 space-y-1 border border-emerald-100 dark:bg-emerald-500/10">
                             <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">Signal</p>
-                            <p className="text-sm font-bold text-emerald-700">🚀 Actively Hiring</p>
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">🚀 Actively Hiring</p>
                           </div>
                         )}
                       </div>
@@ -748,7 +748,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                           return (
                             <div key={i} className="bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-100 p-4 hover:border-violet-100 transition-colors dark:border-slate-800">
                               <div className="flex items-start gap-3">
-                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black">
+                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black dark:text-violet-300">
                                   {i + 1}
                                 </div>
                                 <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4 dark:text-slate-200">
@@ -875,7 +875,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           <Card className="rounded-[1.5rem] border-violet-100 shadow-sm bg-gradient-to-br from-violet-50/40 to-white">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-600">
+                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-600 dark:text-violet-300">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest dark:text-white">Draft 1-2-1 Message</h3>
