@@ -34,6 +34,10 @@
       "types": "./features/calendar/index.ts",
       "default": "./features/calendar/index.ts"
     },
+    "./promo-video": {
+      "types": "./features/promo-video/index.ts",
+      "default": "./features/promo-video/index.ts"
+    },
     "./notifications": {
       "types": "./features/notifications/index.ts",
       "default": "./features/notifications/index.ts"

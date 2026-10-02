@@ -63,6 +63,26 @@ export function getIcpServiceUrl(): string {
 }
 
 /**
+ * Get the media generation service URL (LAD-MAGe)
+ * Used for: template-mode promo videos, and everything web/src/lib/serviceUrls.ts
+ * lists under MEDIA_GEN_URL. The browser calls it directly with the JWT.
+ *
+ * Priority:
+ * 1. NEXT_PUBLIC_MEDIA_GEN_URL
+ * 2. NEXT_PUBLIC_PLAYGROUND_WORKER_URL (environments not yet split)
+ * 3. localhost:8080 (development default)
+ *
+ * Spelled out literally so Next inlines them at build time.
+ */
+export function getMediaGenUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_MEDIA_GEN_URL ||
+    process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL ||
+    'http://localhost:8080'
+  ).replace(/\/+$/, '');
+}
+
+/**
  * Type-safe service URL getter with fallback
  * @param service - The service name
  * @param fallback - Optional fallback URL
