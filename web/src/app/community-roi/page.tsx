@@ -236,10 +236,10 @@ export default function CommunityROIDashboard() {
                       {(member.name || 'M').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className={`font-semibold text-sm truncate ${selectedMemberId === member.id ? 'text-blue-900' : 'text-slate-800 dark:text-slate-100'}`}>
+                      <p className={`font-semibold text-sm truncate ${selectedMemberId === member.id ? 'text-blue-900 dark:text-blue-100' : 'text-slate-800 dark:text-slate-100'}`}>
                         {member.name}
                       </p>
-                      <p className="text-xs text-slate-500 truncate dark:text-slate-400">{member.email || 'No email'}</p>
+                      <p className="text-xs text-slate-600 truncate dark:text-slate-400">{member.email || 'No email'}</p>
                     </div>
                   </div>
                   <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${
