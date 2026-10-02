@@ -113,8 +113,6 @@ const NAV_GROUP_LABEL: Record<NavGroup, string> = {
   measure: 'Measure',
   setup: 'Setup',
 };
-/** Pinned to the top of the desktop sidebar, in the phone bottom bar's order. */
-const PINNED_HREFS = ['/overview', '/tasks', '/conversations', '/campaigns'];
 const ASK_HREF = '/onboarding/advanced-search-ai';
 const TASKS_HREF = '/tasks';
 
@@ -454,16 +452,10 @@ export function Sidebar() {
       ]
     : baseNav;
 
-  // Desktop order mirrors the phone bottom bar: the most-used pages first,
-  // then Ask Mr LAD with the animated logo, then everything else in its group.
-  // Pinned rows drop their group so the group headings start below them.
-  const pinnedItems = PINNED_HREFS.flatMap((h) => nav.filter((n) => n.href === h));
-  const askItem = nav.find((n) => n.href === ASK_HREF);
-  const desktopNav: NavItem[] = [
-    ...pinnedItems.map((n) => ({ ...n, group: undefined })),
-    ...(askItem ? [{ ...askItem, group: undefined }] : []),
-    ...nav.filter((n) => !PINNED_HREFS.includes(n.href) && n.href !== ASK_HREF),
-  ];
+  // Desktop keeps every page under its own group heading, in nav order. It
+  // used to pull Home/Tasks/Inbox/Outreach/Ask to the top to mirror the phone
+  // bar, which left "Today" heading Follow-ups alone and "Grow" heading Calls.
+  const desktopNav: NavItem[] = nav;
 
   // Same badge as the phone bar (shares its query cache).
   const hasTasksNav = nav.some((n) => n.href === TASKS_HREF);
