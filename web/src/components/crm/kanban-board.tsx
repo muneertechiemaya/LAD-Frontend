@@ -71,7 +71,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                     {s.label}
                   </h3>
                   <span
-                    className="inline-flex dark:bg-[#2563eb] dark:text-white items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium tabular-nums"
+                    className="inline-flex dark:bg-[#2563eb] dark:text-white items-center px-1.5 py-0.5 rounded-md text-xs font-medium tabular-nums"
                   >
                     {unavailable ? '—' : headerCount}
                   </span>
@@ -88,7 +88,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
               </div>
 
               {/* Subheader */}
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 mb-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400 px-1 mb-2">
                 {unavailable
                   ? 'could not be loaded'
                   : headerCount === 0
@@ -120,7 +120,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                   <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 mb-1">
                     {unavailable ? 'Not loaded' : truncated ? 'None on this page' : 'No deals here'}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight mb-6">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight mb-6">
                     {unavailable
                       ? "We couldn't load this pipeline — this isn't an empty stage."
                       : truncated
@@ -151,7 +151,7 @@ function LeadCard({
     >
       <div className="flex items-start gap-2.5">
         <div
-          className="w-8 h-8 rounded-full grid place-items-center text-white text-[11px] font-semibold shrink-0"
+          className="w-8 h-8 rounded-full grid place-items-center text-white text-xs font-semibold shrink-0"
           style={{ background: `linear-gradient(135deg, ${lead.tone || '#0B1957'}, ${T.primary})` }}
         >
           {lead.initials}
@@ -160,12 +160,12 @@ function LeadCard({
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[13px] font-semibold text-[#172560] dark:text-white truncate">{lead.name}</p>
             {lead.value != null && (
-              <span className="text-[11px] font-medium text-[#0B1957] dark:text-[#a5b4fc] tabular-nums">
+              <span className="text-xs font-medium text-[#0B1957] dark:text-[#a5b4fc] tabular-nums">
                 {fmtCurrency(lead.value)}
               </span>
             )}
           </div>
-          <p className="text-[11.5px] text-slate-500 dark:text-slate-300 truncate">{lead.company}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300 truncate">{lead.company}</p>
         </div>
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -189,17 +189,17 @@ function LeadCard({
         <div className="flex items-center gap-1.5">
           {lead.fit != null && (
             <span
-              className="inline-flex dark:bg-[#2563eb] dark:text-white items-center gap-0.5 text-[10.5px] font-medium tabular-nums px-1.5 py-0.5 rounded-md"
+              className="inline-flex dark:bg-[#2563eb] dark:text-white items-center gap-0.5 text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-md"
             >
               <Sparkles className="w-2.5 h-2.5" /> {Math.round(lead.fit * 100)}
             </span>
           )}
-          <span className="text-[10.5px] text-slate-400 tabular-nums">{rel(lead.lastAt)}</span>
+          <span className="text-xs text-slate-400 tabular-nums">{rel(lead.lastAt)}</span>
         </div>
       </div>
       {lead.warmPath && (
         <p
-          className="mt-2 text-[10.5px] font-medium flex items-center gap-1"
+          className="mt-2 text-xs font-medium flex items-center gap-1"
           style={{ color: T.primary }}
         >
           <Route className="w-3 h-3" /> Warm via {lead.warmPath}

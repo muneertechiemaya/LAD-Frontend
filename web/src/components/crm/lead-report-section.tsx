@@ -121,7 +121,7 @@ export default function LeadReportSection({
 
             <GroundingLine grounding={grounding} />
 
-            <p className="mt-3 text-[11.5px] text-slate-400 dark:text-[#5f7089]">
+            <p className="mt-3 text-xs text-slate-500 dark:text-[#8b9ab0]">
               Figures the source doesn&apos;t support are scrubbed after generation - a sparse report is
               the guard working.
             </p>
@@ -146,7 +146,7 @@ function StatusPill({ state }: { state: ReportViewState }) {
   };
   const m = map[state];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${m.cls}`}>
       <FileText className="w-3 h-3" />
       {m.label}
     </span>
@@ -310,7 +310,7 @@ function ReportBody({ content }: { content: ReportContent }) {
         </h4>
       )}
       {content?.subtitle && (
-        <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-[#5f7089]">
+        <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-[#8b9ab0]">
           {content.subtitle}
         </p>
       )}
