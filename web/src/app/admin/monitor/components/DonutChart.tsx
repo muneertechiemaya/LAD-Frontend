@@ -25,11 +25,16 @@ export function DonutChart({ title, data }: DonutChartProps) {
               ))}
             </Pie>
             <Tooltip />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            {/* Recharts paints legend text in the slice colour, and the lighter
+                slices fail contrast; the swatch keeps the colour, the label reads. */}
+            <Legend
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(value) => <span className="text-gray-700 dark:text-gray-300">{value}</span>}
+            />
           </PieChart>
         </ResponsiveContainer>
       ) : (
-        <div className="flex h-[220px] items-center justify-center text-sm text-gray-400">No data</div>
+        <div className="flex h-[220px] items-center justify-center text-sm text-gray-500 dark:text-gray-400">No data</div>
       )}
     </div>
   );
