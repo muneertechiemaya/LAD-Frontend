@@ -36,7 +36,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 
   if (type === 'prospect') {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#0B1957]/10 border border-[#0B1957]/30 dark:bg-[#2563eb]/20 dark:text-[#60a5fa] dark:border-[#3b82f6]/40">
+      <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full text-[#0B1957] bg-[#0B1957]/10 border border-[#0B1957]/30 dark:bg-[#2563eb]/20 dark:text-[#60a5fa] dark:border-[#3b82f6]/40">
         {m.label}
       </span>
     );
@@ -44,7 +44,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
       style={{ color: m.color, background: m.bg }}
     >
       {m.label}
@@ -53,7 +53,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 }
 
 function StagePill({ stage }: { stage?: string }) {
-  if (!stage) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!stage) return <span className="text-xs text-slate-400">-</span>;
   const m = ({
     new:       { label: 'New',         color: '#64748b', bg: '#f1f5f9' },
     contacted: { label: 'Contacted',   color: '#0ea5e9', bg: '#e0f2fe' },
@@ -69,7 +69,7 @@ function StagePill({ stage }: { stage?: string }) {
   };
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ color: m.color, background: m.bg }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }}></span>
@@ -84,7 +84,7 @@ function ScoreBar({ value, color = T.primary }: { value: number; color?: string 
       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: T.badgeBg }}>
         <div className="h-full" style={{ width: `${value * 100}%`, background: color }}></div>
       </div>
-      <span className="text-[11px] tabular-nums font-semibold text-[#172560] dark:text-white w-7 text-right">
+      <span className="text-xs tabular-nums font-semibold text-[#172560] dark:text-white w-7 text-right">
         {Math.round(value * 100)}
       </span>
     </div>
@@ -92,7 +92,7 @@ function ScoreBar({ value, color = T.primary }: { value: number; color?: string 
 }
 
 function EmailCell({ email, verified }: { email?: string | null; verified?: boolean }) {
-  if (!email) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!email) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] text-[#172560] dark:text-white truncate">{email}</span>
@@ -102,7 +102,7 @@ function EmailCell({ email, verified }: { email?: string | null; verified?: bool
 }
 
 function PhoneCell({ phone, verified }: { phone?: string | null; verified?: boolean }) {
-  if (!phone) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!phone) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] tabular-nums text-[#172560] dark:text-white truncate">{phone}</span>
@@ -112,9 +112,9 @@ function PhoneCell({ phone, verified }: { phone?: string | null; verified?: bool
 }
 
 function OwnerCell({ ownerId }: { ownerId?: string }) {
-  if (!ownerId) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!ownerId) return <span className="text-xs text-slate-400">-</span>;
   const o = CRM_OWNERS[ownerId];
-  if (!o) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!o) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-2">
       <CrmAvatar name={o.name} initials={o.initials} tone={o.tone} size={22} />
@@ -367,7 +367,7 @@ function CrmTable<R extends CrmContact>({
               {title}
             </h3>
             <span
-              className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md tabular-nums"
+              className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md tabular-nums"
             >
               {filtered.length}{filtered.length !== count ? ` / ${count}` : ''}
             </span>
@@ -513,7 +513,7 @@ function CrmTable<R extends CrmContact>({
                           : 'none'
                         : undefined
                     }
-                    className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
+                    className={`px-3 py-2.5 text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
                       c.align === 'right' ? 'text-right' : 'text-left'
                     } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]' : ''}`}
                   >
@@ -671,7 +671,7 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
       <div className="min-w-0 max-w-[260px] sm:max-w-[320px]">
         <p className="text-[12.5px] font-semibold text-[#172560] dark:text-white truncate">{row.name}</p>
         {/* Kept rendered even when empty so row heights stay aligned. */}
-        <p className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate" title={subtitle}>
+        <p className="text-xs text-slate-500 dark:text-[#7a8ba3] truncate" title={subtitle}>
           {subtitle}
         </p>
       </div>
@@ -691,7 +691,7 @@ export function AllContactsTable({
       label: 'Company',
       render: (r) => r.company
         ? <span className="text-[12px] text-[#172560] dark:text-white">{r.company}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
     { label: 'Email',   render: (r) => <EmailCell email={r.email} verified={r.emailVerified} /> },
     { label: 'Phone',   render: (r) => <PhoneCell phone={r.phone} verified={r.phoneVerified} /> },
@@ -772,15 +772,15 @@ export function ProspectsTable({
       label: 'Industry',
       render: (r) => r.industry
         ? <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
     {
       label: 'Geo',
       render: (r) => r.geo
         ? <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
-    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, serverSortKey: 'fit_score', render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
+    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, serverSortKey: 'fit_score', render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-xs text-slate-400">-</span>) },
     {
       label: 'Intent',
       render: (r) => {
@@ -790,11 +790,11 @@ export function ProspectsTable({
         // real data, not a genuine 0. `?? 0` was rendering every prospect
         // as "0 signals" in a colored badge indistinguishable from a real
         // "checked and found none" result.
-        if (r.intentSignals == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.intentSignals == null) return <span className="text-xs text-slate-400">-</span>;
         const n = r.intentSignals;
         return (
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{
               background: n > 0 ? '#fef3c7' : '#f1f5f9',
               color: n > 0 ? '#a16207' : '#64748b',
@@ -817,7 +817,7 @@ export function ProspectsTable({
             {r.warmPath}
           </span>
         ) : (
-          <span className="text-[11.5px] text-slate-400">-</span>
+          <span className="text-xs text-slate-400">-</span>
         ),
     },
     { label: 'Channels', render: (r) => <ChannelChips channels={r.channels} /> },
@@ -890,13 +890,13 @@ export function LeadsTable({
       // a deal genuinely assessed at zero value/probability.
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {r.value != null ? fmtCurrency(r.value) : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
+          {r.value != null ? fmtCurrency(r.value) : <span className="text-xs text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
     {
       label: 'Probability', sortable: true, sortKey: (r) => r.probability,
-      render: (r) => (r.probability != null ? <ScoreBar value={r.probability} color="#16a34a" /> : <span className="text-[11.5px] text-slate-400">-</span>),
+      render: (r) => (r.probability != null ? <ScoreBar value={r.probability} color="#16a34a" /> : <span className="text-xs text-slate-400">-</span>),
     },
     {
       label: 'Weighted', align: 'right', nowrap: true,
@@ -990,10 +990,10 @@ export function ClientsTable({
       // "else" branch, text empty) instead of the same "-" every other
       // unset field in this table already uses.
       render: (r) => {
-        if (!r.plan) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (!r.plan) return <span className="text-xs text-slate-400">-</span>;
         return (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold"
+            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
             style={{
               background: r.plan === 'Enterprise' ? '#e8ebf7' : r.plan === 'Growth' ? '#dbeafe' : '#f1f5f9',
               color: r.plan === 'Enterprise' ? '#0B1957' : r.plan === 'Growth' ? '#1d4ed8' : '#475569',
@@ -1013,7 +1013,7 @@ export function ClientsTable({
       // it, the same).
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {r.mrr != null ? fmtCurrency(r.mrr, 'USD') : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
+          {r.mrr != null ? fmtCurrency(r.mrr, 'USD') : <span className="text-xs text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
@@ -1033,7 +1033,7 @@ export function ClientsTable({
         // health score to 0 would paint every unscored client red/critical,
         // which is a worse-than-worst-case reading rather than an honest
         // "no data yet."
-        if (r.health == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.health == null) return <span className="text-xs text-slate-400">-</span>;
         const h = r.health;
         return (
           <ScoreBar
@@ -1046,11 +1046,11 @@ export function ClientsTable({
     {
       label: 'NPS', align: 'right',
       render: (r) => {
-        if (r.nps == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.nps == null) return <span className="text-xs text-slate-400">-</span>;
         const n = r.nps;
         return (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
             style={{
               color: n >= 9 ? '#16a34a' : n >= 7 ? '#0ea5e9' : '#dc2626',
               background: n >= 9 ? '#dcfce7' : n >= 7 ? '#e0f2fe' : '#fee2e2',
@@ -1067,7 +1067,7 @@ export function ClientsTable({
       label: 'Renewal', sortable: true, nowrap: true,
       sortKey: (r) => r.renewalDate,
       render: (r) => {
-        if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (!r.renewalDate) return <span className="text-xs text-slate-400">-</span>;
         // Real current time — NOT the frozen `NOW` (2026-05-27) that the mock
         // fixtures use. Days-until-renewal and the <60d "urgent" highlight must
         // be measured from today; against the frozen date every real renewal
@@ -1083,7 +1083,7 @@ export function ClientsTable({
               {fmtDate(r.renewalDate)}
             </span>
             <span
-              className="text-[10.5px] font-medium"
+              className="text-xs font-medium"
               style={{ color: isClose ? '#dc2626' : '#64748b' }}
             >
               · {days}d

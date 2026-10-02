@@ -141,7 +141,7 @@ export function CrmAvatar({
 }
 
 export function ChannelChips({ channels }: { channels?: ChannelKey[] }) {
-  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!channels?.length) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1">
       {channels.map((ch) => {
@@ -260,6 +260,6 @@ export function VerifiedTag({ verified }: { verified?: boolean }) {
   return verified ? (
     <BadgeCheck className="w-3.5 h-3.5 shrink-0" style={{ color: T.success }} />
   ) : (
-    <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 shrink-0">unverified</span>
+    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 shrink-0">unverified</span>
   );
 }

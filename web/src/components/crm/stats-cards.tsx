@@ -68,7 +68,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                   </div>
                 </div>
                 <div className="flex flex-col-reverse items-center md:flex-1 md:flex-col md:items-start md:justify-end">
-                  <p className="max-w-full truncate text-[11px] text-slate-600 dark:text-slate-300 md:mb-1 md:text-[12.5px] md:text-slate-500 md:dark:text-slate-400">
+                  <p className="max-w-full truncate text-xs text-slate-600 dark:text-slate-300 md:mb-1 md:text-[12.5px] md:text-slate-500 md:dark:text-slate-400">
                     {c.title}
                   </p>
                   <h5

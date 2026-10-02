@@ -34,7 +34,7 @@ export default function TopBar({
               className="w-7 h-7 rounded-md grid place-items-center"
               style={{ background: '#0B1957' }}
             >
-              <span className="text-white font-bold text-[11px] tracking-tight">LAD</span>
+              <span className="text-white font-bold text-xs tracking-tight">LAD</span>
             </div>
             <span
               className="text-[13.5px] font-semibold text-[#172560] dark:text-white"

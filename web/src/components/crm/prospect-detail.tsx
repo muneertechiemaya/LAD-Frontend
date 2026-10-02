@@ -211,7 +211,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
                   {prospect.full_name}
                 </h2>
                 <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium dark:!text-slate-100"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium dark:!text-slate-100"
                   // Raw stage colours (e.g. info blue) read ~2.5:1 as text on their own tint;
                   // 60% toward black keeps the hue and clears 4.5:1.
                   style={{ background: `${stage.color}1a`, color: `color-mix(in srgb, ${stage.color} 60%, #000)` }}
@@ -230,13 +230,13 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
                   decoration as the "·" separator in tables.tsx's NameCell. The
                   network_distance block right below already guards this way. */}
               {prospect.location && String(prospect.location).trim() && (
-                <p className="text-[11.5px] text-slate-500 dark:text-slate-300 mt-1 flex items-center gap-1.5">
+                <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 flex items-center gap-1.5">
                   <MapPin className="w-3 h-3" />
                   {prospect.location}
                 </p>
               )}
               {(prospect.network_distance || (prospect.mutual_connections_count ?? 0) > 0) && (
-                <p className="text-[11px] mt-1.5 flex items-center gap-2 flex-wrap">
+                <p className="text-xs mt-1.5 flex items-center gap-2 flex-wrap">
                   {prospect.network_distance && (
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
@@ -277,7 +277,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
       {/* Warm path */}
       <div ref={sectionRef}>
         {warmPathSample && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
             Sample data · warm-path is not yet wired to a live source
           </div>
         )}
@@ -416,11 +416,11 @@ function KpiFit({ value }: { value: number | null }) {
         </div>
       </div>
       <div className="min-w-0">
-        <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
           Fit score
         </p>
         <p className="text-[13px] font-semibold text-[#172560] dark:text-white mt-0.5">{band}</p>
-        <p className="text-[11px] text-slate-500 dark:text-slate-300">
+        <p className="text-xs text-slate-500 dark:text-slate-300">
           {scored ? 'Fit to active ICP' : 'Scored on discovery'}
         </p>
       </div>
@@ -439,7 +439,7 @@ function KpiSpark({ counts, total }: { counts: number[]; total: number | null })
   const lastY = h - (counts[n - 1] / max) * h;
   return (
     <div className="p-4 lg:p-5 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-[#1c2c4e]">
-      <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+      <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
         Engagement · 7d
       </p>
       <div className="flex items-baseline gap-2 mt-1">
@@ -449,7 +449,7 @@ function KpiSpark({ counts, total }: { counts: number[]; total: number | null })
         >
           {total ?? '—'}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">
+        <span className="text-xs text-slate-500 dark:text-slate-300">
           {total == null ? 'not loaded' : 'events'}
         </span>
       </div>
@@ -499,11 +499,11 @@ function KpiRoutes({
       className="text-left w-full p-4 lg:p-5 border-r border-slate-100 dark:border-[#1c2c4e] hover:bg-[#f1f3fb] dark:hover:bg-[#0e1d4d] transition group"
     >
       <div className="flex items-start justify-between">
-        <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
           Warm routes
         </p>
         <span
-          className="inline-flex items-center gap-1 text-[10.5px] font-medium text-[#0B1957] dark:text-slate-300 group-hover:underline transition-colors"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[#0B1957] dark:text-slate-300 group-hover:underline transition-colors"
         >
           {open ? 'Hide' : 'Open'}
           {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -516,7 +516,7 @@ function KpiRoutes({
           >
             {count}
           </span>
-          <span className="text-[11px] font-medium text-[#0B1957] dark:text-slate-400">
+          <span className="text-xs font-medium text-[#0B1957] dark:text-slate-400">
             paths
           </span>
       </div>
@@ -527,7 +527,7 @@ function KpiRoutes({
         >
           AM
         </div>
-        <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+        <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
           via <span className="font-semibold text-[#172560] dark:text-white">{top}</span>
         </p>
       </div>
@@ -542,7 +542,7 @@ function KpiLast({
   const Icon = c.Icon;
   return (
     <div className="p-4 lg:p-5">
-      <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+      <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
         Last touch
       </p>
       <div className="flex items-baseline gap-2 mt-1">
@@ -552,16 +552,16 @@ function KpiLast({
         >
           {rel(occurredAt)}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">ago</span>
+        <span className="text-xs text-slate-500 dark:text-slate-300">ago</span>
       </div>
       <div className="mt-2 inline-flex items-center gap-1.5">
         <span
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium dark:!text-slate-200"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium dark:!text-slate-200"
           style={{ color: c.color, background: `${c.color}1a` }}
         >
           <Icon className="w-3 h-3" /> {c.label}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">
+        <span className="text-xs text-slate-500 dark:text-slate-300">
           {direction === 'inbound' ? 'reply' : 'sent'}
         </span>
       </div>
@@ -616,7 +616,7 @@ function ActivityHeatmap({ events, days = 30, unavailable = false }: { events: P
             <div key={c} className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-24 shrink-0">
                 <Icon className={`w-3.5 h-3.5 ${isIntentChannel ? 'text-[#172560] dark:text-[#60a5fa]' : ''}`}                      style={isIntentChannel ? undefined : { color: meta?.color || 'currentColor' }}/>
-                <span className="text-[11.5px] font-medium text-[#172560] dark:text-white">{meta.label}</span>
+                <span className="text-xs font-medium text-[#172560] dark:text-white">{meta.label}</span>
               </div>
               <div
                 className="flex-1 grid gap-[3px]"
@@ -637,13 +637,13 @@ function ActivityHeatmap({ events, days = 30, unavailable = false }: { events: P
                   );
                 })}
               </div>
-              <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-300 w-8 text-right">
+              <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300 w-8 text-right">
                 {sum}
               </span>
             </div>
           );
         })}
-        <div className="flex items-center justify-between pt-2 text-[10.5px] text-slate-500 dark:text-slate-300">
+        <div className="flex items-center justify-between pt-2 text-xs text-slate-500 dark:text-slate-300">
           <span>{days} days ago</span>
           <span>Today</span>
         </div>
@@ -740,13 +740,13 @@ function FitRadar({ p }: { p: ProspectFixture }) {
         <div className="flex-1 grid grid-cols-1 gap-1.5">
           {signals.map(([k, v]) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-600 dark:text-slate-300 w-16">
+              <span className="text-xs text-slate-600 dark:text-slate-300 w-16">
                 {FIT_LABELS[k] || k}
               </span>
               <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: T.badgeBg }}>
                 <div className="h-full" style={{ width: `${v * 100}%`, background: T.primary }}></div>
               </div>
-              <span className="text-[11px] tabular-nums font-semibold text-[#172560] dark:text-white w-8 text-right">
+              <span className="text-xs tabular-nums font-semibold text-[#172560] dark:text-white w-8 text-right">
                 {Math.round(v * 100)}
               </span>
             </div>
@@ -791,7 +791,7 @@ function ChannelDonut({ p }: { p: ProspectFixture }) {
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
-              <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+              <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
                 Events
               </p>
               <p
@@ -809,13 +809,13 @@ function ChannelDonut({ p }: { p: ProspectFixture }) {
             return (
               <div key={ch} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta?.color || T.primary }}></span>
-                <span className="text-[11.5px] font-medium text-[#172560] dark:text-white flex-1">
+                <span className="text-xs font-medium text-[#172560] dark:text-white flex-1">
                   {meta?.label || ch}
                 </span>
-                <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-300">
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300">
                   {rr.count}
                 </span>
-                <span className="text-[10.5px] tabular-nums text-slate-400 dark:text-slate-300/70 w-9 text-right">
+                <span className="text-xs tabular-nums text-slate-400 dark:text-slate-300/70 w-9 text-right">
                   {Math.round((rr.count / total) * 100)}%
                 </span>
               </div>
@@ -879,11 +879,11 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
                 >
                   <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-300 tabular-nums">
+                <span className="text-xs text-slate-500 dark:text-slate-300 tabular-nums">
                   {s.recency_days}d
                 </span>
               </div>
-              <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold mt-3">
+              <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold mt-3">
                 {m.label}
               </p>
               <p className="text-[13px] text-[#172560] dark:text-white font-semibold mt-0.5 leading-snug">
@@ -896,7 +896,7 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
                 >
                   <div className="h-full" style={{ width: `${s.confidence * 100}%`, background: m.color }}></div>
                 </div>
-                <span className="text-[10.5px] tabular-nums text-slate-500 dark:text-slate-300">
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300">
                   {Math.round(s.confidence * 100)}%
                 </span>
               </div>
@@ -951,7 +951,7 @@ function MiniFeed({ events, truncated = false, unavailable = false }: { events: 
                 <Icon className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11.5px] text-slate-500 dark:text-slate-300">
+                <p className="text-xs text-slate-500 dark:text-slate-300">
                   <span className="font-semibold text-[#172560] dark:text-white">{m.label}</span> · {e.direction}
                   <span className="ml-1.5 tabular-nums">{rel(e.occurred_at)} ago</span>
                 </p>
@@ -1002,7 +1002,7 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
           onClick={() => onAction?.({ doNotContact: !doNotContact })}
         />
       </div>
-      <p className="mt-2.5 text-[11.5px] text-slate-500 dark:text-slate-400 leading-snug">
+      <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400 leading-snug">
         Agent replies honour these. A running campaign sequence does not — pause
         the campaign to stop its steps.
       </p>
@@ -1052,7 +1052,7 @@ function ActionBtn({
       <div className="min-w-0">
         <p className="text-[13px] font-semibold">{label}</p>
         <p
-          className={`text-[11px] ${
+          className={`text-xs ${
             primary ? 'text-white/70' : 'text-slate-500 dark:text-slate-300'
           } truncate`}
         >
@@ -1141,14 +1141,14 @@ function NextFollowups({
                       <span className="font-normal text-slate-500 dark:text-slate-300"> · {desc}</span>
                     ) : null}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-300 truncate">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 truncate">
                     {when.abs}
                     {f.attempt ? ` · attempt ${f.attempt}` : ''}
                   </p>
                 </div>
                 {when.badge ? (
                   <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0"
+                    className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
                     style={{ background: T.badgeBg, color: T.primary }}
                   >
                     {when.badge}
@@ -1160,7 +1160,7 @@ function NextFollowups({
         </ul>
       )}
       {!error && !loading && followups.length > 0 && degradedChannels.length > 0 && (
-        <p className="mt-2 text-[11.5px] text-amber-700 dark:text-amber-300">
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
           {degradedChannels.join(', ')} follow-ups couldn&apos;t be read — there may be more
           than shown.
         </p>

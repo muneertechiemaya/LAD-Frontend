@@ -349,7 +349,7 @@ export default function CrmPage() {
           renderMain()
         )}
 
-        <footer className="pt-6 pb-2 text-[11.5px] text-slate-500 dark:text-slate-300 flex items-center justify-between">
+        <footer className="pt-6 pb-2 text-xs text-slate-500 dark:text-slate-300 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
               sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was
