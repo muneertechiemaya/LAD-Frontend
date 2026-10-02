@@ -600,7 +600,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
     switch (column) {
       case 'serialNo':
         return (
-          <p className="text-sm font-medium text-[#64748B]">
+          <p className="text-sm font-medium text-[#64748B] dark:text-slate-400">
             {(currentPage - 1) * pageSize + (paginatedLeads.findIndex(l => l.id === lead.id) + 1)}
           </p>
         );
@@ -929,7 +929,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
             <button
               type="button"
               onClick={() => onViewModeChange?.('kanban')}
-              className={`h-8 flex-1 lg:flex-none px-3 rounded-lg text-xs font-medium flex items-center justify-center lg:justify-start gap-1.5 transition-colors ${
+              className={`h-8 max-lg:h-11 flex-1 lg:flex-none px-3 rounded-lg text-xs font-medium flex items-center justify-center lg:justify-start gap-1.5 transition-colors ${
                 viewMode === 'kanban'
                   ? 'bg-white dark:bg-[#1a2f6b] text-gray-900 dark:text-gray-100 shadow-sm'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -941,7 +941,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
             <button
               type="button"
               onClick={() => onViewModeChange?.('list')}
-              className={`h-8 flex-1 lg:flex-none px-3 rounded-lg text-xs font-medium flex items-center justify-center lg:justify-start gap-1.5 transition-colors ${
+              className={`h-8 max-lg:h-11 flex-1 lg:flex-none px-3 rounded-lg text-xs font-medium flex items-center justify-center lg:justify-start gap-1.5 transition-colors ${
                 viewMode === 'list'
                   ? 'bg-white dark:bg-[#1a2f6b] text-gray-900 dark:text-gray-100 shadow-sm'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -989,7 +989,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search leads..."
-                className="border-0 outline-none bg-transparent w-full text-sm text-gray-800 dark:text-gray-200 focus:ring-0 focus:outline-none p-0 h-full placeholder:text-gray-400"
+                className="border-0 outline-none bg-transparent w-full max-lg:min-h-11 text-sm text-gray-800 dark:text-gray-200 focus:ring-0 focus:outline-none p-0 h-full placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -1043,7 +1043,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 e.stopPropagation();
                 dispatch(setSettingsDialogOpen(true));
               }}
-              className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0"
+              className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 w-9 h-9 max-lg:w-11 max-lg:h-11 rounded-xl flex items-center justify-center transition-colors shrink-0"
             >
               <Settings className="h-4 w-4" />
             </button>
@@ -1162,7 +1162,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
 
           {/* Right Side: Page navigation */}
           <div className="flex items-center gap-2">
-            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3] whitespace-nowrap">
+            <div className="text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3] whitespace-nowrap">
               Page {currentPage} of {totalPages}
             </div>
 

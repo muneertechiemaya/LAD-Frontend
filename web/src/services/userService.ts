@@ -7,6 +7,16 @@ export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return safeStorage.getItem('token') || safeStorage.getItem('token');
 }
+/**
+ * Same-origin path in the browser, so the call goes through the Next.js /api
+ * proxy (cookie auth) like the SDK's apiClient. getApiUrl() points the browser
+ * straight at NEXT_PUBLIC_BACKEND_URL - a cross-origin request that fails
+ * wherever the backend does not allow the page's origin, and the Pipeline board
+ * treated that failed users list as fatal.
+ */
+function sameOriginUrl(path: string): string {
+  return typeof window === 'undefined' ? getApiUrl(path) : path;
+}
 const DEFAULT_FETCH_TIMEOUT_MS = 20000;
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
@@ -88,7 +98,8 @@ export async function getPipelinePreferences(): Promise<PipelinePreferences> {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    const response = await fetchWithTimeout(getApiUrl('/api/deals-pipeline/settings'), {
+    const response = await fetchWithTimeout(sameOriginUrl('/api/deals-pipeline/settings'), {
+      credentials: 'include',
       ...defaultFetchOptions(),
       headers: {
         ...defaultFetchOptions().headers,
@@ -113,7 +124,8 @@ export async function savePipelinePreferences(preferences: PipelinePreferences):
       throw new Error('Not authenticated');
     }
     // Send preferences as structured object (not flattened)
-    const response = await fetchWithTimeout(getApiUrl('/api/deals-pipeline/settings'), {
+    const response = await fetchWithTimeout(sameOriginUrl('/api/deals-pipeline/settings'), {
+      credentials: 'include',
       ...defaultFetchOptions(),
       method: 'PUT',
       headers: {
@@ -326,7 +338,8 @@ function mergeWithPipelineDefaults(userPreferences: Partial<PipelinePreferences>
 export async function getAllUsers(): Promise<User[]> {
   const token = getAccessToken();
   if (!token) throw new Error('Not authenticated');
-  const response = await fetchWithTimeout(getApiUrl('/api/users'), {
+  const response = await fetchWithTimeout(sameOriginUrl('/api/users'), {
+    credentials: 'include',
     ...defaultFetchOptions(),
     headers: {
       ...defaultFetchOptions().headers,
