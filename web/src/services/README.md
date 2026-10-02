@@ -9,10 +9,8 @@ This directory contains **web-specific services only**. Feature-specific service
 - **`api.ts/api.js`** - Base API client with Next.js environment config
 - **`authService.ts`** - Authentication & session management (httpOnly cookies)
 - **`chatService.ts`** - WebSocket/Socket.io real-time chat integration
-- **`userService.ts`** - User management and preferences
-- **`userPreferencesService.ts`** - Local storage user preferences
+- **`userService.ts`** - Team users list and Pipeline board preferences
 - **`geminiFlashService.ts`** - Gemini AI integration (web-specific)
-- **`dashboardService.ts`** - Dashboard aggregation service
 - **`leadsService.ts`** - Lead management (verify if SDK exists)
 - **`Customer360Service.ts`** - Customer 360 view aggregation
 
