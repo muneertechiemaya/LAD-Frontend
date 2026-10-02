@@ -9030,7 +9030,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                             <span className="flex items-start gap-1.5 flex-wrap">
                               <span className="text-[14px] font-bold text-foreground leading-tight">{t.name}</span>
                               {t.badge && (
-                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md mt-0.5 ${
+                                <span className={`text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md mt-0.5 ${
                                   t.badge.tone === 'violet'
                                     ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
                                     : 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'
@@ -9041,7 +9041,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           </span>
                           <span className="flex flex-col items-center flex-shrink-0 pl-1">
                             <span className="text-[15px] font-bold text-foreground leading-none">{t.nodes.length + 1}</span>
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Steps</span>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Steps</span>
                           </span>
                           <svg className={`text-muted-foreground flex-shrink-0 mt-2.5 transition-transform ${open ? 'rotate-90' : ''}`}
                             width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
@@ -9053,19 +9053,19 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                               {t.chain.map((c, i) => (
                                 <Fragment key={i}>
                                   {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
-                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap dark:![color:color-mix(in_srgb,var(--chip-accent)_40%,white)]"
+                                  <span className="text-xs font-semibold px-2 py-[3px] rounded-full whitespace-nowrap dark:![color:color-mix(in_srgb,var(--chip-accent)_40%,white)]"
                                     style={{ background: `${t.accent}12`, color: t.accent, ['--chip-accent' as string]: t.accent } as React.CSSProperties}>{c}</span>
                                 </Fragment>
                               ))}
                             </div>
                             <div className="flex flex-col gap-2.5 mt-3 pt-2.5 border-t border-border/50 dark:border-blue-950/40">
-                              <div className="flex items-center justify-between gap-2 text-[11.5px] text-muted-foreground">
+                              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                                 <span className="inline-flex items-center gap-1.5">
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                                   <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
                                 </span>
                                 <span className="h-3 w-px bg-border dark:bg-blue-950/40" />
-                                <span className="text-[11.5px] text-muted-foreground">
+                                <span className="text-xs text-muted-foreground">
                                   <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
                                 </span>
                               </div>
@@ -9094,8 +9094,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   const community = list.filter((t) => t.category === 'community');
                   const heading = (label: string, count: number) => (
                     <div className="flex items-center gap-2 pt-1 pb-0.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-                      <span className="text-[10px] font-semibold text-muted-foreground/70">{count}</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">{count}</span>
                       <span className="flex-1 h-px bg-border dark:bg-blue-950/40" />
                     </div>
                   );

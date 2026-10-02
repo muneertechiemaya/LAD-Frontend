@@ -268,7 +268,7 @@ export default function OnboardingStepLibrary() {
           <p className="text-sm font-semibold text-[#1E293B]">
             {step.label}
           </p>
-          <p className="text-[11px] text-[#64748B]">
+          <p className="text-xs text-[#64748B]">
             {step.description}
           </p>
         </div>
