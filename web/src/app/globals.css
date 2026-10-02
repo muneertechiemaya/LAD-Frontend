@@ -586,7 +586,10 @@
 
   /* Secondary */
   --secondary: oklch(98% 0.003 247.858);
-  --secondary-foreground: oklch(98% 0.016 73.684);
+  /* Was oklch(98% 0.016 73.684) - near-white on the near-white --secondary,
+     so every variant="secondary" Badge / Button / Chip read 1:1 in light mode.
+     Same navy as --muted-foreground / --color-base-content. */
+  --secondary-foreground: oklch(20% 0.042 265.755);
 
   /* Accent */
   --accent: #0B1957;
