@@ -379,18 +379,18 @@ export const RecommendationPairs: React.FC = () => {
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="bg-indigo-50 rounded-xl p-4 text-center dark:bg-indigo-500/10">
-                <p className="text-2xl font-bold text-indigo-700">{data.totalPairs}</p>
+                <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{data.totalPairs}</p>
                 <p className="text-xs text-indigo-500 font-medium mt-0.5">Total recommendations ({data.weeks?.length} weeks)</p>
               </div>
               <div className="bg-emerald-50 rounded-xl p-4 text-center dark:bg-emerald-500/10">
-                <p className="text-2xl font-bold text-emerald-700">{data.totalMembers}</p>
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{data.totalMembers}</p>
                 <p className="text-xs text-emerald-500 font-medium mt-0.5">Members with options</p>
               </div>
               <div className="bg-yellow-50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-yellow-700">
+                <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
                   {data.weeks?.reduce((sum, w) => sum + w.pairs.filter(p => p.combination_type === 2).length, 0)}
                 </p>
-                <p className="text-xs text-yellow-600 font-medium mt-0.5">With referral exist</p>
+                <p className="text-xs text-yellow-600 font-medium mt-0.5 dark:text-yellow-300">With referral exist</p>
               </div>
             </div>
 
@@ -442,7 +442,7 @@ export const RecommendationPairs: React.FC = () => {
             {weekData?.pairs?.length ? (
               <div className="flex flex-col gap-2">
                 {pickError && (
-                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 dark:bg-red-500/10">{pickError}</p>
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 dark:bg-red-500/10 dark:text-red-300">{pickError}</p>
                 )}
                 {notice && (
                   <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 dark:bg-emerald-500/10">{notice}</p>

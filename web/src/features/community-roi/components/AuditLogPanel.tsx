@@ -33,30 +33,30 @@ interface AuditEntry {
 }
 
 const ACTION_COLOR: Record<string, string> = {
-  'recommendation.completed':  'bg-emerald-100 text-emerald-700',
-  'recommendation.created':    'bg-indigo-100 text-indigo-700',
-  'interaction.recorded':      'bg-emerald-100 text-emerald-700',
-  'interaction.incremented':   'bg-emerald-50 text-emerald-700',
-  'onboarding.step_completed': 'bg-blue-100 text-blue-700',
-  'onboarding.step_reset':     'bg-amber-100 text-amber-700',
+  'recommendation.completed':  'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
+  'recommendation.created':    'bg-indigo-100 text-indigo-700 dark:text-indigo-300',
+  'interaction.recorded':      'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
+  'interaction.incremented':   'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  'onboarding.step_completed': 'bg-blue-100 text-blue-700 dark:text-blue-300',
+  'onboarding.step_reset':     'bg-amber-100 text-amber-700 dark:text-amber-300',
   'broadcast.sent':            'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200',
-  'broadcast.delivered':       'bg-blue-100 text-blue-700',
-  'broadcast.read':            'bg-emerald-100 text-emerald-700',
-  'broadcast.failed':          'bg-rose-100 text-rose-700',
-  'member.phone_updated':      'bg-purple-100 text-purple-700',
-  'member.created':            'bg-indigo-100 text-indigo-700',
-  'member.deleted':            'bg-rose-100 text-rose-700',
+  'broadcast.delivered':       'bg-blue-100 text-blue-700 dark:text-blue-300',
+  'broadcast.read':            'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
+  'broadcast.failed':          'bg-rose-100 text-rose-700 dark:text-rose-300',
+  'member.phone_updated':      'bg-purple-100 text-purple-700 dark:text-purple-300',
+  'member.created':            'bg-indigo-100 text-indigo-700 dark:text-indigo-300',
+  'member.deleted':            'bg-rose-100 text-rose-700 dark:text-rose-300',
   'directory.synced':          'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200',
 };
 
 const ACTOR_COLOR: Record<string, string> = {
-  chatbot_self_report: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  admin_ui:            'bg-indigo-50 text-indigo-700 border-indigo-200',
-  admin_sql:           'bg-purple-50 text-purple-700 border-purple-200',
-  webhook:             'bg-blue-50 text-blue-700 border-blue-200',
+  chatbot_self_report: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300',
+  admin_ui:            'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300',
+  admin_sql:           'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300',
+  webhook:             'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300',
   cron:                'bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:border-slate-700',
   system:              'bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:border-slate-700',
-  broadcast_send:      'bg-amber-50 text-amber-700 border-amber-200',
+  broadcast_send:      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300',
 };
 
 export function AuditLogPanel() {
@@ -122,7 +122,7 @@ export function AuditLogPanel() {
         )}
 
         {loading && <div className="text-sm text-slate-500 dark:text-slate-400">Loading…</div>}
-        {error && <div className="text-sm text-rose-600 dark:text-rose-300">⚠ {error}</div>}
+        {error && <div className="text-sm text-rose-700 dark:text-rose-300">⚠ {error}</div>}
         {!loading && !error && entries.length === 0 && (
           <div className="text-sm text-slate-500 dark:text-slate-400">No activity in this window.</div>
         )}

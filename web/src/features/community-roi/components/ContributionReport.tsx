@@ -216,14 +216,14 @@ export default function ContributionReport() {
         </div>
       ) : error ? (
         <div className="text-center py-8 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
-          <p className="text-red-600 dark:text-red-300">{error}</p>
+          <p className="text-red-700 dark:text-red-300">{error}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Unique Meetings - REAL DATA */}
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 dark:bg-orange-500/10">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Unique Meetings</p>
-            <p className="text-4xl font-bold text-green-600">
+            <p className="text-4xl font-bold text-green-600 dark:text-green-300">
               {stats.uniqueMeetings > 0 ? `+${stats.uniqueMeetings}` : '0'}
             </p>
           </div>
@@ -231,7 +231,7 @@ export default function ContributionReport() {
           {/* Unique Referrals - REAL DATA */}
           <div className="bg-pink-50 border border-pink-200 rounded-lg p-6">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Unique Referrals Passed</p>
-            <p className="text-4xl font-bold text-pink-600">
+            <p className="text-4xl font-bold text-pink-600 dark:text-pink-300">
               {stats.uniqueReferrals > 0 ? `+${stats.uniqueReferrals}` : '0'}
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function ContributionReport() {
           {/* Impact Generated - MOCK DATA */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 dark:bg-blue-500/10">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Impact Generated (AED)</p>
-            <p className="text-4xl font-bold text-blue-600">{stats.impactGenerated}</p>
+            <p className="text-4xl font-bold text-blue-600 dark:text-blue-300">{stats.impactGenerated}</p>
           </div>
 
           {/* Avg Monthly Engagements - MOCK DATA */}

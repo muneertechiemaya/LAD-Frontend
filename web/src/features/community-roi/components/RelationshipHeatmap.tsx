@@ -19,9 +19,11 @@ import { useRelationshipHeatmap } from '@lad/frontend-features/community-roi';
 import { RecommendationPairs } from './RecommendationPairs';
 
 const COLORS = {
-  M:  { bg: '#EF444420', border: '#EF4444', badge: '#EF4444', label: 'Meeting Only' },
-  R:  { bg: '#EAB30820', border: '#EAB308', badge: '#EAB308', label: 'Referral Only' },
-  MR: { bg: '#10B98120', border: '#10B981', badge: '#10B981', label: 'Both' },
+  // badge = 700 shades: white text on them, and the counts on the 12% tint,
+  // need >= 4.5:1 (the 500s were 1.9-3.8:1). Borders keep the bright hue.
+  M:  { bg: '#EF444420', border: '#EF4444', badge: '#B91C1C', label: 'Meeting Only' },
+  R:  { bg: '#EAB30820', border: '#EAB308', badge: '#A16207', label: 'Referral Only' },
+  MR: { bg: '#10B98120', border: '#10B981', badge: '#047857', label: 'Both' },
 } as const;
 
 type CombinationType = 'M' | 'R' | 'MR';
@@ -65,7 +67,7 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
     return (
       <td className="border border-slate-100 p-0 dark:border-slate-800">
         <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center dark:bg-white/10">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">0</span>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">0</span>
         </div>
       </td>
     );
@@ -91,14 +93,14 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
       >
         {/* Type badge */}
         <span
-          className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded leading-none"
+          className="text-xs font-bold text-white px-1.5 py-0.5 rounded leading-none"
           style={{ backgroundColor: palette.badge }}
         >
           {cell.combinationType}
         </span>
 
         {/* Counts */}
-        <div className="flex gap-1 text-[9px] font-semibold leading-none" style={{ color: palette.badge }}>
+        <div className="flex gap-1 text-[11px] font-semibold leading-none dark:!text-slate-200" style={{ color: palette.badge }}>
           {cell.meetingCount > 0 && <span>M:{cell.meetingCount}</span>}
           {cell.referralCount > 0 && <span>R:{cell.referralCount}</span>}
           {cell.bothCount > 0 && <span>B:{cell.bothCount}</span>}
@@ -113,7 +115,7 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
 const DiagonalCell: React.FC = () => (
   <td className="border border-slate-100 p-0 dark:border-slate-800">
     <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center dark:bg-white/10">
-      <span className="text-slate-300 text-xs font-bold select-none">-</span>
+      <span className="text-slate-500 text-xs font-bold select-none dark:text-slate-400">-</span>
     </div>
   </td>
 );
@@ -328,7 +330,7 @@ export const RelationshipHeatmap: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-800 mb-4 dark:text-slate-100">Relationship Matrix</h2>
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-500/10">
-          <p className="text-sm text-red-600 dark:text-red-300">{error?.message ?? 'Failed to load heatmap data.'}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{error?.message ?? 'Failed to load heatmap data.'}</p>
         </div>
       </div>
     );
@@ -339,7 +341,7 @@ export const RelationshipHeatmap: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-800 mb-4 dark:text-slate-100">Relationship Matrix</h2>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 dark:bg-blue-500/10">
-          <p className="text-sm text-blue-600">No relationship data yet. Log some meetings or referrals to populate the matrix.</p>
+          <p className="text-sm text-blue-600 dark:text-blue-300">No relationship data yet. Log some meetings or referrals to populate the matrix.</p>
         </div>
       </div>
     );
@@ -413,8 +415,8 @@ export const RelationshipHeatmap: React.FC = () => {
                 >
                   <div className="min-w-[120px] px-3 py-2 flex items-center gap-2">
                     <div
-                      className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
-                      style={{ backgroundColor: '#6366F1' }}
+                      className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
+                      style={{ backgroundColor: '#4F46E5' }}
                     >
                       {initials(row.name)}
                     </div>

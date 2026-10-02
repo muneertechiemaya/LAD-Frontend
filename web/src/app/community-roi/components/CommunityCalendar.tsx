@@ -80,11 +80,11 @@ interface CalendarSettings {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200',   dot: 'bg-amber-400',   icon: AlertCircle  },
-  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200',      dot: 'bg-blue-500',    icon: CheckCircle2 },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200',   dot: 'bg-green-500',   icon: CheckCircle2 },
+  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200 dark:text-amber-300',   dot: 'bg-amber-400',   icon: AlertCircle  },
+  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:text-blue-300',      dot: 'bg-blue-500',    icon: CheckCircle2 },
+  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200 dark:text-green-300',   dot: 'bg-green-500',   icon: CheckCircle2 },
   cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-white/10 dark:text-slate-400 dark:border-slate-700',   dot: 'bg-slate-400',   icon: XCircle      },
-  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-600 border-red-200',         dot: 'bg-red-400',     icon: XCircle      },
+  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-700 border-red-200 dark:text-red-300',         dot: 'bg-red-400',     icon: XCircle      },
 }
 
 const TYPE_ICON = {
@@ -99,8 +99,9 @@ function initials(name: string) {
 
 function avatarColor(name: string) {
   const colors = [
-    'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-amber-500',
-    'bg-pink-500',  'bg-teal-500',  'bg-indigo-500','bg-rose-500',
+    // 600/700: white initials need >= 4.5:1
+    'bg-blue-600', 'bg-purple-600', 'bg-green-700', 'bg-amber-700',
+    'bg-pink-600',  'bg-teal-700',  'bg-indigo-600','bg-rose-600',
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -336,7 +337,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         {dayMeetings.length > 0 && (
           <span className={`
             absolute top-2 right-2 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center
-            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'}
+            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600 dark:text-blue-300'}
           `}>
             {dayMeetings.length}
           </span>
@@ -393,10 +394,10 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         {/* Confirmation badges */}
         {meeting.status === 'confirmed' && (
           <div className="flex gap-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_a_confirmed ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_a_confirmed ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
               {meeting.member_a_name.split(' ')[0]} {meeting.member_a_confirmed ? '✓' : '...'}
             </span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_b_confirmed ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_b_confirmed ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
               {meeting.member_b_name.split(' ')[0]} {meeting.member_b_confirmed ? '✓' : '...'}
             </span>
           </div>
@@ -415,7 +416,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 flex-1"
+              className="h-7 text-xs gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 flex-1 dark:text-blue-300"
               disabled={isUpdating}
               onClick={() => updateMeetingStatus(meeting.id, 'confirmed')}
             >
@@ -474,7 +475,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             </Button>
           )}
           <div className="p-3 bg-blue-50 rounded-xl dark:bg-blue-500/10">
-            <CalendarDays className="w-6 h-6 text-blue-600" />
+            <CalendarDays className="w-6 h-6 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">1-2-1 Calendar</h2>
@@ -489,12 +490,12 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               {activeMeetingsThisMonth} this month
             </span>
             {confirmedCount > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full">
+              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full dark:text-blue-300">
                 {confirmedCount} confirmed
               </span>
             )}
             {pendingCount > 0 && (
-              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full">
+              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full dark:text-amber-300">
                 {pendingCount} pending
               </span>
             )}
@@ -516,7 +517,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             {togglingEnabled
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : settings?.is_enabled
-                ? <ToggleRight className="w-5 h-5 text-green-600" />
+                ? <ToggleRight className="w-5 h-5 text-green-600 dark:text-green-300" />
                 : <ToggleLeft  className="w-5 h-5 text-slate-500 dark:text-slate-400" />
             }
             {settings?.is_enabled ? 'Calendar On' : 'Calendar Off'}
@@ -711,7 +712,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {recommendations.filter(r => r.status === 'pending').length > 0 && (
-                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200">
+                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200 dark:text-violet-300">
                       {recommendations.filter(r => r.status === 'pending').length}
                     </Badge>
                   )}
@@ -760,8 +761,8 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                           <div className="flex items-center gap-1 shrink-0">
                             {rec.score > 0 && (
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
-                                rec.score >= 80 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                rec.score >= 60 ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                rec.score >= 80 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300' :
+                                rec.score >= 60 ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-300' :
                                                  'bg-slate-50 text-slate-500 border-slate-100 dark:bg-white/5 dark:text-slate-400 dark:border-slate-800'
                               }`}>
                                 {Math.round(rec.score)}
@@ -788,7 +789,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                         {rec.talking_points?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {rec.talking_points.slice(0, 2).map((tp, i) => (
-                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full">
+                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full dark:text-violet-300">
                                 {String(tp).slice(0, 40)}
                               </span>
                             ))}

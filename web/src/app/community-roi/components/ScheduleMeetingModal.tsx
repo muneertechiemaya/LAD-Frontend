@@ -410,7 +410,7 @@ export default function ScheduleMeetingModal({
                   className={`max-lg:min-h-11 
                     flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all
                     ${meetingType === value
-                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
                       : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 dark:bg-[#071131] dark:border-slate-700 dark:text-slate-400'}
                   `}
                 >
@@ -462,20 +462,20 @@ export default function ScheduleMeetingModal({
           {(checkingConflicts || conflicts.length > 0) && (
             <div className={`rounded-xl p-4 border ${conflicts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-100'}`}>
               {checkingConflicts ? (
-                <div className="flex items-center gap-2 text-blue-600">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm font-medium">Checking for conflicts...</span>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-red-600 dark:text-red-300">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="text-sm font-semibold">
                       {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
                     </span>
                   </div>
                   {conflicts.map((c, i) => (
-                    <p key={i} className="text-xs text-red-600 pl-6 dark:text-red-300">{c.message}</p>
+                    <p key={i} className="text-xs text-red-700 pl-6 dark:text-red-300">{c.message}</p>
                   ))}
                 </div>
               )}
@@ -485,8 +485,8 @@ export default function ScheduleMeetingModal({
           {/* Clear state */}
           {memberAId && memberBId && !checkingConflicts && conflicts.length === 0 && (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3 dark:bg-green-500/10">
-              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-              <span className="text-sm text-green-700 font-medium">No conflicts - ready to schedule</span>
+              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 dark:text-green-300" />
+              <span className="text-sm text-green-700 font-medium dark:text-green-300">No conflicts - ready to schedule</span>
             </div>
           )}
         </div>

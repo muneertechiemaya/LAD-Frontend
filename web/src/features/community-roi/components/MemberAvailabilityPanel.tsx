@@ -211,7 +211,7 @@ export function MemberAvailabilityPanel() {
                   <h4 className="truncate font-medium text-slate-800 dark:text-slate-100">{selected.member_name}</h4>
                   <div className="flex items-center gap-2">
                     {saved && (
-                      <span className="flex items-center gap-1 text-xs text-emerald-600">
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
                         <Check className="h-3.5 w-3.5" /> Saved
                       </span>
                     )}

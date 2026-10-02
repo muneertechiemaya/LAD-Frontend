@@ -47,9 +47,9 @@ interface Props {
 
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   sent:      { label: 'Sent',      cls: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200' },
-  delivered: { label: 'Delivered', cls: 'bg-blue-100 text-blue-700' },
-  read:      { label: 'Read',      cls: 'bg-emerald-100 text-emerald-700' },
-  failed:    { label: 'Failed',    cls: 'bg-rose-100 text-rose-700' },
+  delivered: { label: 'Delivered', cls: 'bg-blue-100 text-blue-700 dark:text-blue-300' },
+  read:      { label: 'Read',      cls: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300' },
+  failed:    { label: 'Failed',    cls: 'bg-rose-100 text-rose-700 dark:text-rose-300' },
 };
 
 export function MemberMessageStatusCard({ memberName, memberPhone }: Props) {
@@ -102,7 +102,7 @@ export function MemberMessageStatusCard({ memberName, memberPhone }: Props) {
 
       <CardContent className="p-6 space-y-5">
         {loading && <div className="text-sm text-slate-500 dark:text-slate-400">Loading…</div>}
-        {error && <div className="text-sm text-rose-600 dark:text-rose-300">⚠ {error}</div>}
+        {error && <div className="text-sm text-rose-700 dark:text-rose-300">⚠ {error}</div>}
 
         {data && !data.contact_found && (
           <div className="text-sm text-slate-500 dark:text-slate-400">

@@ -122,7 +122,7 @@ export function ImportDataDialog() {
           </div>
 
           {result && (
-            <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${result.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+            <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${result.success ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'}`}>
               {result.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
               {result.message}
             </div>

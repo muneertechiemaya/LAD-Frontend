@@ -35,7 +35,7 @@ export default function NetworkStatsPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1 dark:text-slate-300">Total Members</p>
-                <p className="text-3xl font-bold text-blue-600">{stats?.total_members || 0}</p>
+                <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">{stats?.total_members || 0}</p>
               </div>
               <Users className="w-12 h-12 text-blue-300" />
             </div>
@@ -47,7 +47,7 @@ export default function NetworkStatsPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1 dark:text-slate-300">Total Referrals</p>
-                <p className="text-3xl font-bold text-green-600">{stats?.total_referrals || 0}</p>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-300">{stats?.total_referrals || 0}</p>
               </div>
               <Network className="w-12 h-12 text-green-300" />
             </div>
@@ -59,7 +59,7 @@ export default function NetworkStatsPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1 dark:text-slate-300">Interactions Logged</p>
-                <p className="text-3xl font-bold text-purple-600">{stats?.total_interactions || 0}</p>
+                <p className="text-3xl font-bold text-purple-600 dark:text-purple-300">{stats?.total_interactions || 0}</p>
               </div>
               <MessageSquare className="w-12 h-12 text-purple-300" />
             </div>
