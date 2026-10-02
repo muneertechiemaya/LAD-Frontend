@@ -63,7 +63,7 @@ export default function MonitorDashboardPage() {
           </div>
 
           {data.generatedAt ? (
-            <p className="mt-4 text-right text-xs text-gray-400">
+            <p className="mt-4 text-right text-xs text-gray-500 dark:text-gray-400">
               Updated {new Date(data.generatedAt).toLocaleString()}
             </p>
           ) : null}

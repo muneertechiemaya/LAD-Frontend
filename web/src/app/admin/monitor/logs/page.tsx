@@ -77,7 +77,7 @@ export default function MonitorLogsPage() {
       {/* overflow-x-auto, not -hidden: on phones the right-hand columns were clipped. */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full divide-y divide-gray-200 text-xs dark:divide-gray-800">
-          <thead className="bg-gray-50 text-left uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+          <thead className="bg-gray-50 text-left uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
               <th className="px-3 py-2 font-medium">Time</th>
               <th className="px-3 py-2 font-medium">Severity</th>
@@ -91,11 +91,11 @@ export default function MonitorLogsPage() {
                 <tr key={i}><td colSpan={4} className="px-3 py-2"><div className="h-4 animate-pulse rounded bg-gray-100 dark:bg-gray-800" /></td></tr>
               ))
             ) : entries.length === 0 ? (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-400">No log entries</td></tr>
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">No log entries</td></tr>
             ) : (
               entries.map((e, i) => (
                 <tr key={e.id || i} className="align-top hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                  <td className="whitespace-nowrap px-3 py-2 text-gray-500">
+                  <td className="whitespace-nowrap px-3 py-2 text-gray-500 dark:text-gray-400">
                     {e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '-'}
                   </td>
                   <td className="px-3 py-2">
@@ -105,7 +105,7 @@ export default function MonitorLogsPage() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-gray-400">{e.service || '-'}</td>
                   <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">
-                    {e.httpStatus ? <span className="mr-1 text-gray-400">[{e.httpMethod} {e.httpStatus}]</span> : null}
+                    {e.httpStatus ? <span className="mr-1 text-gray-500 dark:text-gray-400">[{e.httpMethod} {e.httpStatus}]</span> : null}
                     {e.message}
                   </td>
                 </tr>

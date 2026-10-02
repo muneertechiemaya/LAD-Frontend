@@ -97,7 +97,7 @@ export default function MonitorCronsPage() {
               ))
             ) : !data || data.totalJobs === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                   No heartbeats recorded yet. Run migration 015 and let the scheduler tick once.
                 </td>
               </tr>
@@ -117,7 +117,7 @@ export default function MonitorCronsPage() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
         A job goes <span className="font-medium text-red-700 dark:text-red-400">Stale</span> after missing 3× its expected interval. External monitors should watch
         <code className="mx-1 font-mono">GET /health/crons</code> (returns 503 when any job is stale).
       </p>

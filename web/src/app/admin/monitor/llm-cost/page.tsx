@@ -194,7 +194,7 @@ export default function MonitorLlmCostPage() {
             </div>
           </div>
 
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
             Source: <span className="font-mono">billing_usage_events</span> (this environment&apos;s schema). Spend reflects what
             features logged; provider-console totals may include untracked services. Generated {data!.generatedAt
               ? new Date(data!.generatedAt).toLocaleString()
