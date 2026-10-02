@@ -769,7 +769,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                       {uploading ? 'Uploading…' : 'Select a file or drop here'}
                     </button>
                   )}
-                  <p className="text-[11px] text-gray-400 dark:text-[#7a8ba3] mt-1">Format: JPG, PNG, GIF · Max 5 MB</p>
+                  <p className="text-xs text-gray-500 dark:text-[#8b9ab0] mt-1">Format: JPG, PNG, GIF · Max 5 MB</p>
                 </div>
 
                 {/* Attachments */}
@@ -845,7 +845,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                       </button>
                     </div>
                   )}
-                  <p className="text-[11px] text-gray-400 dark:text-[#7a8ba3] mt-1">PDF, DOCX, XLSX, etc. · Max 20 MB per file · Sent with every email using this template</p>
+                  <p className="text-xs text-gray-500 dark:text-[#8b9ab0] mt-1">PDF, DOCX, XLSX, etc. · Max 20 MB per file · Sent with every email using this template</p>
                 </div>
               </div>
 
@@ -881,7 +881,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     {template.subject && (
                       <div className="border-b border-gray-100 dark:border-[#262831] px-4 py-2.5 bg-white dark:bg-[#0C1936]">
                         <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{template.subject}</p>
-                        <p className="text-[11px] text-gray-400 dark:text-[#7a8ba3] mt-0.5">from: {template.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-[#8b9ab0] mt-0.5">from: {template.name}</p>
                       </div>
                     )}
                     <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 420px)', minHeight: '320px' }}>

@@ -280,7 +280,7 @@ export default function EmailPreview({
             </span>
           ))}
         </div>
-        <p className="text-xs text-blue-700 dark:text-blue-400/70 mt-2">These will be replaced with actual values when emails are sent.</p>
+        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">These will be replaced with actual values when emails are sent.</p>
       </div>
     </div>
   );

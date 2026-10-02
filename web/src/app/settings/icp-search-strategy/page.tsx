@@ -183,15 +183,15 @@ export default function IcpSearchStrategyPage() {
           {/* ── Action bar (sticky bottom) ────────────────────────────── */}
           <div className="sticky bottom-0 mt-6 -mx-6 border-t border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800 px-6 py-3 shadow-sm sm:mx-0 sm:rounded-b-lg">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-gray-600 dark:text-gray-500">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {saveError ? (
-                  <span className="text-rose-600">
+                  <span className="text-rose-600 dark:text-rose-400">
                     Save failed: {saveError.message}
                   </span>
                 ) : dirty ? (
-                  <span className="text-amber-700">Unsaved changes</span>
+                  <span className="text-amber-700 dark:text-amber-400">Unsaved changes</span>
                 ) : savedAt ? (
-                  <span className="text-emerald-700">
+                  <span className="text-emerald-700 dark:text-emerald-400">
                     Saved {Math.max(1, Math.floor((Date.now() - savedAt) / 1000))}
                     s ago
                   </span>
@@ -222,7 +222,7 @@ export default function IcpSearchStrategyPage() {
 
           {/* ── JSON preview (collapsible, debug aid) ─────────────────── */}
           <details className="mt-6 rounded border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
-            <summary className="cursor-pointer px-4 py-2 text-xs text-gray-600 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800">
+            <summary className="cursor-pointer px-4 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800">
               Show effective strategy JSON
             </summary>
             <pre className="overflow-x-auto px-4 py-3 text-xs text-gray-700 dark:text-gray-300">

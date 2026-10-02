@@ -132,7 +132,7 @@ function renderWAMarkdown(text: string): string {
 }
 
 function WAText({ text }: { text: string }) {
-  if (!text) return <span className="text-slate-400 dark:text-slate-500 italic text-xs">Body text appears here...</span>;
+  if (!text) return <span className="text-slate-500 dark:text-slate-400 italic text-xs">Body text appears here...</span>;
   return (
     <>
       {text.split('\n').map((line, i) => (
@@ -183,7 +183,7 @@ function ButtonRow({
           maxLength={25}
           className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
         />
-        <span className="text-[10px] text-[#64748B] dark:text-slate-400 shrink-0">{btn.text.length}/25</span>
+        <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">{btn.text.length}/25</span>
         <button type="button" onClick={onRemove} className="text-[#94A3B8] dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -208,7 +208,7 @@ function ButtonRow({
             placeholder="https://example.com"
             className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
           />
-          <span className="text-[10px] text-[#64748B] dark:text-slate-400 shrink-0">{btn.url.length}/2000</span>
+          <span className="text-xs text-[#64748B] dark:text-slate-400 shrink-0">{btn.url.length}/2000</span>
         </div>
       )}
 
@@ -280,10 +280,10 @@ function AuthenticationFields({
               {AUTH_BODY_COPY}{addSecurityRec ? ` ${AUTH_SECURITY_COPY}` : ''}
             </p>
             {useCodeExpiry && (
-              <p className="text-xs text-slate-400 dark:text-gray-500 mt-1.5">{authExpiryCopy(codeExpiryMins)}</p>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mt-1.5">{authExpiryCopy(codeExpiryMins)}</p>
             )}
           </div>
-          <p className="text-[11px] text-blue-700/70 dark:text-blue-400/70 mt-2">
+          <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
             <code className="font-mono">{'{{1}}'}</code> is the code, which your app supplies when it sends the message.
           </p>
         </div>
@@ -315,12 +315,12 @@ function AuthenticationFields({
                 }`} />
                 <span className="text-sm font-semibold text-[#1E293B] dark:text-white">{opt.label}</span>
                 {!opt.needsApp && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">
                     No app needed
                   </span>
                 )}
                 {opt.needsApp && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                     Android app required
                   </span>
                 )}
@@ -868,7 +868,7 @@ export default function WhatsAppTemplateCreatePage() {
                       {targetAccount?.display_phone_number || targetAccount?.display_name || targetAccount?.slug}
                     </div>
                   )}
-                  <p className="text-[11px] text-[#64748B] dark:text-slate-400 mt-1">
+                  <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1">
                     Templates belong to one number. Meta reviews this one against{' '}
                     {accounts.length > 1 ? 'the number you pick' : 'this number'}.
                   </p>
@@ -890,10 +890,10 @@ export default function WhatsAppTemplateCreatePage() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#64748B] dark:text-slate-400 pointer-events-none">{name.length}/512</span>
                   </div>
                   {name && safeName !== name.toLowerCase().replace(/\s+/g, '_') && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Will be saved as: <span className="font-mono font-semibold">{safeName}</span></p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Will be saved as: <span className="font-mono font-semibold">{safeName}</span></p>
                   )}
                   {safeName && (
-                    <p className="text-[11px] text-[#64748B] dark:text-slate-400 mt-1 font-mono">{safeName || 'template_name'}</p>
+                    <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1 font-mono">{safeName || 'template_name'}</p>
                   )}
                 </div>
                 <div>
@@ -1298,7 +1298,7 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#1E293B] dark:text-white leading-none">Your Business</p>
-                    <p className="text-[11px] text-[#64748B] dark:text-gray-400 mt-0.5">Online</p>
+                    <p className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">Online</p>
                   </div>
                 </div>
 
@@ -1317,7 +1317,7 @@ export default function WhatsAppTemplateCreatePage() {
                         <span className="text-3xl block mb-1">
                           {mediaType === 'IMAGE' ? '🖼️' : mediaType === 'VIDEO' ? '🎥' : '📄'}
                         </span>
-                              <p className="text-xs text-slate-400 dark:text-gray-500">No {mediaType.toLowerCase()} uploaded</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400">No {mediaType.toLowerCase()} uploaded</p>
                             </div>
                         )}
                       </div>
@@ -1346,13 +1346,13 @@ export default function WhatsAppTemplateCreatePage() {
                   {/* Footer */}
                   {previewFooterText && (
                       <div className="px-4 pb-2">
-                        <p className="text-sm text-slate-400 dark:text-gray-500">{previewFooterText}</p>
+                        <p className="text-sm text-slate-500 dark:text-gray-400">{previewFooterText}</p>
                       </div>
                   )}
 
                   {/* Timestamp */}
                   <div className="px-4 pb-2 flex justify-end">
-                    <span className="text-[11px] text-slate-400 dark:text-gray-500">09:33 ✓✓</span>
+                    <span className="text-xs text-slate-500 dark:text-gray-400">09:33 ✓✓</span>
                   </div>
 
                   {/* Buttons */}
@@ -1390,7 +1390,7 @@ export default function WhatsAppTemplateCreatePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#64748B] dark:text-slate-400">Category</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
                     {category}
                   </span>
                     </div>
@@ -1428,7 +1428,7 @@ export default function WhatsAppTemplateCreatePage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-[#1E293B] dark:text-white leading-none">Your Business</p>
-                    <p className="text-[10px] text-[#64748B] dark:text-gray-400 mt-0.5">Online</p>
+                    <p className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">Online</p>
                   </div>
                 </div>
 
@@ -1440,14 +1440,14 @@ export default function WhatsAppTemplateCreatePage() {
                       {uploadStatus === 'done' ? (
                         <div className="text-center px-2">
                           <FileIcon className="w-8 h-8 mx-auto text-slate-500 dark:text-gray-400 mb-1" />
-                          <p className="text-[10px] text-slate-500 dark:text-gray-400 truncate max-w-[160px]">{mediaFileName}</p>
+                          <p className="text-xs text-slate-500 dark:text-gray-400 truncate max-w-[160px]">{mediaFileName}</p>
                         </div>
                       ) : (
                         <div className="text-center">
                           <span className="text-2xl block mb-1">
                             {mediaType === 'IMAGE' ? '🖼️' : mediaType === 'VIDEO' ? '🎥' : '📄'}
                           </span>
-                          <p className="text-[10px] text-slate-400 dark:text-gray-500">No {mediaType.toLowerCase()} uploaded</p>
+                          <p className="text-xs text-slate-500 dark:text-gray-400">No {mediaType.toLowerCase()} uploaded</p>
                         </div>
                       )}
                     </div>
@@ -1476,13 +1476,13 @@ export default function WhatsAppTemplateCreatePage() {
                   {/* Footer */}
                   {previewFooterText && (
                     <div className="px-3 pb-2">
-                      <p className="text-xs text-slate-400 dark:text-gray-500">{previewFooterText}</p>
+                      <p className="text-xs text-slate-500 dark:text-gray-400">{previewFooterText}</p>
                     </div>
                   )}
 
                   {/* Timestamp */}
                   <div className="px-3 pb-2 flex justify-end">
-                    <span className="text-[10px] text-slate-400 dark:text-gray-500">09:33 ✓✓</span>
+                    <span className="text-xs text-slate-500 dark:text-gray-400">09:33 ✓✓</span>
                   </div>
 
                   {/* Buttons */}
@@ -1521,7 +1521,7 @@ export default function WhatsAppTemplateCreatePage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#64748B] dark:text-slate-400">Category</span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
                     {category}
                   </span>
                 </div>
