@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   Pencil,
   Eye,
+  Film,
   Play,
   RefreshCw,
   Wand2,
@@ -57,6 +58,7 @@ import {
 } from '@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { MEDIA_GEN_URL } from '@/lib/serviceUrls';
+import { PromoVideoStudio } from './PromoVideoStudio';
 
 const WORKER_URL =
   MEDIA_GEN_URL;
@@ -165,7 +167,7 @@ interface WorkOrderJobs {
 }
 
 /** Which Manage modal is open, if any. */
-type ModalId = 'request' | 'brand' | 'audience' | 'assets' | 'shortcuts' | 'drive';
+type ModalId = 'request' | 'brand' | 'audience' | 'assets' | 'shortcuts' | 'drive' | 'promo';
 
 /**
  * Shared width for the card's two headline actions, Run agent and New request.
@@ -1530,9 +1532,27 @@ export const MageSettings: React.FC = () => {
           </p>
           <ManageButton onClick={() => setModal('drive')} hint="Share folders, manage access, sync now" />
         </Tile>
+
+        <Tile
+          icon={<Film />}
+          title="Promo video"
+          hint="A branded promo video from a short brief and a few screenshots"
+        >
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Describe what you are promoting and add a few screenshots. Mr LAD writes the
+            storyboard, animates it in your brand and saves the video to your Gallery.
+          </p>
+          <ManageButton onClick={() => setModal('promo')} label="Create" hint="Make a promo video" />
+        </Tile>
       </div>
 
       {/* ── modals ── */}
+
+      {modal === 'promo' && (
+        <Modal title="Promo video" onClose={() => setModal(null)}>
+          <PromoVideoStudio />
+        </Modal>
+      )}
 
       {modal === 'request' && (
         <Modal title="New request" onClose={() => setModal(null)}>
