@@ -77,7 +77,7 @@ const StatCard = ({ title, icon, bgColor, renderValue, onClick, isSelected }: St
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col justify-end">
-            <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-300 mb-1">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-300 mb-1">
               {title}
             </p>
             <h5 className="text-2xl font-bold text-slate-800 dark:text-white">{renderValue()}</h5>
@@ -94,6 +94,8 @@ interface PipelineStatsCardsProps {
   contacted: number;
   messageSentCount: number;
   loading?: boolean;
+  /** The stats request failed: show "—", not a 0 that reads as an empty pipeline. */
+  failed?: boolean;
   onCardClick?: (cardKey: string) => void;
   selectedCard?: string | null;
 }
@@ -104,6 +106,7 @@ export default function PipelineStatsCards({
   contacted,
   messageSentCount,
   loading = false,
+  failed = false,
   onCardClick,
   selectedCard,
 }: PipelineStatsCardsProps) {
@@ -117,11 +120,13 @@ export default function PipelineStatsCards({
     );
   }
 
+  const value = (n: number) => (failed ? <span aria-label="Not available">—</span> : <AnimatedNumber value={n || 0} />);
+
   return (
     <div className="flex gap-4 mb-4 flex-wrap items-stretch">
       <StatCard
         title="Total Leads"
-        renderValue={() => <AnimatedNumber value={totalLeads || 0} />}
+        renderValue={() => value(totalLeads)}
         icon={<BookUser className="w-6 h-6 text-blue-700" />}
         bgColor="bg-blue-100"
         onClick={onCardClick ? () => onCardClick('total') : undefined}
@@ -130,7 +135,7 @@ export default function PipelineStatsCards({
 
       <StatCard
         title="Connection Sent"
-        renderValue={() => <AnimatedNumber value={connectionSentCount || 0} />}
+        renderValue={() => value(connectionSentCount)}
         icon={<Link2 className="w-6 h-6 text-black-600" />}
         bgColor="bg-slate-100"
         onClick={onCardClick ? () => onCardClick('connection_sent') : undefined}
@@ -139,7 +144,7 @@ export default function PipelineStatsCards({
 
       <StatCard
         title="Contacted"
-        renderValue={() => <AnimatedNumber value={contacted || 0} />}
+        renderValue={() => value(contacted)}
         icon={<BadgeCheck className="w-6 h-6 text-green-600" />}
         bgColor="bg-green-100"
         onClick={onCardClick ? () => onCardClick('contacted') : undefined}
@@ -148,7 +153,7 @@ export default function PipelineStatsCards({
 
       <StatCard
         title="Message Sent"
-        renderValue={() => <AnimatedNumber value={messageSentCount || 0} />}
+        renderValue={() => value(messageSentCount)}
         icon={<Send className="w-6 h-6 text-purple-600" />}
         bgColor="bg-purple-100"
         onClick={onCardClick ? () => onCardClick('message_sent') : undefined}

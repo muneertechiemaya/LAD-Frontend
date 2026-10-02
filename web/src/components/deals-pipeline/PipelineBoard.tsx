@@ -244,7 +244,9 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   const [customEndDate, setCustomEndDate] = useState<string>('');
   // Computed loading state combining all loading states
   const isLoading = reduxStagesLoading || reduxLeadsLoading || masterDataLoading || usersLoading || !preferencesLoaded;
-  const currentError = reduxStagesError || reduxLeadsError || usersError || masterDataErrors?.[0] || null;
+  // The users list only feeds the assignee picker; failing to load it must not
+  // replace the whole board with an error (it did, hiding every lead).
+  const currentError = reduxStagesError || reduxLeadsError || masterDataErrors?.[0] || null;
   // Use the filtered data directly from selector instead of manual filtering
   const currentStages = pipelineBoardData.stages;
   // Memoize normalized stages to prevent creating new objects on every render
@@ -1438,8 +1440,8 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   if (currentError) {
     return (
       <div className="flex flex-col justify-center items-center mt-32">
-        <div className="rounded-lg shadow-sm bg-red-50 border border-red-200 p-4 mb-4">
-          <p className="text-red-800">{currentError}</p>
+        <div className="rounded-lg shadow-sm bg-red-50 border border-red-200 p-4 mb-4 dark:bg-red-950/30 dark:border-red-900/50">
+          <p className="text-red-800 dark:text-red-300">{currentError}</p>
         </div>
         <Button 
           variant="outline" 
@@ -1460,6 +1462,11 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
       }
       style={{ height: `calc(93vh - ${HEADER_HEIGHT}px)` }}
     >
+      {usersError && (
+        <p role="status" className="mx-1 mb-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300">
+          Couldn&apos;t load your teammates, so assigning leads is unavailable right now.
+        </p>
+      )}
       {(() => {
         if (pipelineSettings.viewMode === 'kanban') {
           return (
