@@ -116,7 +116,7 @@ export default function MonitorStrategiesPage() {
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {s.node_types.map((t) => (
-                      <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                         {t}
                       </span>
                     ))}
@@ -141,7 +141,7 @@ export default function MonitorStrategiesPage() {
                   <div className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
                     {nodes.length} steps - full shared payload
                   </div>
-                  <pre className="max-h-80 overflow-auto rounded-lg bg-gray-50 p-2.5 text-[11px] leading-relaxed text-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                  <pre className="max-h-80 overflow-auto rounded-lg bg-gray-50 p-2.5 text-xs leading-relaxed text-gray-800 dark:bg-gray-950 dark:text-gray-200">
                     {JSON.stringify(s.shared_definition, null, 2)}
                   </pre>
                 </div>

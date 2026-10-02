@@ -251,7 +251,7 @@ export default function MonitorLlmRoutingPage() {
                         <button
                           onClick={() => setDraft(draft.filter((_, j) => j !== i))}
                           disabled={draft.length === 1}
-                          className="max-lg:min-h-11 rounded-lg border border-gray-200 px-2 py-1 text-gray-400 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-700 dark:hover:bg-gray-800"
+                          className="max-lg:min-h-11 rounded-lg border border-gray-200 px-2 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
                         >
                           <X className="h-3 w-3" />
                         </button>

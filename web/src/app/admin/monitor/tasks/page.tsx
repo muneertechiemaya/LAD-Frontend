@@ -92,7 +92,7 @@ export default function MonitorTasksPage() {
                   ))}
                 </div>
               ) : null}
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Conversational follow-ups (per-tenant <code className="font-mono">followup_schedule</code>). Failed counts need the tenant&apos;s table to have <code className="font-mono">last_error</code> - older tenants may report 0.
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function MonitorTasksPage() {
             </table>
           </div>
 
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
             Booking/deal follow-ups run via Cloud Tasks (not crons). <span className="font-medium text-red-700 dark:text-red-400">Stuck</span> = overdue past {data?.graceMinutes}m and never executed (worker/queue stalled); <span className="font-medium text-amber-700 dark:text-amber-400">Failed</span> = ran but errored. External monitors can watch <code className="font-mono">GET /health/tasks</code> (503 when stuck &gt; {data?.stuckAlertThreshold}).
           </p>
         </>

@@ -64,14 +64,14 @@ export default function MonitorTenantsPage() {
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">No tenants found</td>
+                <td colSpan={14} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No tenants found</td>
               </tr>
             ) : (
               data.map((t) => (
                 <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900 dark:text-gray-100">{t.name}</div>
-                    <div className="text-xs capitalize text-gray-400">{t.plan}</div>
+                    <div className="text-xs capitalize text-gray-500 dark:text-gray-400">{t.plan}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -117,7 +117,7 @@ export default function MonitorTenantsPage() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
         Convos / Msgs / Contacts are read live from each tenant&apos;s own database (dual-DB). A blank value means that tenant&apos;s DB was unreachable or unprovisioned.
       </p>
     </div>

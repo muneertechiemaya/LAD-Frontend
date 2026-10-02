@@ -113,7 +113,7 @@ export function VerticalPromptViewer() {
         </button>
       </div>
 
-      <p className="mb-4 flex items-start gap-2 rounded-lg bg-gray-50 p-2.5 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-900/60 dark:text-gray-400">
+      <p className="mb-4 flex items-start gap-2 rounded-lg bg-gray-50 p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-900/60 dark:text-gray-400">
         <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>
           Read-only. A vertical template is shared by every tenant on the edition
@@ -158,7 +158,7 @@ export function VerticalPromptViewer() {
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`max-lg:min-h-11 max-lg:min-w-11 rounded-md px-2.5 py-1 text-[11px] font-medium ${
+              className={`max-lg:min-h-11 max-lg:min-w-11 rounded-md px-2.5 py-1 text-xs font-medium ${
                 mode === m
                   ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
                   : 'text-gray-600 dark:text-gray-300'
@@ -196,7 +196,7 @@ export function VerticalPromptViewer() {
         </p>
       )}
 
-      {meta && <p className="mb-1.5 font-mono text-[10px] text-gray-400">{meta}</p>}
+      {meta && <p className="mb-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{meta}</p>}
 
       {loading && (
         <p className="flex items-center gap-2 py-6 text-xs text-gray-500 dark:text-gray-400">
@@ -211,7 +211,7 @@ export function VerticalPromptViewer() {
       )}
 
       {!loading && body && (
-        <pre className="max-h-[28rem] overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-gray-800 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-200">
+        <pre className="max-h-[28rem] overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-gray-800 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-200">
           {body}
         </pre>
       )}

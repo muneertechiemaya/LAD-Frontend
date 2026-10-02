@@ -90,7 +90,7 @@ export function DailyCostChart({ series }: { series: LlmCostDay[] }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      <p className="mt-2 text-[11px] text-gray-400">Days bucketed in UTC to match provider billing consoles.</p>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Days bucketed in UTC to match provider billing consoles.</p>
     </div>
   );
 }
