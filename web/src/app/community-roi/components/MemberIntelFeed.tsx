@@ -252,9 +252,9 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
               Running ABM research…
             </div>
             <div className="space-y-1.5 animate-pulse">
-              <div className="h-3 bg-violet-50 rounded w-full" />
-              <div className="h-3 bg-violet-50 rounded w-4/5" />
-              <div className="h-3 bg-violet-50 rounded w-3/4" />
+              <div className="h-3 bg-violet-50 rounded w-full dark:bg-violet-500/10" />
+              <div className="h-3 bg-violet-50 rounded w-4/5 dark:bg-violet-500/10" />
+              <div className="h-3 bg-violet-50 rounded w-3/4 dark:bg-violet-500/10" />
             </div>
           </div>
         )}
@@ -343,7 +343,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
 
             {/* Top next best action */}
             {topAction && (
-              <div className="bg-violet-50 rounded-xl border border-violet-100 p-3 space-y-1">
+              <div className="bg-violet-50 rounded-xl border border-violet-100 p-3 space-y-1 dark:bg-violet-500/10">
                 <p className="text-xs font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Suggested Action
                 </p>
@@ -361,7 +361,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
                   </p>
                 )}
                 {topAction.channel && (
-                  <span className="inline-flex text-xs font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full">
+                  <span className="inline-flex text-xs font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full dark:bg-violet-500/15">
                     via {topAction.channel}
                   </span>
                 )}
@@ -389,7 +389,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
             <p className="text-xs text-slate-500 italic dark:text-slate-400">No research data yet.</p>
             <button
               onClick={runResearch}
-              className="max-lg:min-h-11 flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors dark:text-violet-300"
+              className="max-lg:min-h-11 flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors dark:text-violet-300 dark:bg-violet-500/10"
             >
               <Sparkles className="w-3.5 h-3.5" /> Run Research
             </button>
@@ -445,7 +445,7 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300">
+          <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300 dark:bg-violet-500/15">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>

@@ -207,7 +207,7 @@ export const MemberCoordinationCard: React.FC<MemberCoordinationCardProps> = ({
   index, member, generatedByDay, selections, takenByDay, allMembers, saving, coordinatingDay, onPick, onCoordinate,
 }) => (
   <div className="flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all dark:bg-[#071131] dark:border-slate-800">
-    <span className="text-xs font-bold text-slate-300 w-5 flex-shrink-0 text-center pt-2">{index + 1}</span>
+    <span className="text-xs font-bold text-slate-500 w-5 flex-shrink-0 text-center pt-2 dark:text-slate-400">{index + 1}</span>
     <div className="flex items-center gap-2 flex-shrink-0 min-w-[180px] pt-0.5">
       <Avatar name={member.name} />
       <div className="min-w-0">

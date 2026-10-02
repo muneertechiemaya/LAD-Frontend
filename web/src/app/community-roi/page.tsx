@@ -111,9 +111,9 @@ export default function CommunityROIDashboard() {
   })
 
   const communities = [
-    { id: 'BNI', name: 'BNI Rising Phoenix', icon: Building2, logo: '/assets/community-logos/bni-logo.svg', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50' },
-    // { id: 'WhatsApp', name: 'WhatsApp Group', icon: Phone, color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50' },
-    // { id: 'LinkedIn', name: 'LinkedIn Network', icon: Linkedin, color: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-50' },
+    { id: 'BNI', name: 'BNI Rising Phoenix', icon: Building2, logo: '/assets/community-logos/bni-logo.svg', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/10' },
+    // { id: 'WhatsApp', name: 'WhatsApp Group', icon: Phone, color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/10' },
+    // { id: 'LinkedIn', name: 'LinkedIn Network', icon: Linkedin, color: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-500/10' },
   ]
 
   // Server now returns only the matching subset - no client-side filter needed.
@@ -202,7 +202,7 @@ export default function CommunityROIDashboard() {
                   onClick={() => setSelectedMemberId(member.id)}
                   className={`max-lg:min-h-11 w-full p-4 text-left transition-all group flex items-center justify-between ${
                     selectedMemberId === member.id 
-                      ? 'bg-blue-50 border-r-4 border-blue-600' 
+                      ? 'bg-blue-50 border-r-4 border-blue-600 dark:bg-blue-500/10' 
                       : 'hover:bg-slate-50'
                   }`}
                 >

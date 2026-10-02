@@ -80,11 +80,11 @@ interface CalendarSettings {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200 dark:text-amber-300',   dot: 'bg-amber-400',   icon: AlertCircle  },
-  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:text-blue-300',      dot: 'bg-blue-500',    icon: CheckCircle2 },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200 dark:text-green-300',   dot: 'bg-green-500',   icon: CheckCircle2 },
+  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200 dark:text-amber-300 dark:bg-amber-500/15',   dot: 'bg-amber-400',   icon: AlertCircle  },
+  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:text-blue-300 dark:bg-blue-500/15',      dot: 'bg-blue-500',    icon: CheckCircle2 },
+  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200 dark:text-green-300 dark:bg-green-500/15',   dot: 'bg-green-500',   icon: CheckCircle2 },
   cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-white/10 dark:text-slate-400 dark:border-slate-700',   dot: 'bg-slate-400',   icon: XCircle      },
-  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-700 border-red-200 dark:text-red-300',         dot: 'bg-red-400',     icon: XCircle      },
+  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-700 border-red-200 dark:text-red-300 dark:bg-red-500/15',         dot: 'bg-red-400',     icon: XCircle      },
 }
 
 const TYPE_ICON = {
@@ -337,7 +337,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         {dayMeetings.length > 0 && (
           <span className={`
             absolute top-2 right-2 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center
-            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600 dark:text-blue-300'}
+            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600 dark:text-blue-300 dark:bg-blue-500/15'}
           `}>
             {dayMeetings.length}
           </span>
@@ -490,12 +490,12 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               {activeMeetingsThisMonth} this month
             </span>
             {confirmedCount > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full dark:text-blue-300">
+              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full dark:text-blue-300 dark:bg-blue-500/15">
                 {confirmedCount} confirmed
               </span>
             )}
             {pendingCount > 0 && (
-              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full dark:text-amber-300">
+              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full dark:text-amber-300 dark:bg-amber-500/15">
                 {pendingCount} pending
               </span>
             )}
@@ -712,7 +712,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {recommendations.filter(r => r.status === 'pending').length > 0 && (
-                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200 dark:text-violet-300">
+                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200 dark:text-violet-300 dark:bg-violet-500/15">
                       {recommendations.filter(r => r.status === 'pending').length}
                     </Badge>
                   )}
@@ -724,7 +724,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               {loadingRecs && recommendations.length === 0 ? (
                 <div className="space-y-2 animate-pulse py-2">
                   {[1,2,3].map(i => (
-                    <div key={i} className="h-16 bg-violet-50 rounded-xl" />
+                    <div key={i} className="h-16 bg-violet-50 rounded-xl dark:bg-violet-500/10" />
                   ))}
                 </div>
               ) : recommendations.filter(r => r.status === 'pending').length === 0 ? (
@@ -789,7 +789,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                         {rec.talking_points?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {rec.talking_points.slice(0, 2).map((tp, i) => (
-                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full dark:text-violet-300">
+                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full dark:text-violet-300 dark:bg-violet-500/10">
                                 {String(tp).slice(0, 40)}
                               </span>
                             ))}

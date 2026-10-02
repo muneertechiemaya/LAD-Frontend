@@ -309,7 +309,7 @@ export const RecommendationPairs: React.FC = () => {
               onClick={() => setShowCoordinate(true)}
               disabled={isGenerating}
               title="Send each member a slot offer for their pick that day and open the negotiation"
-              className="max-lg:min-h-11 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="max-lg:min-h-11 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-700 hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-4 h-4" />
               Coordinate 1-2-1s
@@ -380,17 +380,17 @@ export const RecommendationPairs: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="bg-indigo-50 rounded-xl p-4 text-center dark:bg-indigo-500/10">
                 <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{data.totalPairs}</p>
-                <p className="text-xs text-indigo-500 font-medium mt-0.5">Total recommendations ({data.weeks?.length} weeks)</p>
+                <p className="text-xs text-indigo-700 font-medium mt-0.5 dark:text-indigo-300">Total recommendations ({data.weeks?.length} weeks)</p>
               </div>
               <div className="bg-emerald-50 rounded-xl p-4 text-center dark:bg-emerald-500/10">
                 <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{data.totalMembers}</p>
-                <p className="text-xs text-emerald-500 font-medium mt-0.5">Members with options</p>
+                <p className="text-xs text-emerald-700 font-medium mt-0.5 dark:text-emerald-300">Members with options</p>
               </div>
-              <div className="bg-yellow-50 rounded-xl p-4 text-center">
+              <div className="bg-yellow-50 rounded-xl p-4 text-center dark:bg-yellow-500/10">
                 <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
                   {data.weeks?.reduce((sum, w) => sum + w.pairs.filter(p => p.combination_type === 2).length, 0)}
                 </p>
-                <p className="text-xs text-yellow-600 font-medium mt-0.5 dark:text-yellow-300">With referral exist</p>
+                <p className="text-xs text-yellow-800 font-medium mt-0.5 dark:text-yellow-300">With referral exist</p>
               </div>
             </div>
 
@@ -407,10 +407,10 @@ export const RecommendationPairs: React.FC = () => {
                   }`}
                 >
                   Week {w.week_number}
-                  <span className={`ml-1.5 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <span className={`ml-1.5 text-xs ${activeWeek === w.week_number ? 'text-indigo-100' : 'text-slate-600 dark:text-slate-400'}`}>
                     · {getWeekMonday(w.week_number, (w as any).week_start_date)}
                   </span>
-                  <span className={`ml-1 text-xs ${activeWeek === w.week_number ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <span className={`ml-1 text-xs ${activeWeek === w.week_number ? 'text-indigo-100' : 'text-slate-600 dark:text-slate-400'}`}>
                     ({w.pairs.length})
                   </span>
                 </button>

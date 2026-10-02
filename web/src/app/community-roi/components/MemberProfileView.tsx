@@ -457,7 +457,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           </div>
         ) : (
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-2 hover:shadow-xl hover:-translate-y-1 transition-all dark:bg-[#071131] dark:border-slate-800">
-            <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 mb-1 dark:text-violet-300">
+            <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 mb-1 dark:text-violet-300 dark:bg-violet-500/10">
               <Users className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Unique Partners</span>
@@ -597,7 +597,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
             <CardHeader className="p-6 pb-4 border-b border-slate-50 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300">
+                  <div className="p-2 rounded-xl bg-violet-100 text-violet-600 dark:text-violet-300 dark:bg-violet-500/15">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
@@ -642,7 +642,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
               {/* No data yet */}
               {!researchLoading && !researchData && (
                 <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                  <div className="p-4 rounded-2xl bg-violet-50 text-violet-400">
+                  <div className="p-4 rounded-2xl bg-violet-50 text-violet-400 dark:bg-violet-500/10">
                     <Sparkles className="w-8 h-8" />
                   </div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Research is loading…</p>
@@ -748,7 +748,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                           return (
                             <div key={i} className="bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-100 p-4 hover:border-violet-100 transition-colors dark:border-slate-800">
                               <div className="flex items-start gap-3">
-                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black dark:text-violet-300">
+                                <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black dark:text-violet-300 dark:bg-violet-500/15">
                                   {i + 1}
                                 </div>
                                 <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4 dark:text-slate-200">
@@ -793,7 +793,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                   {/* ── Next Best Actions ────────────────────────────────── */}
                   {Array.isArray(researchData.company_profile?.metadata?.next_best_actions) &&
                     researchData.company_profile.metadata.next_best_actions.length > 0 && (
-                    <div className="bg-violet-50 rounded-2xl p-5 border border-violet-100 space-y-2">
+                    <div className="bg-violet-50 rounded-2xl p-5 border border-violet-100 space-y-2 dark:bg-violet-500/10">
                       <p className="text-xs font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" /> Suggested Actions
                       </p>
@@ -875,7 +875,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           <Card className="rounded-[1.5rem] border-violet-100 shadow-sm bg-gradient-to-br from-violet-50/40 to-white">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-600 dark:text-violet-300">
+                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-600 dark:text-violet-300 dark:bg-violet-500/15">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest dark:text-white">Draft 1-2-1 Message</h3>
