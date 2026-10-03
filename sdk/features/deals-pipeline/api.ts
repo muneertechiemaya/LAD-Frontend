@@ -304,7 +304,20 @@ export async function getPipelineLeads(params: {
 
   const url = `/api/deals-pipeline/leads?${query.toString()}`;
   const response = await apiGet<PaginatedLeads>(url);
-  return response.data;
+  const data = response.data;
+  // Same row shape as getPipelineData (name from first/last, lower-case stage
+  // key), so the list view can render these rows directly.
+  if (data && Array.isArray((data as any).leads)) {
+    (data as any).leads = (data as any).leads.map((rawLead: any) => {
+      const fullName = `${rawLead.first_name || rawLead.firstName || ""} ${rawLead.last_name || rawLead.lastName || ""}`.trim();
+      return {
+        ...rawLead,
+        name: rawLead.name || fullName || undefined,
+        stage: typeof rawLead.stage === "string" ? rawLead.stage.toLowerCase() : rawLead.stage,
+      } as Lead;
+    });
+  }
+  return data;
 }
 
 /**

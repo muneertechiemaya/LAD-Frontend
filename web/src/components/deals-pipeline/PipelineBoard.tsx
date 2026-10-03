@@ -122,6 +122,8 @@ import {
   setPriorities
 } from '@/store/slices/masterDataSlice';
 import { getStatuses, getSources, getPriorities, moveLeadToStage, createStage, createLead, updateLead, deleteLead, updateStage, deleteStage, usePipelineLeads } from '@lad/frontend-features/deals-pipeline';
+import { filterLeadsForUI } from '@/features/deals-pipeline/store/selector/pipelineSelectors';
+import { useQueryClient } from '@tanstack/react-query';
 const HEADER_HEIGHT = 64; 
 // Feature flags for gradual migration
 const USE_REDUX_PIPELINE = true; // Enable Redux data fetching
@@ -358,6 +360,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
     dispatch(loadPipelineDataAction(1, size));
   }, [dispatch, onLimitChange]);
 
+  const queryClient = useQueryClient();
+  // The list view shows a fetched page (react-query), not the Redux board, so
+  // inline edits must refresh it too.
+  const refreshListPage = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['deals-pipeline', 'pipeline', 'leads'] });
+  }, [queryClient]);
   const effectiveListViewPage = page ?? listViewPage;
   const effectiveListViewLimit = limit ?? listViewPageSize;
 
@@ -1245,6 +1253,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
     try {
       // Always use Redux action - it handles both API call AND state update
       await dispatch(updateLeadAction(leadId, { status: newStatus as 'Active' | 'Inactive' }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Status updated successfully',
@@ -1257,7 +1266,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   // Handler for inline stage editing
   const handleStageChangeInline = useCallback(async (leadId: string | number, newStageKey: string): Promise<void> => {
     try {
@@ -1268,17 +1277,19 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         loadStagesAndLeads();
       }
       refetchStageTotals();
+      refreshListPage();
     } catch (err) {
       console.error('[PipelineBoard] Failed to update lead stage:', err);
       const errorMessage = (err as { message?: string }).message || 'Failed to update lead stage.';
       dispatch(showSnackbar({ message: errorMessage, severity: 'error' }));
     }
-  }, [USE_REDUX_ACTIONS, dispatch, refetchStageTotals]);
+  }, [USE_REDUX_ACTIONS, dispatch, refetchStageTotals, refreshListPage]);
   // Handler for inline priority editing
   const handlePriorityChange = useCallback(async (leadId: string | number, newPriority: string): Promise<void> => {
     try {
       // Use Redux action for consistent state management
       await dispatch(updateLeadAction(leadId, { priority: newPriority }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Priority updated successfully',
@@ -1291,12 +1302,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   // Handler for inline assignee editing
   const handleAssigneeChange = useCallback(async (leadId: string | number, newAssignee: string): Promise<void> => {
     try {
       // Use Redux action for consistent state management
       await dispatch(updateLeadAction(leadId, { assignee: newAssignee }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Assignee updated successfully',
@@ -1309,7 +1321,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   const handleEditLead = useCallback((lead: Lead): void => {
     // Edit functionality removed as requested
     }, []);
@@ -1598,9 +1610,14 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
             style={{ height: 0 }} // Force flex item to respect container height
           >
             {(() => {
-              // Use locally filtered leads from Redux state for instant UI responsiveness
-              // This ensures that our grouped filters (like 'Linkedin') work even if the API query hasn't refreshed
-              const filteredLeads = pipelineBoardData.stages.flatMap(s => s.leads);
+              // Render the page the pager asked for. This used to always render the
+              // board's first page of leads, so "Page 3 of 219" showed page 1's rows.
+              // The same search/filter rules run on the fetched page; the board's
+              // leads are only the fallback until the first page arrives.
+              const fetchedPage = pipelineLeadsQuery.data?.leads as Lead[] | undefined;
+              const filteredLeads = fetchedPage
+                ? filterLeadsForUI(fetchedPage as any, activeFilters as any, searchQuery || '')
+                : pipelineBoardData.stages.flatMap(s => s.leads);
               const apiPagination = pipelineLeadsQuery.data?.pagination;
 
               // Normalize leads to ensure compatibility with PipelineListView's Lead interface
