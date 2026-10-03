@@ -82,6 +82,7 @@ import {
   setPipelineSearchQuery,
   setPipelineActiveFilters,
   setPipelineSortConfig,
+  setLeadCardEditingOverview,
   setSelectedLead,
   setFilterDialogOpen,
   setSettingsDialogOpen,
@@ -560,6 +561,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
   };
   // Lead details dialog handlers
   const handleRowClick = (lead: Lead) => {
+    // Open in view mode, never in a leftover edit state from another lead.
+    dispatch(setLeadCardEditingOverview(false));
     dispatch(setSelectedLead(lead as any));
     setDetailsOpen(true);
   };
