@@ -209,7 +209,7 @@ export function TargetAccountsEditor({
               />
               {!a.domain && !a.apollo_company_id && (
                 <span
-                  title="Without a domain or Apollo company id, this account is skipped at search time."
+                  title="Add the company website, or this company is skipped when searching."
                   className="text-xs text-amber-700"
                 >
                   no domain

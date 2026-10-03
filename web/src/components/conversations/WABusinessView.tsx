@@ -4706,7 +4706,7 @@ const DEFAULT_CONTEXT_STATUSES: ContextStatusOption[] = [
   { value: 'human', label: 'Human', count: 0 },
   { value: 'onboarding_greeting', label: 'Onboarding Greeting', count: 0 },
   { value: 'onboarding_profile', label: 'Onboarding Profile', count: 0 },
-  { value: 'icp_discovery', label: 'ICP Discovery', count: 0 },
+  { value: 'icp_discovery', label: 'Ideal-customer search', count: 0 },
   { value: 'onboarding_complete', label: 'Onboarding Complete', count: 0 },
   { value: 'match_suggested', label: 'Match Suggested', count: 0 },
   { value: 'coordination_a_availability', label: 'Coordination Availability', count: 0 },

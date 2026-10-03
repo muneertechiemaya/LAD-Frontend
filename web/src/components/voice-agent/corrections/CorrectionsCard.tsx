@@ -61,8 +61,8 @@ export function CorrectionsCard({ agentId, className }: CorrectionsCardProps) {
           <div>
             <CardTitle className="text-lg">Corrections</CardTitle>
             <CardDescription>
-              Words and phrasings the team has taught this agent. Applied on the next call — in the prompt and again
-              right before speech, so a slip is never heard.
+              Words and phrasings the team has taught this agent. Applied from the next call, and checked again
+              just before it speaks, so a slip is never heard.
             </CardDescription>
           </div>
         </div>

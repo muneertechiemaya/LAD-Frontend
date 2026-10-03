@@ -540,7 +540,7 @@ export default function FollowUpsPage() {
                       </div>
                       <div className="bg-orange-50 rounded-xl p-4 text-center border border-orange-100">
                         <p className="text-2xl font-semibold text-orange-700">{icpStatus.eligible_for_followup}</p>
-                        <p className="text-xs text-orange-500 mt-1">Eligible for follow-up</p>
+                        <p className="text-xs text-orange-500 mt-1">Ready for a follow-up</p>
                       </div>
                       <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
                         <p className="text-2xl font-semibold text-green-700">{icpStatus.already_scheduled}</p>
@@ -682,7 +682,7 @@ export default function FollowUpsPage() {
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white">Send Template Now</h3>
                       <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
-                        Immediately send a WhatsApp template to eligible members
+                        Send a WhatsApp template now to everyone ready for a follow-up
                       </p>
                     </div>
 
@@ -719,7 +719,7 @@ export default function FollowUpsPage() {
                                 onChange={(e) => setTemplateTarget(e.target.value as 'all' | 'eligible')}
                                 className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                               >
-                                <option value="eligible">Eligible members only</option>
+                                <option value="eligible">Only people ready for a follow-up</option>
                                 <option value="all">All idle members</option>
                               </select>
                               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400 pointer-events-none" />

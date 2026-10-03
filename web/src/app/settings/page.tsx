@@ -173,7 +173,7 @@ const SettingsPage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
             >
               <Crosshair className="w-4 h-4" />
-              ICP Strategy
+              Lead search
             </button>
           </div>
         </div>

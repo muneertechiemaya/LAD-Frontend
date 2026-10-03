@@ -66,7 +66,7 @@ export default function IcpRoom({ ready, draft, onDraft }: { ready: boolean; dra
   const setSample = (id: number, patch: Partial<Sample>) => setSamples(s => s.map(x => (x.id === id ? { ...x, ...patch } : x)));
 
   if (!ready) {
-    return <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>ICP training opens once the required Business Profile answers are in — the scorer reads them.</p>;
+    return <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>This opens once the required interview answers are in — Mr LAD judges fit from them.</p>;
   }
 
   return (

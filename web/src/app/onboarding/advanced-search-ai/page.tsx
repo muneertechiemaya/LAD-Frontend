@@ -3074,7 +3074,7 @@ export default function AdvancedSearchAIPage() {
             setIsSearching(false);
             if (!res || res.success === false || res.error === 'no_active_icp') {
                 const msg = res?.error === 'no_active_icp'
-                    ? "You haven't described your ideal customer yet. Open **Ideal customer** at the top of this page, answer a few questions, then run this again."
+                    ? "You haven't set up your ideal customer yet. Tap **Ideal customer** at the top of this page and answer a few questions (or fine-tune it in **Settings → Lead search**), then run this again."
                     : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
                 setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
                 return;

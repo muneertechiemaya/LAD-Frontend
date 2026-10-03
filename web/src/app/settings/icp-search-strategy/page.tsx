@@ -118,17 +118,15 @@ export default function IcpSearchStrategyPage() {
             Settings
           </Link>{' '}
           /{' '}
-          <Link href="/prospects" className="hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
-            Prospects
-          </Link>
+          <span>Lead search</span>
         </nav>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">
-          Search strategy
+          Lead search
         </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-          Tune how the dispatcher discovers prospects: which backends to use,
-          in what order, and how to handle overlap. Saved values apply to every
-          subsequent run.
+          Choose where Mr LAD looks for new leads, in what order, and what to
+          do when the same person turns up twice. Changes apply to the next
+          search.
         </p>
       </header>
 
@@ -161,8 +159,7 @@ export default function IcpSearchStrategyPage() {
         <>
           <div className="mb-4 flex items-center justify-between rounded-md bg-gray-50 dark:bg-background px-4 py-2 text-xs text-gray-600 dark:text-slate-300">
             <span>
-              Editing variant <strong>{definition.variant_name}</strong> ·
-              last updated{' '}
+              Last saved{' '}
               {new Date(definition.updated_at).toLocaleString()}
             </span>
             <button
@@ -214,7 +211,7 @@ export default function IcpSearchStrategyPage() {
                   disabled={!dirty || saving}
                   className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11"
                 >
-                  {saving ? 'Saving…' : 'Save strategy'}
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </div>
