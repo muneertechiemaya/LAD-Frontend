@@ -6,8 +6,8 @@
 import * as React from 'react';
 import { useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, MoreHorizontal, SendHorizontal, MapPin, TrendingUp, ChevronDown,
-  ChevronUp, Users, MousePointerClick, Route, MoonStar, Ban, Trash2, CalendarClock,
+  ArrowLeft, MapPin, TrendingUp, ChevronDown,
+  ChevronUp, Users, MousePointerClick, MoonStar, Ban, Trash2, CalendarClock,
 } from 'lucide-react';
 import {
   LadCard, LadCardHeader, CH, T, STAGE_META, rel,
@@ -24,9 +24,10 @@ import type { ProspectFollowup } from '@lad/frontend-features/prospects';
 
 interface ProspectDetailProps {
   prospect: ProspectFixture;
-  warmPath: WarmPath;
-  /** When true, render a "Sample data" caption - the warm-path graph isn't
-   *  wired to a live relationship-graph source yet (R18). */
+  /** Real introduction routes for this contact. Omit until a live source exists:
+   *  the section and its KPI tile are hidden rather than showing sample data. */
+  warmPath?: WarmPath | null;
+  /** When true, render a "Sample data" caption on a supplied warm path. */
   warmPathSample?: boolean;
   events?: ProspectEvent[];
   /** The events fetch failed — Activity/Recent activity below render off
@@ -85,11 +86,32 @@ function degreeLabel(nd?: string | null): string {
 // channel, which the heatmap maps to the "Signal" (intent) row — so an operator toggling
 // DNC twice used to read as two buying-intent signals, and inflated "Engagement · 7d" by
 // two. Keep them out of both aggregates; the timeline below still shows them as audit trail.
+// Event types in plain words ("crm quiet_set" meant nothing to a customer).
+const EVENT_LABEL: Record<string, string> = {
+  'crm.quiet_set': 'Agent replies paused',
+  'crm.quiet_cleared': 'Agent replies resumed',
+  'crm.do_not_contact_set': 'Marked do not contact',
+  'crm.do_not_contact_cleared': 'Do not contact lifted',
+  'crm.deleted': 'Removed from contacts',
+  profile_visited: 'Visited their LinkedIn profile',
+  connection_sent: 'Sent a LinkedIn connection request',
+  connection_request_sent: 'Sent a LinkedIn connection request',
+  connection_accepted: 'Accepted your connection request',
+  message_sent: 'Message sent',
+  message_received: 'Replied',
+  reply_received: 'Replied',
+};
+function eventLabel(type: string): string {
+  const t = String(type || '');
+  if (EVENT_LABEL[t]) return EVENT_LABEL[t];
+  const plain = t.replace(/^crm\./, '').replace(/[._]+/g, ' ').trim();
+  return plain ? plain.charAt(0).toUpperCase() + plain.slice(1) : 'Activity';
+}
 function isOperatorEvent(e: ProspectEvent): boolean {
   return String(e.event_type || '').startsWith('crm.');
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, followupsDegradedChannels = [], coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath = null, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, followupsDegradedChannels = [], coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -168,27 +190,11 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
               title="Remove this prospect - not a fit"
               className="h-9 max-lg:h-11 px-3 whitespace-nowrap md:flex-none rounded-lg text-[12.5px] max-md:text-[14px] font-medium text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
             >
-              <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Not a fit'}
+              <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Remove (not a fit)'}
             </button>
           )}
-          <button
-            disabled
-            title="Not available yet"
-            className="max-md:hidden h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] inline-flex items-center justify-center md:justify-start gap-1.5 opacity-50 cursor-not-allowed"
-          >
-            <MoreHorizontal className="w-4 h-4" /> More
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Not available yet"
-            className="max-md:hidden h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 outline-none border-none opacity-50 cursor-not-allowed
-            bg-[#0b1957]
-            dark:bg-[#2563eb]"
-          >
-            <SendHorizontal className="w-4 h-4 shrink-0 stroke-[2.5] text-white !text-white" />
-            <span className="text-white !text-white">Message</span>
-          </button>
+          {/* "More" and "Message" were permanently disabled ("Not available yet");
+              buttons that never work are noise, so they're gone until they do. */}
         </div>
       </div>
 
@@ -256,15 +262,17 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
             </div>
           </div>
 
-          <div className="lg:flex-1 grid grid-cols-2 lg:grid-cols-4">
+          <div className={`lg:flex-1 grid grid-cols-2 ${warmPath ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
             <KpiFit value={prospect.fit_score} />
             <KpiSpark counts={kpis.dailyCounts} total={eventsUnavailable ? null : kpis.total7d} />
-            <KpiRoutes
-              count={kpis.routes}
-              top={kpis.topConnection}
-              onClick={toggleWarm}
-              open={warmOpen}
-            />
+            {warmPath && (
+              <KpiRoutes
+                count={kpis.routes}
+                top={kpis.topConnection}
+                onClick={toggleWarm}
+                open={warmOpen}
+              />
+            )}
             <KpiLast
               channel={prospect.last_channel}
               occurredAt={prospect.last_event_at}
@@ -274,15 +282,17 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         </div>
       </LadCard>
 
-      {/* Warm path */}
-      <div ref={sectionRef}>
-        {warmPathSample && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
-            Sample data · warm-path is not yet wired to a live source
-          </div>
-        )}
-        <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
-      </div>
+      {/* Warm path - only with real data */}
+      {warmPath && (
+        <div ref={sectionRef}>
+          {warmPathSample && (
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
+              Sample data · warm-path is not yet wired to a live source
+            </div>
+          )}
+          <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
+        </div>
+      )}
 
       {(eventsError || eventsUnavailable) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-3 text-[12.5px] text-rose-700 dark:text-rose-300">
@@ -669,8 +679,8 @@ function FitRadar({ p }: { p: ProspectFixture }) {
       <LadCard>
         <LadCardHeader title="Fit signals" subtitle="Not scored yet" />
         <div className="py-10 text-center text-[12.5px] text-slate-500 dark:text-slate-300">
-          No fit signals for this prospect yet - fit is computed when it&apos;s
-          discovered via a search (Apollo · Sales Nav · ABM).
+          No fit signals for this contact yet. Fit is worked out when a contact
+          is found through a lead search.
         </div>
       </LadCard>
     );
@@ -941,7 +951,7 @@ function MiniFeed({ events, truncated = false, unavailable = false }: { events: 
             preview = `${payload.round} · $${amt.toFixed(0)}M`;
           } else if (payload.pages) preview = (payload.pages as string[]).join(', ');
           else if (payload.note) preview = String(payload.note);
-          else preview = e.event_type.replace(/\./g, ' ');
+          else preview = eventLabel(e.event_type);
           return (
             <li key={e.seq} className="flex items-start gap-3">
               <div
@@ -952,7 +962,8 @@ function MiniFeed({ events, truncated = false, unavailable = false }: { events: 
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-slate-500 dark:text-slate-300">
-                  <span className="font-semibold text-[#172560] dark:text-white">{m.label}</span> · {e.direction}
+                  <span className="font-semibold text-[#172560] dark:text-white">{m.label}</span>
+                  {e.direction === 'outbound' ? ' · sent' : e.direction === 'inbound' ? ' · received' : ''}
                   <span className="ml-1.5 tabular-nums">{rel(e.occurred_at)} ago</span>
                 </p>
                 <p className="text-[12.5px] text-[#172560] dark:text-white mt-0.5 truncate">{preview}</p>
@@ -977,8 +988,6 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
     <LadCard>
       <LadCardHeader title="Take action" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <ActionBtn Icon={Route} label="Ask for intro" hint="Not available yet" primary disabled />
-        <ActionBtn Icon={SendHorizontal} label="Send message" hint="Not available yet" disabled />
         <ActionBtn
           Icon={MoonStar}
           label={quietActive ? 'Quieted' : 'Quiet 7d'}

@@ -16,7 +16,6 @@ import { apiErrorStatus } from '@lad/frontend-features';
 
 import TopBar from '@/components/crm/top-bar';
 import ProspectDetail from '@/components/crm/prospect-detail';
-import { WARM_PATH } from '@/components/crm/data';
 import { toProspectFixture, toCrmEvents } from '@/components/crm/adapt';
 import { useToast } from '@/components/ui/app-toaster';
 
@@ -197,8 +196,8 @@ export default function CrmDetailPage() {
             eventsTruncated={eventsTruncated}
             eventsError={eventsQuery.isError}
             eventsUnavailable={eventsUnavailable}
-            warmPath={WARM_PATH}
-            warmPathSample
+            // No warm-path data source exists yet; the old WARM_PATH fixture showed
+            // the same invented introducers on every contact.
             onClose={back}
             onRemove={handleRemove}
             isRemoving={removeMutation.isPending}

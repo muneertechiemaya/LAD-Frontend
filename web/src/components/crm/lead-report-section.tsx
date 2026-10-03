@@ -136,7 +136,7 @@ export default function LeadReportSection({
 
 function StatusPill({ state }: { state: ReportViewState }) {
   const map: Record<ReportViewState, { label: string; cls: string }> = {
-    empty:          { label: 'Not generated', cls: 'text-slate-500 border-slate-200 dark:border-[#262831]' },
+    empty:          { label: 'Not generated', cls: 'text-slate-600 border-slate-200 dark:text-slate-300 dark:border-[#262831]' },
     running:        { label: 'Generating…',   cls: 'text-blue-700 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300' },
     needs_research: { label: 'Needs research', cls: 'text-amber-700 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-400' },
     none:           { label: 'Generated',     cls: 'text-slate-600 border-slate-200 dark:border-[#262831]' },
@@ -165,18 +165,18 @@ function EmptyPanel({ name, onAdvance, disabled }: { name?: string; onAdvance: (
         No research report yet{name ? ` for ${name}` : ''}
       </p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-500 dark:text-[#7a8ba3] max-w-md mx-auto">
-        Run the web-research node to ground an audit for this lead. A report with no grounding is
-        refused - never generated with filler.
+        Mr LAD researches this contact on the web first, then writes the report from what it finds.
+        If it can&apos;t find enough, it won&apos;t write one rather than guess.
       </p>
       <button
         type="button"
         onClick={onAdvance}
         disabled={disabled}
-        className="mt-5 inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-semibold text-white disabled:opacity-60"
+        className="mt-5 inline-flex items-center gap-2 h-10 max-lg:h-11 px-4 rounded-xl text-[13px] font-semibold text-white disabled:opacity-60"
         style={{ background: NAVY }}
       >
         <Sparkles className="w-4 h-4" />
-        Advance research
+        Research this contact
       </button>
     </div>
   );
@@ -187,7 +187,7 @@ function RunningPanel() {
     <div className="rounded-2xl border border-slate-200 dark:border-[#262831] p-6">
       <div className="flex items-center gap-2.5 text-[13px] font-medium text-[#172560] dark:text-white">
         <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-        Web-research node · scraping sources…
+        Researching this contact on the web…
       </div>
       <div className="mt-5 space-y-3" aria-hidden>
         {['w-2/3', 'w-full', 'w-11/12', 'w-1/2'].map((w, i) => (

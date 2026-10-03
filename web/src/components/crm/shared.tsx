@@ -235,7 +235,7 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
           onClick={() => canPrev && onPageChange(page - 1)}
           disabled={!canPrev}
           aria-label="Previous page"
-          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-8 px-2.5 max-lg:h-11 max-lg:min-w-11 inline-flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -247,7 +247,7 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
           onClick={() => canNext && onPageChange(page + 1)}
           disabled={!canNext}
           aria-label="Next page"
-          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-8 px-2.5 max-lg:h-11 max-lg:min-w-11 inline-flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
