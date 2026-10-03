@@ -420,6 +420,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     router.back();
                   }
                 }}
+          aria-label={editorMode ? 'Back to choosing an editor' : 'Back'}
           className="p-1.5 max-lg:h-11 max-lg:w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#253456] transition-colors cursor-pointer flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -438,6 +439,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
           {/* Preview & test */}
           <button
             onClick={() => { setShowPreview(true); setTestResult(null); setTestEmailAddr(''); setTestProvider('google'); }}
+            aria-label="Preview & test"
             className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 max-lg:min-h-11 max-lg:min-w-11 justify-center rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none transition-all cursor-pointer flex-shrink-0 shadow-sm"
           >
             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
@@ -457,6 +459,8 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               </button>
               <button
                 onClick={() => setShowSaveMenu((v) => !v)}
+                aria-label="More save options"
+                aria-expanded={showSaveMenu}
                 className="px-1.5 py-1.5 sm:px-2 sm:py-2 max-lg:min-h-11 max-lg:min-w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white rounded-r-lg sm:rounded-r-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none border-l border-[#1c2c77]/60 dark:border-[#262831] transition-all cursor-pointer outline-none"
               >
                 <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"/>
@@ -497,7 +501,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   : 'border-transparent text-gray-500 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {tab === 'editor' ? 'Editor' : 'Use Template'}
+              {tab === 'editor' ? 'Editor' : 'Ready-made templates'}
             </button>
           ))}
         </div>
@@ -510,10 +514,10 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               <div className="flex items-center bg-gray-200/55 dark:bg-[#0C1936] p-1 rounded-xl border border-gray-300/30 dark:border-[#262831] w-full max-w-sm shadow-xs">
                 <button
                     onClick={() => setMobileSubTab('content')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 min-h-11 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                         mobileSubTab === 'content'
                             ? 'bg-white dark:bg-[#253456] text-[#0B1957] dark:text-[#60a5fa] shadow-sm font-bold'
-                            : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'
+                            : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
                   <LayoutTemplate className="w-3.5 h-3.5" />
@@ -521,10 +525,10 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                 </button>
                 <button
                     onClick={() => setMobileSubTab('preview')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 min-h-11 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                         mobileSubTab === 'preview'
                             ? 'bg-white dark:bg-[#253456] text-[#0B1957] dark:text-[#60a5fa] shadow-sm font-bold'
-                            : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'
+                            : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -532,10 +536,10 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                 </button>
                 <button
                     onClick={() => setMobileSubTab('details')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 min-h-11 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                         mobileSubTab === 'details'
                             ? 'bg-white dark:bg-[#253456] text-[#0B1957] dark:text-[#60a5fa] shadow-sm font-bold'
-                            : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'
+                            : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
                   <Settings className="w-3.5 h-3.5" />
@@ -557,16 +561,17 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               {/* Editor mode switcher bar (only when a mode is selected) */}
               {editorMode && (
                 <div className="flex-shrink-0 bg-white dark:bg-[#000724] border-b border-gray-150 dark:border-[#262831] px-4 py-2 flex items-center justify-between gap-3">
-                  <span className="text-[10px] sm:text-xs text-gray-400 dark:text-[#7a8ba3] font-bold uppercase tracking-wider shrink-0">Editing with:</span>
+                  <span className="text-xs text-gray-600 dark:text-slate-300 font-bold uppercase tracking-wider shrink-0">Editing with:</span>
                   <div className="flex-1 max-w-[240px] xs:max-w-[280px] sm:max-w-xs bg-gray-100/80 dark:bg-[#0C1936] p-0.5 rounded-lg border border-gray-200/60 dark:border-[#262831] flex" onMouseDown={(e) => e.stopPropagation()}>
                     {EDITOR_OPTIONS.map(({ mode: m, icon }) => (
                       <button
                         key={m}
                         onClick={() => { setEditorMode(m); setMountedEditors((prev) => new Set([...prev, m])); }}
-                        className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 rounded-md text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
+                        aria-pressed={editorMode === m}
+                        className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 max-lg:min-h-11 rounded-md text-xs font-bold transition-all cursor-pointer ${
                           editorMode === m
                             ? 'bg-white dark:bg-[#253456] text-[#0B1957] dark:text-[#60a5fa] shadow-xs border border-gray-200/20 dark:border-[#262831]'
-                            : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
+                            : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                         }`}
                       >
                       <div className="w-3.5 h-3.5 flex items-center justify-center [&>svg]:!w-3 [&>svg]:!h-3 sm:[&&>svg]:!w-3.5 sm:[&&>svg]:!h-3.5 flex-shrink-0">
@@ -652,7 +657,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                             <button
                               key={val}
                               onClick={() => set('body', (template.body || '') + val)}
-                              className="px-3 py-1.5 text-xs font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+                              className="px-3 py-1.5 max-lg:min-h-11 text-xs font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
                             >
                               {label}
                             </button>
@@ -683,7 +688,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                 <div className="hidden sm:flex flex-shrink-0 items-center gap-3 mx-6 mb-4 px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl text-sm text-red-700 dark:text-red-400">
                   <Info className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1">{error}</span>
-                  <button onClick={() => setError('')} className="text-red-400 dark:text-red-500 hover:text-red-650 cursor-pointer">
+                  <button onClick={() => setError('')} aria-label="Dismiss" className="text-red-600 dark:text-red-400 hover:text-red-800 cursor-pointer">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -940,7 +945,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl text-xs text-red-700 dark:text-red-400 shadow-xs">
                     <Info className="w-4 h-4 flex-shrink-0" />
                     <span className="flex-1 font-medium">{error}</span>
-                    <button onClick={() => setError('')} className="text-[#0B1957] dark:text-blue-400 hover:text-blue-800 cursor-pointer">
+                    <button onClick={() => setError('')} aria-label="Dismiss" className="inline-flex min-h-11 min-w-11 items-center justify-center text-[#0B1957] dark:text-blue-400 hover:text-blue-800 cursor-pointer">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
