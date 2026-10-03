@@ -107,7 +107,7 @@ export default function Composer({ onSend, onQuick, sending, canAct, placeholder
         <div className="flex items-end gap-1.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-full border-[#e5e7eb] bg-white text-[#374151] hover:border-[#0b1957] hover:bg-[#f2f6fa] hover:text-[#0b1957] dark:border-[#1e293b] dark:bg-[#1A2A43] dark:text-white dark:hover:bg-[#253456]" aria-label="Quick actions" disabled={sending} data-testid="chat-quick-menu">
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10 max-lg:h-11 max-lg:w-11 shrink-0 rounded-full border-[#e5e7eb] bg-white text-[#374151] hover:border-[#0b1957] hover:bg-[#f2f6fa] hover:text-[#0b1957] dark:border-[#1e293b] dark:bg-[#1A2A43] dark:text-white dark:hover:bg-[#253456]" aria-label="Quick actions" disabled={sending} data-testid="chat-quick-menu">
                 <Plus className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

@@ -15,7 +15,7 @@
  * The transcript lives only in this component; nothing is stored server-side.
  * Voice: the message box accepts dictation like any textarea.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Loader2, RotateCcw, Send, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +71,18 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false, 
   const [result, setResult] = useState<RefineResult | null>(null);
   const rehearse = useRehearse();
   const refine = useRefine();
+  const feedbackRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // "Correct this reply": start the feedback from the exact line the owner would not send.
+  const correct = (reply: string) => {
+    const quote = reply.length > 140 ? `${reply.slice(0, 137).trimEnd()}…` : reply;
+    const text = `About your reply "${quote}": `;
+    setFeedback(text);
+    const el = feedbackRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => { el.focus({ preventScroll: true }); el.setSelectionRange(text.length, text.length); }, 0);
+  };
 
   const send = async () => {
     const text = message.trim();
@@ -144,11 +156,16 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false, 
               </p>
             )}
             {transcript.map((t, i) => (
-              <div key={i} className={`flex ${t.role === 'prospect' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex flex-col ${t.role === 'prospect' ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm ${t.role === 'prospect' ? `rounded-2xl rounded-br-md ${BUBBLE_ME}` : `rounded-2xl rounded-bl-md ${BUBBLE_AGENT}`}`}>
-                  <div className={`mb-0.5 text-[10px] uppercase tracking-wide ${t.role === 'prospect' ? 'opacity-80' : 'text-muted-foreground'}`}>{t.role === 'prospect' ? persona.name : agentLabel}</div>
+                  <div className={`mb-0.5 text-[11px] uppercase tracking-wide ${t.role === 'prospect' ? 'opacity-90' : 'text-muted-foreground'}`}>{t.role === 'prospect' ? persona.name : agentLabel}</div>
                   {t.content}
                 </div>
+                {t.role !== 'prospect' && (
+                  <button type="button" onClick={() => correct(t.content)} className="mt-0.5 inline-flex min-h-11 items-center px-1 text-xs font-medium text-[#5b3fd6] underline-offset-2 hover:underline dark:text-[#B69CFF] lg:min-h-0 lg:py-1" data-testid="rehearsal-correct">
+                    Correct this reply
+                  </button>
+                )}
               </div>
             ))}
             {ended && <p className="text-center text-xs text-muted-foreground">The agent would stop here ({ended.replace(/_/g, ' ')}).</p>}
@@ -167,8 +184,8 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false, 
       <section className="space-y-3">
         <div className={`${CARD} p-4`}>
           <h3 className="text-sm font-semibold tracking-tight">{curated ? 'What should the support agent have done differently?' : 'What should the agent have done differently?'}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">Plain words. Mr LAD turns it into a change to the {curated ? 'support ' : ''}agent&apos;s instructions and shows you exactly what would change before anything is applied.</p>
-          <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={4} aria-label="What should change" value={feedback} onChange={e => setFeedback(e.target.value)}
+          <p className="mt-0.5 text-xs text-muted-foreground">Tap &ldquo;Correct this reply&rdquo; under any reply, or describe it here in plain words. Mr LAD turns it into a change to the {curated ? 'support ' : ''}agent&apos;s instructions and shows you exactly what would change before anything is applied.</p>
+          <Textarea ref={feedbackRef} className={`mt-2 ${INPUT_FOCUS}`} rows={4} aria-label="What should change" value={feedback} onChange={e => setFeedback(e.target.value)}
             placeholder={curated
               ? 'e.g. It handed over as soon as she asked the price. Say the class-pack range first and offer a trial class, and mention the parking behind the building.'
               : staffing
