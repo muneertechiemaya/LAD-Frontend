@@ -292,6 +292,8 @@ export async function getPipelineData(page: number = 1, limit: number = 20): Pro
 export async function getPipelineLeads(params: {
   stage?: string;
   status?: string;
+  /** Server-side search (name, email, company, phone); page and total reflect it. */
+  search?: string;
   page: number;
   limit: number;
 }): Promise<PaginatedLeads> {
@@ -299,6 +301,8 @@ export async function getPipelineLeads(params: {
 
   if (params.stage) query.append("stage", params.stage);
   if (params.status) query.append("status", params.status);
+  const search = params.search?.trim();
+  if (search) query.append("search", search);
   query.append("page", String(params.page));
   query.append("limit", String(params.limit));
 

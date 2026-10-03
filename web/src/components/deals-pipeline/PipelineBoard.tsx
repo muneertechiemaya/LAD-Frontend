@@ -124,6 +124,7 @@ import {
 import { getStatuses, getSources, getPriorities, moveLeadToStage, createStage, createLead, updateLead, deleteLead, updateStage, deleteStage, usePipelineLeads } from '@lad/frontend-features/deals-pipeline';
 import { filterLeadsForUI } from '@/features/deals-pipeline/store/selector/pipelineSelectors';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 const HEADER_HEIGHT = 64; 
 // Feature flags for gradual migration
 const USE_REDUX_PIPELINE = true; // Enable Redux data fetching
@@ -366,7 +367,21 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   const refreshListPage = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['deals-pipeline', 'pipeline', 'leads'] });
   }, [queryClient]);
-  const effectiveListViewPage = page ?? listViewPage;
+  // The list view searches on the server: a page holds only 20 leads, and the
+  // server also matches raw_data names and digits-only phones. Debounced so a
+  // typed name is one request; a new search starts on page 1 (`pageSearch` is
+  // the search the current page belongs to, so the old page is never requested
+  // with the new term).
+  const listSearch = useDebouncedValue((searchQuery || '').trim(), 300);
+  const [pageSearch, setPageSearch] = useState(listSearch);
+  const searchChanged = pageSearch !== listSearch;
+  useEffect(() => {
+    if (!searchChanged) return;
+    setPageSearch(listSearch);
+    if (onPageChange) onPageChange(1);
+    else setListViewPage(1);
+  }, [searchChanged, listSearch, onPageChange]);
+  const effectiveListViewPage = searchChanged ? 1 : (page ?? listViewPage);
   const effectiveListViewLimit = limit ?? listViewPageSize;
 
   const pipelineLeadsQuery = usePipelineLeads(
@@ -377,6 +392,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
       status: activeFilters?.statuses?.length
         ? activeFilters.statuses[activeFilters.statuses.length - 1]
         : undefined,
+      search: listSearch || undefined,
       page: effectiveListViewPage,
       limit: effectiveListViewLimit,
     },
@@ -1612,11 +1628,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
             {(() => {
               // Render the page the pager asked for. This used to always render the
               // board's first page of leads, so "Page 3 of 219" showed page 1's rows.
-              // The same search/filter rules run on the fetched page; the board's
-              // leads are only the fallback until the first page arrives.
+              // The same filter rules run on the fetched page; the board's leads are
+              // only the fallback until the first page arrives. The search is not
+              // re-applied here: the server already ran it, and it matches raw_data
+              // names and digits-only phones that the client filter would drop.
               const fetchedPage = pipelineLeadsQuery.data?.leads as Lead[] | undefined;
               const filteredLeads = fetchedPage
-                ? filterLeadsForUI(fetchedPage as any, activeFilters as any, searchQuery || '')
+                ? filterLeadsForUI(fetchedPage as any, activeFilters as any, '')
                 : pipelineBoardData.stages.flatMap(s => s.leads);
               const apiPagination = pipelineLeadsQuery.data?.pagination;
 
@@ -1647,6 +1665,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
                   ) as Record<string, boolean>}
                   totalLeadsCount={apiPagination?.total}
                   totalPages={apiPagination?.totalPages}
+                  searchOnServer={Boolean(fetchedPage)}
                   isLoading={pipelineLeadsQuery.isLoading}
                   viewMode={viewMode}
                   onViewModeChange={handleViewModeChange}

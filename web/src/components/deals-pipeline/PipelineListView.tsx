@@ -122,6 +122,8 @@ interface PipelineListViewProps {
   totalPages?: number;
   isLoading?: boolean;
   searchQuery?: string;
+  /** `leads` is already the server's search result: don't filter it by the search box again. */
+  searchOnServer?: boolean;
   selectedLead?: unknown;
   viewMode?: 'kanban' | 'list';
   onViewModeChange?: (mode: 'kanban' | 'list') => void;
@@ -161,6 +163,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
   totalPages: controlledTotalPages,
   isLoading = false,
   searchQuery,
+  searchOnServer = false,
   selectedLead,
   viewMode = 'list',
   onViewModeChange,
@@ -385,8 +388,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
   // Filter and sort leads
   const filteredAndSortedLeads = useMemo(() => {
     let filtered = [...allLeads];
-    // Apply search filter
-    if (localSearch) {
+    // Apply search filter (unless the server already searched)
+    if (localSearch && !searchOnServer) {
       const searchLower = localSearch.toLowerCase();
       filtered = filtered.filter(lead =>
         lead.name?.toLowerCase().includes(searchLower) ||
@@ -444,7 +447,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
       });
     }
     return filtered;
-  }, [allLeads, localSearch, currentFilters, globalSortConfig, getSortableValue]);
+  }, [allLeads, localSearch, searchOnServer, currentFilters, globalSortConfig, getSortableValue]);
   const DEFAULT_COLUMN_ORDER = useMemo(
     () => [
       'serialNo',
@@ -1235,7 +1238,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
               </Select>
               <span className="whitespace-nowrap">of {displayTotalRecords} {labels?.entityPlural.toLowerCase()}</span>
             </div>
-            {(currentSearchQuery || (currentFilters && Object.keys(currentFilters).length > 0)) && totalLeadsCount !== undefined && totalLeadsCount > 0 && (
+            {/* A server page's total already reflects the search, so this would repeat the count above. */}
+            {!searchOnServer && (currentSearchQuery || (currentFilters && Object.keys(currentFilters).length > 0)) && totalLeadsCount !== undefined && totalLeadsCount > 0 && (
               <span className="hidden md:inline text-xs text-muted-foreground">(filtered from {totalLeadsCount} total)</span>
             )}
           </div>
