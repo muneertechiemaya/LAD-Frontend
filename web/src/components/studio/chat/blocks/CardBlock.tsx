@@ -38,10 +38,11 @@ const ROUTINE_LABEL: Record<string, string> = {
 function Shell({ icon: Icon, title, hint, children, testId }: { icon: typeof Flag; title: string; hint?: string; children: React.ReactNode; testId: string }) {
   return (
     <section className={`${CHAT_CARD} overflow-hidden`} data-testid={testId}>
-      <header className={`flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-gray-700 ${CHAT_CARD_TITLE}`}>
+      <header className={`flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-b border-gray-100 px-4 py-2.5 dark:border-gray-700 ${CHAT_CARD_TITLE}`}>
         <Icon className="h-3.5 w-3.5" aria-hidden />
         <h3 className="min-w-0">{title}</h3>
-        {hint && <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-slate-400">{hint}</span>}
+        {/* Its own line on phones, where beside the title it squeezed both. */}
+        {hint && <span className="text-[11px] font-normal text-gray-600 dark:text-slate-300 max-sm:basis-full sm:ml-auto">{hint}</span>}
       </header>
       <div className="px-4 py-3 text-[13.5px] text-gray-700 dark:text-gray-200">{children}</div>
     </section>
@@ -167,6 +168,9 @@ function LaunchCard({ launch }: { launch: LaunchStatus }) {
   const blocking = Array.isArray(launch.blocking) ? launch.blocking : [];
   const c = launch.credits;
   const balance = c && !c.unknown && c.balance !== null ? Number(c.balance) : null;
+  // The server's credits row already states the balance and the first-week need;
+  // the footer repeated it ("167 credits" then "166.837 credits").
+  const creditsRowShown = rows.some((r) => r.key === 'credits');
   return (
     <Shell
       icon={Rocket}
@@ -194,12 +198,13 @@ function LaunchCard({ launch }: { launch: LaunchStatus }) {
           ))}
         </ul>
       )}
-      {c && (
+      {c && !creditsRowShown && (
         <p className={`mt-2 text-xs ${balance === null ? TINT.warnText : 'text-muted-foreground'}`}>
           {balance === null ? 'Your wallet could not be read.' : `${balance.toLocaleString()} credits available.`}
           {c.firstWeek ? ` About ${Math.ceil(c.firstWeek.credits).toLocaleString()} for the first week.` : c.note ? ` ${c.note}` : ''}
         </p>
       )}
+      {c && creditsRowShown && !c.firstWeek && c.note && <p className="mt-2 text-xs text-muted-foreground">{c.note}</p>}
     </Shell>
   );
 }

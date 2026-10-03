@@ -42,12 +42,10 @@
  */
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Loader2, MessagesSquare, SlidersHorizontal, Sparkles, Target, Theater } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import StudioStatus from '@/components/studio/StudioStatus';
-import TeamStrip from '@/components/studio/TeamStrip';
-import { FirstCampaignBanner, LiveBanner, NeutralVoiceBanner, SetupHistoryLink, StudioEntries } from '@/components/studio/StudioBanners';
+import TrainingPlan, { ROOM_COPY } from '@/components/studio/TrainingPlan';
+import { FirstCampaignBanner, LiveBanner } from '@/components/studio/StudioBanners';
 import StudioHistory from '@/components/studio/StudioHistory';
 import QuestionsInbox from '@/components/studio/QuestionsInbox';
 import RehearsalRoom from '@/components/studio/RehearsalRoom';
@@ -59,7 +57,7 @@ import {
   BriefStep, ChannelsStep, CHANNELS_STEP, FirstCampaignStep, FIRST_CAMPAIGN_BUILDER_HREF, FIRST_CAMPAIGN_STEP, GoLiveStep,
   GO_LIVE_BUILDER_HREF, GO_LIVE_STEP, PlanReview, ReferencesStep, REFERENCES_STEP, SetupChecklist, SetupShell, SETUP_TOTAL_STEPS,
 } from '@/components/studio/setup';
-import { AI_TEXT, CHIP_BASE, CHIP_IDLE, SKELETON, STATUS, SURFACE, TAB_LIST, TAB_TRIGGER } from '@/components/studio/studio-theme';
+import { AI_TEXT, CHIP_BASE, CHIP_IDLE, SKELETON, STATUS, SURFACE } from '@/components/studio/studio-theme';
 import '@/components/studio/studio.css';
 import {
   useSaveSetup,
@@ -185,7 +183,13 @@ function StudioPageInner() {
   useEffect(() => {
     try { setChatPreferred(window.localStorage.getItem(CHAT_PREFERRED_KEY) === '1'); } catch { /* private mode: the rule below decides */ }
   }, []);
+  // The room on screen (`?room=`, a step's action, the chat); null = the training plan.
   const [tab, setTab] = useState<RoomTab | null>(isRoomTab(roomParam) ? roomParam : null);
+  // Opening or leaving a room starts at its title, not wherever the plan was scrolled to.
+  const headerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    headerRef.current?.scrollIntoView({ block: 'start' });
+  }, [tab]);
   // What is on screen, for effects that must not close over a stale phase.
   const phaseRef = useRef<SetupPhase | null>(null);
   useEffect(() => {
@@ -563,98 +567,76 @@ function StudioPageInner() {
     );
   }
 
+  // A practice room on its own screen; no room = the training plan.
+  const focusRoom: RoomTab | null = tab && (tab !== 'pipelines' || curated) ? tab : null;
   return (
     <div className={`min-h-full ${SURFACE}`}>
     <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6">
-      <header className="mb-5">
+      <header ref={headerRef} className="mb-5 scroll-mt-20">
         {roomsReturn === 'chat' && (
-          <button type="button" onClick={() => { setRoomsReturn(null); setPhase('chat'); }} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors duration-150 hover:text-[#7C5CFF] dark:hover:text-[#B69CFF]" data-testid="rooms-back-to-chat">
+          <button type="button" onClick={() => { setRoomsReturn(null); setPhase('chat'); }} className="mb-2 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground transition-colors duration-150 hover:text-[#7C5CFF] dark:hover:text-[#B69CFF]" data-testid="rooms-back-to-chat">
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />{BACK_LABEL.chat}
           </button>
         )}
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Train <span className={AI_TEXT}>Mr LAD</span></h1>
-          {chatAvailable && roomsReturn !== 'chat' && (
-            <button type="button" onClick={() => { setRoomsReturn(null); setPhase('chat'); }} className={`${CHIP_BASE} ${CHIP_IDLE} gap-1.5 px-3 py-1.5 text-xs`} data-testid="rooms-open-chat">
-              <Sparkles className="h-3.5 w-3.5 text-[#7C5CFF] dark:text-[#B69CFF]" aria-hidden />Chat with Mr LAD
+        {focusRoom ? (
+          <>
+            <button type="button" onClick={() => setTab(null)} className="mb-2 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground transition-colors duration-150 hover:text-[#7C5CFF] dark:hover:text-[#B69CFF]" data-testid="room-back">
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />All training
             </button>
-          )}
-        </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Teach Mr LAD your business: answer its questions, show it which leads fit, practise a conversation with your agent, and ask for changes. You see every change before it applies.
-        </p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{ROOM_COPY[focusRoom].title}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">{ROOM_COPY[focusRoom].why}</p>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Train <span className={AI_TEXT}>Mr LAD</span></h1>
+              {chatAvailable && roomsReturn !== 'chat' && (
+                <button type="button" onClick={() => { setRoomsReturn(null); setPhase('chat'); }} className={`${CHIP_BASE} ${CHIP_IDLE} gap-1.5 px-3 py-1.5 text-xs`} data-testid="rooms-open-chat">
+                  <Sparkles className="h-3.5 w-3.5 text-[#7C5CFF] dark:text-[#B69CFF]" aria-hidden />Chat with Mr LAD
+                </button>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Teach Mr LAD your business and how you sound, then practise with it and correct what it gets wrong. You see every change before it applies.
+            </p>
+          </>
+        )}
       </header>
-      <div className="mb-3 space-y-3 empty:hidden">
-        {justLive && <LiveBanner onDismiss={() => setJustLive(false)} pipelineName={curated && data.firstCampaign?.kind === 'pipeline' ? data.firstCampaign.offering : null} />}
-        {!justLive && (
-          <FirstCampaignBanner
-            state={data}
-            href={FIRST_CAMPAIGN_BUILDER_HREF}
-            // A pipeline draft has nothing to review in the builder; Go live (Step 9) switches it on.
-            onReview={data.firstCampaign?.kind === 'pipeline' && hasLaunch ? () => openStep('golive', 'studio') : undefined}
-          />
-        )}
-        <NeutralVoiceBanner state={data} onAdd={() => openStep('references', 'studio')} />
-      </div>
-      <StudioStatus state={data} onHistory={hasHistory ? () => setHistoryOpen(true) : undefined} />
-      {hasChannels && (
-        <div className="mt-3">
-          <TeamStrip channels={data.channels} onEdit={() => openStep('channels', 'studio')} />
+      {!focusRoom && (
+        <div className="mb-4 space-y-3 empty:hidden">
+          {justLive && <LiveBanner onDismiss={() => setJustLive(false)} pipelineName={curated && data.firstCampaign?.kind === 'pipeline' ? data.firstCampaign.offering : null} />}
+          {!justLive && (
+            <FirstCampaignBanner
+              state={data}
+              href={FIRST_CAMPAIGN_BUILDER_HREF}
+              // A pipeline draft has nothing to review in the builder; Go live (Step 9) switches it on.
+              onReview={data.firstCampaign?.kind === 'pipeline' && hasLaunch ? () => openStep('golive', 'studio') : undefined}
+            />
+          )}
         </div>
       )}
-      {/* The setup entry points go away once the tenant is live; the history link is what remains.
-          The Pipelines tile (curated) stays: it is the workspace's home. */}
-      {(curated || (!setupDone && (hasFirstCampaign || hasReferences || hasLaunch))) && (
-        <div className="mt-3">
-          <StudioEntries
-            state={data}
-            onFirstCampaign={!setupDone && hasFirstCampaign ? () => openStep('campaign', 'studio') : undefined}
-            onReferences={!setupDone && hasReferences ? () => openStep('references', 'studio') : undefined}
-            onGoLive={!setupDone && hasLaunch ? () => openStep('golive', 'studio') : undefined}
-            onPipelines={curated ? () => setTab('pipelines') : undefined}
-          />
-        </div>
-      )}
-      {setupDone && hasHistory && (
-        <div className="mt-3"><SetupHistoryLink onOpen={() => setHistoryOpen(true)} /></div>
-      )}
-      <div className="mt-3 empty:hidden">
-        <QuestionsInbox state={data} />
-      </div>
-      {hasHistory && <StudioHistory open={historyOpen} onOpenChange={setHistoryOpen} />}
       {draft && (
-        <p className={`mt-3 rounded-xl border px-3 py-2 text-xs ${STATUS.warn}`}>
-          You have a proposed change you haven&apos;t applied yet. Your next request in any tab builds on it; apply or discard it from its card.
+        <p className={`mb-4 rounded-xl border px-3 py-2 text-sm ${STATUS.warn}`}>
+          You have a proposed change you haven&apos;t applied yet. Your next request builds on it; apply or discard it from its card.
         </p>
       )}
-      <Tabs
-        value={tab && (tab !== 'pipelines' || curated) ? tab : (data.rehearsal.ready ? 'rehearse' : data.icpTraining.ready ? 'icp' : 'tailor')}
-        onValueChange={(v) => { if (isRoomTab(v)) setTab(v); }}
-        className="mt-5"
-      >
-        <TabsList className={TAB_LIST}>
-          {curated && (
-            <TabsTrigger value="pipelines" className={TAB_TRIGGER} data-testid="tab-pipelines"><SlidersHorizontal className="mr-1.5 h-4 w-4" />Pipelines</TabsTrigger>
-          )}
-          <TabsTrigger value="icp" className={TAB_TRIGGER}><Target className="mr-1.5 h-4 w-4" />Ideal customer</TabsTrigger>
-          <TabsTrigger value="rehearse" className={TAB_TRIGGER}><Theater className="mr-1.5 h-4 w-4" />Rehearse</TabsTrigger>
-          <TabsTrigger value="tailor" className={TAB_TRIGGER}><MessagesSquare className="mr-1.5 h-4 w-4" />Ask for changes</TabsTrigger>
-        </TabsList>
-        {curated && (
-          <TabsContent value="pipelines" className="mt-4">
-            <PipelinesRoom workspace={data.workspace} focusKey={roomsReturn === 'chat' ? pipelinesFocus : null} />
-          </TabsContent>
-        )}
-        <TabsContent value="icp" className="mt-4">
-          <IcpRoom ready={data.icpTraining.ready} draft={draft} onDraft={setDraft} />
-        </TabsContent>
-        <TabsContent value="rehearse" className="mt-4">
-          <RehearsalRoom ready={data.rehearsal.ready} draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />
-        </TabsContent>
-        <TabsContent value="tailor" className="mt-4">
-          <TailorRoom draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />
-        </TabsContent>
-      </Tabs>
+      {focusRoom === 'pipelines' && <PipelinesRoom workspace={data.workspace} focusKey={roomsReturn === 'chat' ? pipelinesFocus : null} />}
+      {focusRoom === 'icp' && <IcpRoom ready={data.icpTraining.ready} draft={draft} onDraft={setDraft} />}
+      {focusRoom === 'rehearse' && <RehearsalRoom ready={data.rehearsal.ready} draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />}
+      {focusRoom === 'tailor' && <TailorRoom draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />}
+      {!focusRoom && (
+        <TrainingPlan
+          state={data}
+          onOpenRoom={setTab}
+          onChannels={hasChannels ? () => openStep('channels', 'studio') : undefined}
+          onReferences={hasReferences ? () => openStep('references', 'studio') : undefined}
+          onFirstCampaign={!setupDone && hasFirstCampaign ? () => openStep('campaign', 'studio') : undefined}
+          onGoLive={!setupDone && hasLaunch ? () => openStep('golive', 'studio') : undefined}
+          onHistory={hasHistory ? () => setHistoryOpen(true) : undefined}
+          afterNext={<div className="empty:hidden"><QuestionsInbox state={data} /></div>}
+        />
+      )}
+      {hasHistory && <StudioHistory open={historyOpen} onOpenChange={setHistoryOpen} />}
     </div>
     </div>
   );

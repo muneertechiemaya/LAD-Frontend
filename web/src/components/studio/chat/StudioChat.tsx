@@ -21,6 +21,7 @@
  * explicit confirm a tap needs.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import { ListOrdered, LayoutGrid, MoreHorizontal, RefreshCw, RotateCcw, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -57,7 +58,7 @@ export interface StudioChatProps {
   onNavigate: (route: string) => void;
   /** "Use the step-by-step setup instead" — opens today's SetupShell (Step 1). Omitted once setup is complete. */
   onOpenSetupSteps?: () => void;
-  /** "Open the rooms" — the classic Studio view. */
+  /** "Open the training plan" — the Studio view outside the thread. */
   onOpenRooms?: () => void;
   /** A plan card's "Edit the full plan": today's PlanReview with this plan. */
   onOpenPlanReview?: (plan: BriefPlan) => void;
@@ -92,6 +93,9 @@ export default function StudioChat({ state, onNavigate, onOpenSetupSteps, onOpen
   const curated = state.workspace?.curated === true;
   const setupDone = Boolean(state.setup && state.setup.completedAt !== null);
   const thread = useStudioChat(true);
+  // The thread has its own composer at the bottom; the app's bottom bar (and its
+  // floating Ask Mr LAD button, a different Mr LAD) would stack under it on phones.
+  useHideBottomNav(true);
   const send = useSendChat();
   const reset = useResetChat();
   const [trailing, setTrailing] = useState<ChatMessage[]>([]);
@@ -198,14 +202,18 @@ export default function StudioChat({ state, onNavigate, onOpenSetupSteps, onOpen
           <LadAvatar size={36} />
           <div className="min-w-0 flex-1">
             <h1 className="text-base font-bold leading-tight tracking-tight text-[#0b1957] dark:text-white sm:text-lg">Mr LAD</h1>
-            <p className="truncate text-xs text-gray-500 dark:text-slate-400">
+            <p className="line-clamp-2 text-xs text-gray-500 dark:text-slate-400 sm:line-clamp-1">
               {setupDone ? 'Your studio, one conversation. Ask, change, switch things on.' : 'Set up your workspace by talking. Nothing applies until you say so.'}
             </p>
           </div>
           {!setupDone && onOpenSetupSteps && (
-            <button type="button" onClick={onOpenSetupSteps} className={`hidden text-xs sm:inline ${LINK}`} data-testid="chat-open-steps">
-              Use the step-by-step setup instead
-            </button>
+            // Wrapped: LINK carries `max-lg:inline-flex`, which beat a `hidden` on the button itself and put this
+            // link on phones too, beside the "Prefer a form?" line above the composer.
+            <span className="hidden sm:inline">
+              <button type="button" onClick={onOpenSetupSteps} className={`text-xs ${LINK}`} data-testid="chat-open-steps">
+                Use the step-by-step setup instead
+              </button>
+            </span>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -215,7 +223,7 @@ export default function StudioChat({ state, onNavigate, onOpenSetupSteps, onOpen
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               {onOpenRooms && (
-                <DropdownMenuItem onSelect={onOpenRooms} data-testid="chat-open-rooms"><LayoutGrid className="mr-2 h-4 w-4 text-muted-foreground" aria-hidden />Open the rooms</DropdownMenuItem>
+                <DropdownMenuItem onSelect={onOpenRooms} data-testid="chat-open-rooms"><LayoutGrid className="mr-2 h-4 w-4 text-muted-foreground" aria-hidden />Open the training plan</DropdownMenuItem>
               )}
               {!setupDone && onOpenSetupSteps && (
                 <DropdownMenuItem onSelect={onOpenSetupSteps} data-testid="chat-open-steps-menu"><ListOrdered className="mr-2 h-4 w-4 text-muted-foreground" aria-hidden />Step-by-step setup</DropdownMenuItem>
@@ -245,7 +253,7 @@ export default function StudioChat({ state, onNavigate, onOpenSetupSteps, onOpen
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => { void thread.refetch(); }}><RefreshCw className="h-4 w-4" />Try again</Button>
                 {!setupDone && onOpenSetupSteps && <Button type="button" size="sm" variant="outline" onClick={onOpenSetupSteps}>Use the step-by-step setup instead</Button>}
-                {onOpenRooms && <Button type="button" size="sm" variant="ghost" onClick={onOpenRooms}>Open the rooms</Button>}
+                {onOpenRooms && <Button type="button" size="sm" variant="ghost" onClick={onOpenRooms}>Open the training plan</Button>}
               </div>
             </div>
           </div>

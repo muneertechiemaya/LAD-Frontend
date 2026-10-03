@@ -19,7 +19,7 @@ import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal,
   DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { VOICE_PILL, VOICE_PILL_BREAKOUT, VOICE_PILL_ICON, VOICE_PILL_ICON_ACTIVE, VOICE_PILL_ICON_IDLE } from '../chat-theme';
+import { VOICE_PILL, VOICE_PILL_ICON, VOICE_PILL_ICON_ACTIVE, VOICE_PILL_ICON_IDLE } from '../chat-theme';
 import type { VoicePhase, VoiceSession } from './useVoiceSession';
 
 const PHASE_LABEL: Record<VoicePhase, string> = {
@@ -64,7 +64,7 @@ export default function VoiceChatPill({ session }: VoiceChatPillProps) {
 
   return (
     <div
-      className={`mb-2 ${VOICE_PILL} ${VOICE_PILL_BREAKOUT}`}
+      className={`mb-2 ${VOICE_PILL}`}
       role="status"
       aria-live="polite"
       aria-label={`Voice chat: ${PHASE_LABEL[phase]}`}
@@ -158,7 +158,7 @@ export default function VoiceChatPill({ session }: VoiceChatPillProps) {
  */
 export function VoiceStartPill({ onStart, onDismiss, supported }: { onStart: () => void; onDismiss: () => void; supported: boolean }) {
   return (
-    <div className={`mb-2 ${VOICE_PILL} ${VOICE_PILL_BREAKOUT}`} role="status" data-testid="voice-start-pill">
+    <div className={`mb-2 ${VOICE_PILL}`} role="status" data-testid="voice-start-pill">
       <div className="flex items-center gap-2">
         <button
           type="button"
