@@ -27,9 +27,16 @@ import {
 import ReviewCard from './ReviewCard';
 import { BORDER, BUBBLE_AGENT, BUBBLE_ME, CARD, CHIP_BASE, CHIP_IDLE, CHIP_SELECTED, CTA_PRIMARY, INPUT_FOCUS, PANEL } from './studio-theme';
 
-/** Builder workspaces: B2B prospects for the LinkedIn agent. */
-const BUILDER_PRESETS: Persona[] = [
+/** Staffing workspaces (`vertical === 'staffing'`): B2B hiring managers for the LinkedIn agent. */
+const STAFFING_PRESETS: Persona[] = [
   { name: 'Priya Nair', role: 'VP Talent Acquisition', company: 'Beta Health', situation: 'Just posted 12 nursing roles; already uses two agencies.' },
+  { name: 'Marcus Lee', role: 'Founder', company: 'Lee & Co', situation: 'Small business owner, sceptical of anything that looks like a sales pitch.' },
+  { name: 'Dana Ortiz', role: 'Operations Director', company: 'Orbit Logistics', situation: 'Interested but says budget opens next quarter.' },
+];
+
+/** Every other builder workspace: B2B prospects for the LinkedIn agent, no industry assumed. */
+const BUILDER_PRESETS: Persona[] = [
+  { name: 'Priya Nair', role: 'Head of Operations', company: 'Beta Health', situation: 'Busy, and already works with a provider she is happy enough with.' },
   { name: 'Marcus Lee', role: 'Founder', company: 'Lee & Co', situation: 'Small business owner, sceptical of anything that looks like a sales pitch.' },
   { name: 'Dana Ortiz', role: 'Operations Director', company: 'Orbit Logistics', situation: 'Interested but says budget opens next quarter.' },
 ];
@@ -47,11 +54,14 @@ export interface RehearsalRoomProps {
   onDraft: (o?: Overlay) => void;
   /** Curated workspace: rehearse the WhatsApp support agent, not the LinkedIn agent. */
   curated?: boolean;
+  /** `state.vertical`; 'staffing' keeps the staffing prospects. */
+  vertical?: string | null;
 }
 
-export default function RehearsalRoom({ ready, draft, onDraft, curated = false }: RehearsalRoomProps) {
+export default function RehearsalRoom({ ready, draft, onDraft, curated = false, vertical = null }: RehearsalRoomProps) {
   const { toast } = useToast();
-  const PRESETS = curated ? CURATED_PRESETS : BUILDER_PRESETS;
+  const staffing = !curated && vertical === 'staffing';
+  const PRESETS = curated ? CURATED_PRESETS : staffing ? STAFFING_PRESETS : BUILDER_PRESETS;
   const agentLabel = curated ? 'Your support agent' : 'Your agent';
   const [persona, setPersona] = useState<Persona>(PRESETS[0]);
   const [transcript, setTranscript] = useState<TranscriptTurn[]>([]);
@@ -92,7 +102,7 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
       <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>
         {curated
           ? 'The rehearsal room opens once your support agent can answer — switch the customer support pipeline on and fill in its settings in the Pipelines room.'
-          : 'The rehearsal room opens once your LinkedIn agent prompt exists. See the status above.'}
+          : 'Rehearsing opens once Mr LAD is set up for LinkedIn. See step 3 above.'}
       </p>
     );
   }
@@ -113,11 +123,11 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
             </div>
           </div>
           <div className={`grid gap-2 ${curated ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
-            <Input placeholder="Name" value={persona.name ?? ''} onChange={e => setPersona({ ...persona, name: e.target.value })} className={INPUT_FOCUS} />
-            <Input placeholder={curated ? 'Member or prospective member' : 'Role'} value={persona.role ?? ''} onChange={e => setPersona({ ...persona, role: e.target.value })} className={INPUT_FOCUS} />
-            {!curated && <Input placeholder="Company" value={persona.company ?? ''} onChange={e => setPersona({ ...persona, company: e.target.value })} className={INPUT_FOCUS} />}
+            <Input placeholder="Name" aria-label="Their name" value={persona.name ?? ''} onChange={e => setPersona({ ...persona, name: e.target.value })} className={INPUT_FOCUS} />
+            <Input placeholder={curated ? 'Member or prospective member' : 'Role'} aria-label={curated ? 'Member or prospective member' : 'Their role'} value={persona.role ?? ''} onChange={e => setPersona({ ...persona, role: e.target.value })} className={INPUT_FOCUS} />
+            {!curated && <Input placeholder="Company" aria-label="Their company" value={persona.company ?? ''} onChange={e => setPersona({ ...persona, company: e.target.value })} className={INPUT_FOCUS} />}
           </div>
-          <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={2} placeholder={curated ? 'Their situation (what they want, what they have booked)' : 'Their situation (what the agent could plausibly know)'} value={persona.situation ?? ''} onChange={e => setPersona({ ...persona, situation: e.target.value })} />
+          <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={2} aria-label="Their situation" placeholder={curated ? 'Their situation (what they want, what they have booked)' : 'Their situation (what the agent could plausibly know)'} value={persona.situation ?? ''} onChange={e => setPersona({ ...persona, situation: e.target.value })} />
         </div>
 
         <div className={CARD}>
@@ -146,7 +156,7 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
           <div className={`flex gap-2 border-t ${BORDER} p-3`}>
             <Textarea rows={2} value={message} onChange={e => setMessage(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-              placeholder={`Say something as ${persona.name?.split(' ')[0] || (curated ? 'the member' : 'the prospect')}…`} disabled={rehearse.isPending} className={INPUT_FOCUS} />
+              placeholder={`Say something as ${persona.name?.split(' ')[0] || (curated ? 'the member' : 'the prospect')}…`} aria-label={`What ${persona.name?.split(' ')[0] || (curated ? 'the member' : 'the prospect')} says`} disabled={rehearse.isPending} className={INPUT_FOCUS} />
             <Button onClick={send} disabled={rehearse.isPending || !message.trim()} aria-label="Send" className={CTA_PRIMARY}>
               {rehearse.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
@@ -158,15 +168,17 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
         <div className={`${CARD} p-4`}>
           <h3 className="text-sm font-semibold tracking-tight">{curated ? 'What should the support agent have done differently?' : 'What should the agent have done differently?'}</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">Plain words. Mr LAD turns it into a change to the {curated ? 'support ' : ''}agent&apos;s instructions and shows you exactly what would change before anything is applied.</p>
-          <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={4} value={feedback} onChange={e => setFeedback(e.target.value)}
+          <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={4} aria-label="What should change" value={feedback} onChange={e => setFeedback(e.target.value)}
             placeholder={curated
               ? 'e.g. It handed over as soon as she asked the price. Say the class-pack range first and offer a trial class, and mention the parking behind the building.'
-              : 'e.g. Too pushy on the first message. Ask what they are hiring for before proposing a call, and mention our replacement guarantee when they raise risk.'} />
+              : staffing
+                ? 'e.g. Too pushy on the first message. Ask what they are hiring for before proposing a call, and mention our replacement guarantee when they raise risk.'
+                : 'e.g. Too pushy on the first message. Ask what they are working on before proposing a call, and mention our guarantee when they raise risk.'} />
           <div className="mt-2 flex items-center gap-2">
             <Button size="sm" onClick={askTailor} disabled={refine.isPending || !feedback.trim()} className={CTA_PRIMARY}>
               {refine.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Propose a change
             </Button>
-            {transcript.length === 0 && <span className="text-xs text-muted-foreground">Works without a transcript too, but a rehearsal gives Mr LAD something concrete.</span>}
+            {transcript.length === 0 && <span className="text-xs text-muted-foreground">You can skip the rehearsal, but a sample conversation gives Mr LAD something concrete.</span>}
           </div>
         </div>
         {result && (

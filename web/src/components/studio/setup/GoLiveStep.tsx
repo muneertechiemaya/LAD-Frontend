@@ -493,12 +493,15 @@ function CreditsDetail({ launch }: { launch: LaunchStatus }) {
   const balance = c.unknown || c.balance === null ? null : Number(c.balance);
   return (
     <div className="mt-1 space-y-1 text-sm text-muted-foreground" data-testid="credits-detail">
-      <p className={balance === null ? TINT.warnText : undefined}>
-        {balance === null ? 'We couldn’t read your wallet, so it cannot tell whether the first week is covered. Open your wallet to check.' : `${balance.toLocaleString()} credits available.`}
-        {c.firstWeek && ` About ${Math.ceil(c.firstWeek.credits).toLocaleString()} credits for the first week (≈ ${money(c.firstWeek.usd)}).`}
-        {/* Curated: pipelines bill per conversation, so there is no first-week estimate — the server says why. */}
-        {!c.firstWeek && c.note && <span data-testid="credits-note"> {c.note}</span>}
-      </p>
+      {/* The row's detail above (server) already gives the balance and the first-week credits; this adds only what it doesn't say. */}
+      {(balance === null || c.firstWeek || c.note) && (
+        <p className={balance === null ? TINT.warnText : undefined}>
+          {balance === null && 'Without it, Mr LAD can’t tell whether the first week is covered. Open your wallet to check.'}
+          {balance !== null && c.firstWeek && `The first week costs about ${money(c.firstWeek.usd)}.`}
+          {/* Curated: pipelines bill per conversation, so there is no first-week estimate — the server says why. */}
+          {!c.firstWeek && c.note && <span data-testid="credits-note"> {c.note}</span>}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {c.firstWeek && c.firstWeek.breakdown.length > 0 && (
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className={`inline-flex items-center gap-1 text-sm ${LINK}`}>

@@ -581,7 +581,7 @@ function StudioPageInner() {
           )}
         </div>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Teach the platform your business: finish the interview, train it on real leads, rehearse against your own agent, and turn feedback into changes you review before they apply.
+          Teach Mr LAD your business: answer its questions, show it which leads fit, practise a conversation with your agent, and ask for changes. You see every change before it applies.
         </p>
       </header>
       <div className="mb-3 space-y-3 empty:hidden">
@@ -624,7 +624,7 @@ function StudioPageInner() {
       {hasHistory && <StudioHistory open={historyOpen} onOpenChange={setHistoryOpen} />}
       {draft && (
         <p className={`mt-3 rounded-xl border px-3 py-2 text-xs ${STATUS.warn}`}>
-          You have an unapplied proposal. The next request in any room builds on it; apply or discard it from its review card.
+          You have a proposed change you haven&apos;t applied yet. Your next request in any tab builds on it; apply or discard it from its card.
         </p>
       )}
       <Tabs
@@ -649,10 +649,10 @@ function StudioPageInner() {
           <IcpRoom ready={data.icpTraining.ready} draft={draft} onDraft={setDraft} />
         </TabsContent>
         <TabsContent value="rehearse" className="mt-4">
-          <RehearsalRoom ready={data.rehearsal.ready} draft={draft} onDraft={setDraft} curated={curated} />
+          <RehearsalRoom ready={data.rehearsal.ready} draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />
         </TabsContent>
         <TabsContent value="tailor" className="mt-4">
-          <TailorRoom draft={draft} onDraft={setDraft} curated={curated} />
+          <TailorRoom draft={draft} onDraft={setDraft} curated={curated} vertical={data.vertical} />
         </TabsContent>
       </Tabs>
     </div>

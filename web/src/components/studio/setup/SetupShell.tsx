@@ -86,7 +86,7 @@ export default function SetupShell({ step, title, children, aside, progress }: S
               style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
             />
           </div>
-          {aside && <div className="mt-2.5 text-xs text-muted-foreground">{aside}</div>}
+          {aside && <div className="mt-2.5 text-xs text-muted-foreground max-lg:[&_button]:inline-flex max-lg:[&_button]:min-h-11 max-lg:[&_button]:items-center">{aside}</div>}
         </header>
         {children}
       </div>
