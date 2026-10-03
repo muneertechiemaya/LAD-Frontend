@@ -440,7 +440,8 @@ export const RecommendationPairs: React.FC = () => {
 
       {/* Pairs for selected week */}
             {weekData?.pairs?.length ? (
-              <div className="flex flex-col gap-2">
+              // 88 members ran ~13,000px on a phone, burying everything below; below lg the list scrolls in its own box.
+              <div className="flex flex-col gap-2 max-lg:max-h-[75vh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:pr-1">
                 {pickError && (
                   <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 dark:bg-red-500/10 dark:text-red-300">{pickError}</p>
                 )}
