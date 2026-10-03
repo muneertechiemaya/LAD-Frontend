@@ -16,6 +16,17 @@ import {
 import { Phone, Mic, Play, Pause, Bot, ChevronDown } from "lucide-react";
 import { apiGet } from "@/lib/api";
 
+/** "en-IN" → "English (India)"; a value that isn't a locale code is shown as it is. */
+function accentLabel(accent?: string | null): string {
+  const raw = String(accent ?? '').trim();
+  if (!/^[a-z]{2,3}(-[a-z0-9]{2,4})?$/i.test(raw)) return raw;
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(raw) ?? raw;
+  } catch {
+    return raw;
+  }
+}
+
 type Agent = {
   id: string;
   name: string;
@@ -420,7 +431,7 @@ export function CallConfiguration({
                           {selectedAgent.name}
                         </span>
                         <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-300 overflow-hidden whitespace-nowrap text-ellipsis max-w-full">
-                          {selectedAgent.accent} • {selectedAgent.gender}
+                          {accentLabel(selectedAgent.accent)} • {selectedAgent.gender}
                         </span>
                       </div>
                     </div>
@@ -445,7 +456,7 @@ export function CallConfiguration({
                               {agent.name}
                             </span>
                             <span className="text-xs truncate text-slate-400 dark:text-slate-300 transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
-                              {agent.description} • {agent.accent} •{" "}
+                              {agent.description} • {accentLabel(agent.accent)} •{" "}
                               {agent.gender}
                             </span>
                           </div>
@@ -555,7 +566,7 @@ export function CallConfiguration({
             >
               <SelectTrigger className="h-12 rounded-[10px] border-gray-200 dark:border-blue-950/40 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/50 w-full">
                 <SelectValue
-                  placeholder={selectedAgent?.accent || "Select accent"}
+                  placeholder={selectedAgent?.accent ? accentLabel(selectedAgent.accent) : "Select accent"}
                 />
               </SelectTrigger>
               <SelectContent className="w-full bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
@@ -581,7 +592,7 @@ export function CallConfiguration({
                     if (!value) return null;
                     return (
                       <SelectItem key={value} value={value}>
-                        <span className="capitalize">{accent}</span>
+                        <span>{accentLabel(String(accent))}</span>
                       </SelectItem>
                     );
                   })

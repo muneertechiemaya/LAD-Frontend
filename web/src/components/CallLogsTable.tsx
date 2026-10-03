@@ -328,7 +328,8 @@ export function CallLogsTable({
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return "-";
+    // A call that never connected lasted 0:00; "-" read as missing data.
+    if (!seconds) return "0:00";
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
@@ -514,7 +515,8 @@ export function CallLogsTable({
         const hasLead = leadName !== "-";
         return (
           <div className="group flex items-center gap-2">
-            <span className="text-muted-foreground">{leadName}</span>
+            {/* "-" read as a broken value; say what it is. */}
+            <span className={hasLead ? 'text-muted-foreground' : 'italic text-muted-foreground'}>{hasLead ? leadName : 'No name saved'}</span>
             {hasLead && (
               <button
                 onClick={(e) => {
@@ -1452,6 +1454,7 @@ export function CallLogsTable({
                 onClick={() => onPageChange(1)}
                 disabled={!hasPreviousPage}
                 className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="First page"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -1461,6 +1464,7 @@ export function CallLogsTable({
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={!hasPreviousPage}
                 className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1470,6 +1474,7 @@ export function CallLogsTable({
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={!hasNextPage}
                 className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -1479,6 +1484,7 @@ export function CallLogsTable({
                 onClick={() => onPageChange(totalPages)}
                 disabled={!hasNextPage}
                 className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Last page"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>

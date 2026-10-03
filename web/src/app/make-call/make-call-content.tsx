@@ -594,11 +594,11 @@ export default function MakeCallContent() {
             <div className="flex items-center gap-2 mb-1">
               <Speech className="w-8 h-8 text-[#1E293B] dark:text-white" />
               <h1 className="text-2xl sm:text-4xl font-bold text-[#1E293B] dark:text-white">
-                AI Caller
+                Calls
               </h1>
             </div>
             <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] ml-2">
-              Make single or bulk calls with voice agents
+              Have a voice agent call one person or a whole list
             </p>
           </div>
           <Button 
