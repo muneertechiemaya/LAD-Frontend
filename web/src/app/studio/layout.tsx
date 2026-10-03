@@ -19,7 +19,7 @@ export default function StudioLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <Lock className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
         <h2 className="text-lg font-semibold">Admins only</h2>
-        <p className="mt-1 text-sm text-muted-foreground">The Tenant Studio changes how the whole workspace sells. Ask a workspace admin to open it.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Train Mr LAD changes how the whole workspace sells. Ask a workspace admin to open it.</p>
       </div>
     );
   }

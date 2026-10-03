@@ -323,7 +323,7 @@ export default function FollowUpsPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Follow-ups</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Manage automated follow-ups and re-engagement messages</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Leads who went quiet, and the nudges Mr LAD sends them</p>
           </div>
         </div>
         <button
@@ -354,18 +354,19 @@ export default function FollowUpsPage() {
             sub="Last 24 hours"
           />
           <StatCard
-            label="Eligible Leads"
+            label="Leads to follow up"
             value={statusLoading ? '-' : (status?.eligible_leads ?? 0)}
             icon={Users}
             color="bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300"
-            sub="Need follow-up"
+            sub="Gone quiet, ready for a nudge"
           />
           <StatCard
-            label="Scheduler"
-            value={statusLoading ? '-' : (status?.scheduler_active ? 'Active' : 'Paused')}
-            icon={status?.scheduler_active ? Bell : AlertCircle}
-            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300'}
-            sub={status?.business_hours ? 'Business hours' : 'Outside hours'}
+            label="Automatic sending"
+            value={statusLoading ? '-' : (status?.scheduler_active ? 'On' : 'Waiting')}
+            icon={status?.scheduler_active ? Bell : Clock}
+            // Waiting for business hours is normal, not an error: neutral, not red.
+            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}
+            sub={status?.business_hours ? 'Sending during business hours' : 'Resumes in business hours'}
           />
         </div>
 
@@ -381,7 +382,7 @@ export default function FollowUpsPage() {
               }`}
             >
               <Users className="w-4 h-4" />
-              Inactive Leads
+              Gone quiet
               {leads.length > 0 && (
                 <span className="bg-orange-100 text-orange-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {leads.length}
@@ -397,7 +398,7 @@ export default function FollowUpsPage() {
               }`}
             >
               <Settings className="w-4 h-4" />
-              ICP Follow-up Settings
+              Follow-up settings
             </button>
           </div>
 
@@ -438,13 +439,13 @@ export default function FollowUpsPage() {
               {leadsLoading ? (
                 <div className="flex items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Loading inactive leads…
+                  Loading leads who went quiet…
                 </div>
               ) : filteredLeads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-3">
                   <CheckCircle className="w-10 h-10 text-green-300" />
-                  <p className="font-medium text-gray-600 dark:text-slate-300">No inactive leads found</p>
-                  <p className="text-sm">All leads are engaged or there are no eligible leads at this time.</p>
+                  <p className="font-medium text-gray-600 dark:text-slate-300">Nobody needs a nudge right now</p>
+                  <p className="text-sm">Leads who stop replying after a few days show up here, ready for a follow-up.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -539,7 +540,7 @@ export default function FollowUpsPage() {
                       </div>
                       <div className="bg-orange-50 rounded-xl p-4 text-center border border-orange-100">
                         <p className="text-2xl font-semibold text-orange-700">{icpStatus.eligible_for_followup}</p>
-                        <p className="text-xs text-orange-500 mt-1">Eligible for follow-up</p>
+                        <p className="text-xs text-orange-500 mt-1">Ready for a follow-up</p>
                       </div>
                       <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
                         <p className="text-2xl font-semibold text-green-700">{icpStatus.already_scheduled}</p>
@@ -552,7 +553,7 @@ export default function FollowUpsPage() {
                   <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-5 dark:bg-white/5 dark:border-blue-950/50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">Automated ICP Follow-ups</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">Automatic follow-ups</h3>
                         <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
                           Automatically follow up with members who haven&apos;t completed their profile
                         </p>
@@ -681,7 +682,7 @@ export default function FollowUpsPage() {
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white">Send Template Now</h3>
                       <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
-                        Immediately send a WhatsApp template to eligible members
+                        Send a WhatsApp template now to everyone ready for a follow-up
                       </p>
                     </div>
 
@@ -718,7 +719,7 @@ export default function FollowUpsPage() {
                                 onChange={(e) => setTemplateTarget(e.target.value as 'all' | 'eligible')}
                                 className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                               >
-                                <option value="eligible">Eligible members only</option>
+                                <option value="eligible">Only people ready for a follow-up</option>
                                 <option value="all">All idle members</option>
                               </select>
                               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400 pointer-events-none" />

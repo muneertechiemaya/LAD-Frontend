@@ -47,4 +47,5 @@ export {
   useSaveHomeLayout,
   useResetHomeLayout,
   type PipelinePeriod,
+  type PipelineWindow,
 } from './hooks/useHomeData';

@@ -30,7 +30,7 @@ export function snapshotPromptLine(p: PublishOutcome): string {
 /** One line per entry, for a per-channel result list. */
 export function publishLine(p: PublishOutcome): string {
   const label = channelLabel(p.channel);
-  if (!p.ok) return `${label} agent could not be updated${p.error ? ` — ${p.error}` : ''}. The change is saved; try again from the Tailor.`;
+  if (!p.ok) return `${label} agent could not be updated${p.error ? ` — ${p.error}` : ''}. The change is saved; try again from Ask for changes.`;
   if (readsSnapshotPrompt(p)) return snapshotPromptLine(p);
   if (p.readBy === 'stored-only') return `${label} agent updated — it reads this once the channel is connected.`;
   return `${label} agent updated.`;
@@ -49,6 +49,6 @@ export function publishSummary(published: PublishOutcome[] | undefined): string 
   const parts: string[] = [];
   if (ok.length) parts.push(`${ok.join(', ')} agent${ok.length === 1 ? '' : 's'} updated.`);
   parts.push(...viaSnapshot);
-  if (failed.length) parts.push(`Could not update ${failed.join(', ')} — try again from the Tailor.`);
+  if (failed.length) parts.push(`Could not update ${failed.join(', ')} — try again from Ask for changes.`);
   return parts.join(' ');
 }

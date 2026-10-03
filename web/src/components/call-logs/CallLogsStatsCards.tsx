@@ -1,30 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Phone, PhoneOff, PhoneMissed, PhoneCall, Clock, Flame, Sun, Snowflake, BookUser, CardSim
 } from 'lucide-react';
 import type { CallLogsStats } from '@lad/frontend-features/call-logs';
 
-// Custom hook for counter animation
-const useCountUp = (end: number, duration: number = 2000) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp: number;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
-
-  return count;
-};
+// Numbers render final straight away: a 2 s count-up let people read a
+// half-way value as the real total, and froze mid-count in a background tab.
+const nf = new Intl.NumberFormat();
 
 // Skeleton loading component
 const SkeletonCard = () => (
@@ -48,7 +32,7 @@ const SkeletonCard = () => (
 // Component to handle animated values
 const AnimatedValue = ({ value }: { value: number | string }) => {
   const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value || 0;
-  const animatedValue = useCountUp(numericValue, 2000);
+  const animatedValue = nf.format(numericValue);
   return <>{animatedValue}</>;
 };
 
@@ -83,7 +67,7 @@ const StatCard = ({ title, value, icon, bgColor, onClick, isLeadTag, isSelected 
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col justify-end">
-            <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-300 mb-1">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-1">
               {title}
             </p>
             <h5 className="text-2xl max-sm:text-xl font-bold text-slate-800 dark:text-white">
@@ -146,7 +130,7 @@ export default function CallLogsStatsCards({
     <div className="flex gap-4 max-sm:gap-2 mb-6 flex-wrap items-stretch">
       {/* Total Calls */}
       <StatCard 
-        title="Total Calls" 
+        title="All calls" 
         value={stats.total_calls || 0} 
         icon={<BookUser className="w-6 h-6 text-blue-600" />} 
         bgColor="bg-blue-100" 
@@ -160,7 +144,7 @@ export default function CallLogsStatsCards({
       
       {/* Completed Calls (Ended) */}
       <StatCard 
-        title="Completed Calls" 
+        title="Answered and finished" 
         value={stats.completed_calls || 0} 
         icon={<Phone className="w-6 h-6 text-green-600" />} 
         bgColor="bg-green-100" 
@@ -171,7 +155,7 @@ export default function CallLogsStatsCards({
       
       {/* Failed Calls */}
       <StatCard 
-        title="Failed Calls" 
+        title="Didn't connect" 
         value={stats.failed_calls || 0} 
         icon={<PhoneMissed className="w-6 h-6 text-red-600" />} 
         bgColor="bg-red-100" 
@@ -182,7 +166,7 @@ export default function CallLogsStatsCards({
       
       {/* Declined — callee hung up on the ring; retryable, not a failure of ours */}
       <StatCard 
-        title="Declined" 
+        title="Declined by the lead" 
         value={stats.declined_calls || 0} 
         icon={<PhoneOff className="w-6 h-6 text-orange-600" />} 
         bgColor="bg-orange-100" 
@@ -193,7 +177,7 @@ export default function CallLogsStatsCards({
       
       {/* Ongoing Calls */}
       <StatCard 
-        title="Ongoing" 
+        title="On a call now" 
         value={stats.ongoing || 0} 
         icon={<PhoneCall className="w-6 h-6 text-purple-600" />} 
         bgColor="bg-purple-100" 
@@ -204,7 +188,7 @@ export default function CallLogsStatsCards({
       
       {/* Queue */}
       <StatCard 
-        title="Queue" 
+        title="Waiting to be dialled" 
         value={stats.queue || 0} 
         icon={<Clock className="w-6 h-6 text-amber-600" />} 
         bgColor="bg-amber-100" 
@@ -215,7 +199,7 @@ export default function CallLogsStatsCards({
       
       {/* Hot Leads */}
       <StatCard 
-        title="Hot Leads" 
+        title="Hot leads (very interested)" 
         value={stats.hot_leads || 0} 
         icon={<Flame className="w-6 h-6 text-orange-600" />} 
         bgColor="bg-orange-100" 
@@ -226,7 +210,7 @@ export default function CallLogsStatsCards({
       
       {/* Warm Leads */}
       <StatCard 
-        title="Warm Leads" 
+        title="Warm leads (somewhat interested)" 
         value={stats.warm_leads || 0} 
         icon={<Sun className="w-6 h-6 text-yellow-600" />} 
         bgColor="bg-yellow-100" 
@@ -237,7 +221,7 @@ export default function CallLogsStatsCards({
       
       {/* Cold Leads */}
       <StatCard 
-        title="Cold Leads" 
+        title="Cold leads (not interested yet)" 
         value={stats.cold_leads || 0} 
         icon={<Snowflake className="w-6 h-6 text-cyan-600" />} 
         bgColor="bg-cyan-100" 

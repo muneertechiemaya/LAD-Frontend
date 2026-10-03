@@ -30,7 +30,10 @@ export default function SimpleAnalyticsCards() {
   if (!data) {
     return (
       <div className="text-center p-8 bg-orange-50 border border-orange-200 rounded-lg dark:bg-orange-500/10">
-        <p className="text-orange-700 font-semibold dark:text-orange-300">No analytics data available</p>
+        <p className="text-orange-700 font-semibold dark:text-orange-300">No numbers yet</p>
+        <p className="text-orange-700 text-sm mt-2 dark:text-orange-300">
+          Add your members with Onboard New Member or Import Data, then log 1-to-1 meetings and referrals. Your community&apos;s results appear here.
+        </p>
       </div>
     );
   }
@@ -90,28 +93,28 @@ export default function SimpleAnalyticsCards() {
         {/* Avg Connections Per Member */}
         <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-6 text-center dark:bg-blue-500/10 dark:border-blue-700/60">
           <div className="text-5xl font-bold text-blue-900 dark:text-blue-100">{avgConnectionsPerMember.toFixed(1)}</div>
-          <div className="text-sm text-blue-700 mt-2 font-medium dark:text-blue-300">Avg Connections</div>
-          <div className="text-xs text-blue-700 mt-1 dark:text-blue-300">Per member</div>
+          <div className="text-sm text-blue-700 mt-2 font-medium dark:text-blue-300">Contacts per member</div>
+          <div className="text-xs text-blue-700 mt-1 dark:text-blue-300">Average people each member has met</div>
         </div>
 
         {/* Avg Relationship Score */}
         <div className="bg-teal-100 border-2 border-teal-300 rounded-lg p-6 text-center dark:bg-teal-500/10 dark:border-teal-700/60">
           <div className="text-5xl font-bold text-teal-900 dark:text-teal-100">{avgRelationshipScore.toFixed(2)}</div>
           <div className="text-sm text-teal-700 mt-2 font-medium dark:text-teal-300">Relationship Score</div>
-          <div className="text-xs text-teal-700 mt-1 dark:text-teal-300">Average strength</div>
+          <div className="text-xs text-teal-700 mt-1 dark:text-teal-300">Average strength between members</div>
         </div>
 
         {/* Density - REAL DATA */}
         <div className="bg-orange-100 border-2 border-orange-300 rounded-lg p-6 text-center dark:bg-orange-500/10 dark:border-orange-700/60">
           <div className="text-5xl font-bold text-orange-900 dark:text-orange-100">{density.toFixed(1)}%</div>
-          <div className="text-sm text-orange-700 mt-2 font-medium dark:text-orange-300">Network Density</div>
-          <div className="text-xs text-orange-700 mt-1 dark:text-orange-300">Connection strength</div>
+          <div className="text-sm text-orange-700 mt-2 font-medium dark:text-orange-300">Members who have met</div>
+          <div className="text-xs text-orange-700 mt-1 dark:text-orange-300">Share of member pairs with a 1-to-1</div>
         </div>
 
         {/* Avg Referral Value */}
         <div className="bg-rose-100 border-2 border-rose-300 rounded-lg p-6 text-center dark:bg-rose-500/10 dark:border-rose-700/60">
           <div className="text-5xl font-bold text-rose-900 dark:text-rose-100">${avgReferralValue.toLocaleString()}</div>
-          <div className="text-sm text-rose-700 mt-2 font-medium dark:text-rose-300">Avg Referral Value</div>
+          <div className="text-sm text-rose-700 mt-2 font-medium dark:text-rose-300">Value per referral</div>
           <div className="text-xs text-rose-700 mt-1 dark:text-rose-300">Per referral average</div>
         </div>
       </div>

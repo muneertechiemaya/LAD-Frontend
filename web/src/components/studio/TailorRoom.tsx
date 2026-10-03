@@ -67,7 +67,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
       setMessage('');
       if (r.proposal?.ok) { onDraft(r.proposal.overlay); setLastValid(r); }
     } catch (e: unknown) {
-      toast({ title: 'The Tailor could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Mr LAD could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
     }
   };
 
@@ -75,7 +75,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <section className={CARD}>
         <div className={`border-b ${BORDER} px-4 py-2`}>
-          <h3 className="text-sm font-semibold tracking-tight">Tell the Tailor what to change</h3>
+          <h3 className="text-sm font-semibold tracking-tight">Tell Mr LAD what to change</h3>
           <p className="text-xs text-muted-foreground" data-testid="tailor-hint">
             {curated
               ? 'How your support agent greets, answers, books, reschedules and cancels on WhatsApp — in your words.'
@@ -124,7 +124,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
           </>
         ) : (
           <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>
-            {last ? 'No change proposed yet — answer the Tailor\'s question on the left.' : 'A proposal appears here with every change spelled out. Nothing is applied until you say so.'}
+            {last ? 'No change proposed yet — answer Mr LAD\'s question on the left.' : 'A proposal appears here with every change spelled out. Nothing is applied until you say so.'}
           </p>
         )}
       </section>

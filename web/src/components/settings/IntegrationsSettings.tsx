@@ -39,8 +39,8 @@ const CREDIT_GATED_IDS = new Set(['linkedin', 'whatsapp-ai', 'whatsapp-personal'
 const INTEGRATIONS: IntegrationCard[] = [
   {
     id: 'whatsapp-ai',
-    name: 'WhatsApp API Agent',
-    description: 'Configure your WhatsApp Business API account for AI-powered conversations.',
+    name: 'WhatsApp Business',
+    description: 'Your WhatsApp Business number, with Mr LAD replying for you.',
     icon: (
       <svg viewBox="0 0 175.216 175.552" className="h-7 w-7">
         <defs><linearGradient id="wa1" x1="85.915" x2="86.535" y1="32.567" y2="137.092" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#57d163"/><stop offset="1" stopColor="#23b33a"/></linearGradient></defs>
@@ -131,8 +131,8 @@ const INTEGRATIONS: IntegrationCard[] = [
   },
   {
     id: 'custom-email',
-    name: 'Custom Email (SMTP)',
-    description: 'Connect Roundcube, cPanel mail, Zoho, Yandex, Fastmail, or any self-hosted webmail.',
+    name: 'Other email inbox',
+    description: 'Any other email account: Zoho, Yandex, Fastmail, cPanel or your own server.',
     icon: <Server className="h-6 w-6 text-emerald-600" />,
     iconBg: 'bg-emerald-50',
     category: 'Email & Calendar',

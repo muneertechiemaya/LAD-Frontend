@@ -83,7 +83,7 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
     try {
       setResult(await refine.mutateAsync({ transcript, feedback: text, persona, draft, ...(curated ? { target: 'customer_support' as const } : {}) }));
     } catch (e: unknown) {
-      toast({ title: 'The Tailor could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Mr LAD could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
     }
   };
 
@@ -157,7 +157,7 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
       <section className="space-y-3">
         <div className={`${CARD} p-4`}>
           <h3 className="text-sm font-semibold tracking-tight">{curated ? 'What should the support agent have done differently?' : 'What should the agent have done differently?'}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">Plain words. The Tailor turns it into a change to the {curated ? 'support ' : ''}agent&apos;s instructions and shows you exactly what would change before anything is applied.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Plain words. Mr LAD turns it into a change to the {curated ? 'support ' : ''}agent&apos;s instructions and shows you exactly what would change before anything is applied.</p>
           <Textarea className={`mt-2 ${INPUT_FOCUS}`} rows={4} value={feedback} onChange={e => setFeedback(e.target.value)}
             placeholder={curated
               ? 'e.g. It handed over as soon as she asked the price. Say the class-pack range first and offer a trial class, and mention the parking behind the building.'
@@ -166,7 +166,7 @@ export default function RehearsalRoom({ ready, draft, onDraft, curated = false }
             <Button size="sm" onClick={askTailor} disabled={refine.isPending || !feedback.trim()} className={CTA_PRIMARY}>
               {refine.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Propose a change
             </Button>
-            {transcript.length === 0 && <span className="text-xs text-muted-foreground">Works without a transcript too, but a rehearsal gives the Tailor something concrete.</span>}
+            {transcript.length === 0 && <span className="text-xs text-muted-foreground">Works without a transcript too, but a rehearsal gives Mr LAD something concrete.</span>}
           </div>
         </div>
         {result && (

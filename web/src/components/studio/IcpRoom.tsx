@@ -59,14 +59,14 @@ export default function IcpRoom({ ready, draft, onDraft }: { ready: boolean; dra
     try {
       setResult(await train.mutateAsync({ samples: judged.map(s => ({ lead: s.lead, verdict: s.verdict!, reason: s.reason, score: s.score })), draft }));
     } catch (e: unknown) {
-      toast({ title: 'The Tailor could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Mr LAD could not answer', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
     }
   };
 
   const setSample = (id: number, patch: Partial<Sample>) => setSamples(s => s.map(x => (x.id === id ? { ...x, ...patch } : x)));
 
   if (!ready) {
-    return <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>ICP training opens once the required Business Profile answers are in — the scorer reads them.</p>;
+    return <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>This opens once the required interview answers are in — Mr LAD judges fit from them.</p>;
   }
 
   return (
@@ -103,7 +103,7 @@ export default function IcpRoom({ ready, draft, onDraft }: { ready: boolean; dra
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Button size="sm" variant={s.verdict === 'fit' ? 'default' : 'outline'} onClick={() => setSample(s.id, { verdict: 'fit' })} className={s.verdict === 'fit' ? CTA_PRIMARY : 'hover:border-[#7C5CFF]/50'}><ThumbsUp className="mr-1 h-3.5 w-3.5" />A fit</Button>
                 <Button size="sm" variant={s.verdict === 'not_fit' ? 'default' : 'outline'} onClick={() => setSample(s.id, { verdict: 'not_fit' })} className={s.verdict === 'not_fit' ? CTA_PRIMARY : 'hover:border-[#7C5CFF]/50'}><ThumbsDown className="mr-1 h-3.5 w-3.5" />Not a fit</Button>
-                <Input className={`min-w-[200px] flex-1 ${INPUT_FOCUS}`} placeholder="Why? (one line helps the Tailor most)" value={s.reason} onChange={e => setSample(s.id, { reason: e.target.value })} />
+                <Input className={`min-w-[200px] flex-1 ${INPUT_FOCUS}`} placeholder="Why? (one line helps Mr LAD most)" value={s.reason} onChange={e => setSample(s.id, { reason: e.target.value })} />
               </div>
             </li>
           ))}
@@ -115,7 +115,7 @@ export default function IcpRoom({ ready, draft, onDraft }: { ready: boolean; dra
           <h3 className="text-sm font-semibold tracking-tight">Teach the platform</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {judged.length ? `${judged.length} judged lead${judged.length === 1 ? '' : 's'}. ` : 'Judge at least one lead. '}
-            The Tailor proposes which signals to watch, what to research about a company, and which profile answers to sharpen.
+            Mr LAD suggests which signals to watch, what to research about a company, and which profile answers to sharpen.
           </p>
           <Button size="sm" className={`mt-2 ${CTA_PRIMARY}`} onClick={runTrain} disabled={train.isPending || !judged.length}>
             {train.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Propose changes

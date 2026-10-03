@@ -5,7 +5,8 @@
  *
  *   Greeting · one-line summary · Ask Mr LAD
  *   Today: waiting on you · meetings today · replies this week · credits left
- *   Your pipeline (reached → connected → replied → handed off), week/month/quarter
+ *   Your campaign pipeline (reached → connected → replied → ready for you),
+ *   week/month/quarter, each stage compared with the period before
  *   Mr LAD noticed (real signals only)  |  Up next (meetings)
  *   Channels — only the ones this tenant has connected
  *   Spend
@@ -110,6 +111,25 @@ function Skeleton({ className }: { className?: string }) {
   return <span className={cn('inline-block animate-pulse rounded-md bg-slate-200/80 dark:bg-white/10', className)} aria-hidden="true" />;
 }
 
+const PERIOD_WORD: Record<PipelinePeriod, string> = { week: 'last week', month: 'last month', quarter: 'last quarter' };
+
+/** "+4 vs last week" in plain words; null while the previous period is unknown. */
+function Delta({ now, before, period }: { now: number; before: number | undefined; period: PipelinePeriod }) {
+  if (before === undefined) return null;
+  const d = now - before;
+  const word = PERIOD_WORD[period];
+  return (
+    <span
+      className={cn(
+        'text-xs font-medium',
+        d > 0 ? 'text-emerald-700 dark:text-emerald-300' : d < 0 ? 'text-red-700 dark:text-red-300' : 'text-slate-600 dark:text-slate-400',
+      )}
+    >
+      {d > 0 ? `▲ ${fmt(d)} more than ${word}` : d < 0 ? `▼ ${fmt(-d)} fewer than ${word}` : `Same as ${word}`}
+    </span>
+  );
+}
+
 // ── Greeting ────────────────────────────────────────────────────────────────
 
 function Greeting({ tasks, meetingsToday, onCustomize }: { tasks: number | undefined; meetingsToday: number | undefined; onCustomize: () => void }) {
@@ -210,14 +230,16 @@ const PERIODS: { key: PipelinePeriod; label: string }[] = [
 function PipelineCard() {
   const [period, setPeriod] = useState<PipelinePeriod>('week');
   const q = usePipelineCounts(period);
+  const prevQ = usePipelineCounts(period, 'previous');
   const failed = !q.isLoading && q.data === undefined;
   const c = q.data;
+  const p = prevQ.data;
   const stages = c
     ? [
-        { label: 'Reached', value: c.sent },
-        { label: 'Connected', value: c.accepted },
-        { label: 'Replied', value: c.responded },
-        { label: 'Handed off', value: c.sah },
+        { label: 'Reached', hint: 'people your campaigns contacted', value: c.sent, before: p?.sent },
+        { label: 'Connected', hint: 'accepted or opened', value: c.accepted, before: p?.accepted },
+        { label: 'Replied', hint: 'wrote back', value: c.responded, before: p?.responded },
+        { label: 'Ready for you', hint: 'interested, waiting on your team', value: c.sah, before: p?.sah },
       ]
     : [];
   const max = Math.max(1, ...stages.map((s) => s.value));
@@ -226,8 +248,8 @@ function PipelineCard() {
     <section className={CARD} aria-labelledby="home-pipeline">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="home-pipeline" className={H2}>Your pipeline</h2>
-          <p className={MUTED}>From first touch to a qualified handoff.</p>
+          <h2 id="home-pipeline" className={H2}>Your campaign pipeline</h2>
+          <p className={MUTED}>People your campaigns reached, and how far they got.</p>
         </div>
         <div role="group" aria-label="Period" className="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/5">
           {PERIODS.map((p) => (
@@ -275,6 +297,10 @@ function PipelineCard() {
                       {pct != null && <span className="ml-1">· {pct}%</span>}
                     </span>
                   </div>
+                  {/* Hint, then the comparison on its own line: side by side they
+                      wrapped differently on every row. */}
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{s.hint}</p>
+                  <p><Delta now={s.value} before={s.before} period={period} /></p>
                   <div className="mt-1.5 h-2.5 w-full rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true">
                     <div
                       className={cn('h-full rounded-full', i === stages.length - 1 ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#0b1957]/25 dark:bg-blue-400/40')}
@@ -309,20 +335,22 @@ function PipelineCard() {
                     {s.label}
                     {pct != null && <span className="ml-1 text-slate-500 dark:text-slate-400">· {pct}%</span>}
                   </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{s.hint}</p>
+                  <p className="mt-1"><Delta now={s.value} before={s.before} period={period} /></p>
                 </li>
               );
             })}
           </ol>
           {stages.every((s) => s.value === 0) && (
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-              No outreach activity in this period yet — it fills in as campaigns run.
+              No campaign has reached anyone in this period yet. Start or resume a campaign in Outreach and this fills in as people are contacted.
             </p>
           )}
           {c?.degraded && (
             <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">Part of this period couldn&apos;t be read — counts may be low.</p>
           )}
           <Link href="/crm" className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-[#0b1957] hover:underline dark:text-blue-300">
-            Open Contacts Funnel <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            See everyone in your Contacts Funnel <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </>
       )}
@@ -527,7 +555,7 @@ function EmailTile() {
       icon={<Mail className="h-4 w-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />}
       name="Email"
       value={fmt(q.data?.sent)}
-      label="emails sent · recent broadcasts"
+      label="emails sent in recent broadcasts"
       loading={q.isLoading}
       failed={!q.isLoading && !q.data}
       href="/conversations?channel=email"
@@ -622,9 +650,9 @@ function SpendCard({ balance, usage, loading, failed }: { balance: number | null
           </dd>
         </div>
         <div>
-          <dt className="text-sm text-slate-600 dark:text-slate-300">Used this month</dt>
+          <dt className="text-sm text-slate-600 dark:text-slate-300">Spent this month</dt>
           <dd className="mt-1 text-xl font-semibold tabular-nums text-slate-900 dark:text-white">
-            {loading ? <Skeleton className="h-5 w-12" /> : failed || usage == null ? '—' : `${Math.round(usage)}%`}
+            {loading ? <Skeleton className="h-5 w-12" /> : failed || usage == null ? '—' : `${Math.round(usage)}% of credits`}
           </dd>
         </div>
       </dl>
@@ -650,6 +678,9 @@ export function HomeDashboard() {
     .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0];
 
   const weekQ = usePipelineCounts('week');
+  const lastWeekQ = usePipelineCounts('week', 'previous');
+  const replyDelta =
+    weekQ.data && lastWeekQ.data ? weekQ.data.responded - lastWeekQ.data.responded : null;
   const wallet = useWalletStats();
   const walletFailed = !wallet.loading && Boolean(wallet.error);
 
@@ -699,9 +730,15 @@ export function HomeDashboard() {
           failed={!meetingsQ.isLoading && meetingsQ.data === undefined}
         />
         <TodayTile
-          label="Replies this week"
+          label="Campaign replies"
           value={fmt(weekQ.data?.responded)}
-          sub="Across all channels"
+          sub={
+            replyDelta == null
+              ? 'People who wrote back'
+              : replyDelta === 0
+                ? 'Same as last week'
+                : `${replyDelta > 0 ? '▲' : '▼'} ${fmt(Math.abs(replyDelta))} ${replyDelta > 0 ? 'more' : 'fewer'} than last week`
+          }
           href="/crm"
           loading={weekQ.isLoading}
           failed={!weekQ.isLoading && weekQ.data === undefined}

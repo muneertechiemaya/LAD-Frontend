@@ -254,7 +254,7 @@ export function FollowupSettings() {
     const map: Record<string, { label: string; color: string }> = {
       onboarding_greeting: { label: 'Greeting', color: 'bg-yellow-100 text-yellow-800' },
       onboarding_profile: { label: 'Profile', color: 'bg-orange-100 text-orange-800' },
-      icp_discovery: { label: 'ICP Discovery', color: 'bg-blue-100 text-blue-800' },
+      icp_discovery: { label: 'Ideal-customer search', color: 'bg-blue-100 text-blue-800' },
     };
     return map[s] || { label: s, color: 'bg-gray-100 text-gray-800' };
   };

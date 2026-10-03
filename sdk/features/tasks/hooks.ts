@@ -66,8 +66,9 @@ export function useDecideApproval() {
  * conversations assigned to me + unread alerts — the same sources and query
  * keys as the My Tasks page, so the two share one cache.
  *
- * `count` is undefined until at least one source has loaded, so a badge can
- * stay hidden rather than flash "0". A source that failed simply doesn't
+ * `count` is undefined until every source has settled, so a badge can stay
+ * hidden rather than flash "0" — or a partial "1" that becomes "5" a second
+ * later (people read the first number). A source that failed simply doesn't
  * contribute. `capped` is true when a chat channel hit its page size (show "+").
  */
 export function useMyTasksCount(enabled = true) {
@@ -77,8 +78,10 @@ export function useMyTasksCount(enabled = true) {
   const assigned = useAssignedConversations(enabled);
   const notes = useTaskNotifications(enabled);
 
-  const sources = [waba.data, personal.data, approvals.data, assigned.data, notes.data];
-  if (sources.every((d) => d === undefined)) return { count: undefined, capped: false };
+  const queries = [waba, personal, approvals, assigned, notes];
+  if (queries.some((q) => q.isLoading) || queries.every((q) => q.data === undefined)) {
+    return { count: undefined, capped: false };
+  }
 
   const count =
     (waba.data?.length ?? 0) +

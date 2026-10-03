@@ -106,7 +106,7 @@ export function AgentSelector({
             className="w-full justify-center items-center gap-2 h-10 px-4 text-center text-sm font-medium border-border/50 text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-800/50 flex"
           >
             <Sparkles className="h-4 w-4 shrink-0" />
-            <span className="whitespace-nowrap">VOAG Playground</span>
+            <span className="whitespace-nowrap">Test a voice agent</span>
           </Button>
         </div>
       </div>

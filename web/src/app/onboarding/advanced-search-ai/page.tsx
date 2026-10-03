@@ -444,8 +444,11 @@ function toArr(v: any): string[] {
     return [];
 }
 
-const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
-const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+const ICP_LEADS_PROMPT = 'Find leads that match my ideal customer';
+// The old wording stays recognised: it is in people's chat history and habits.
+const LEGACY_ICP_LEADS_PROMPT = 'Get leads from my active ICP';
+const isIcpLeadsPrompt = (s: string) =>
+    [ICP_LEADS_PROMPT, LEGACY_ICP_LEADS_PROMPT].some((p) => s.trim().toLowerCase() === p.toLowerCase());
 
 /** Synthetic stand-in names the pipeline can produce for a lead whose real name
  *  wasn't resolved ("Lead 1", "Prospect 3", "Unknown"). Mirrors the backend
@@ -3071,7 +3074,7 @@ export default function AdvancedSearchAIPage() {
             setIsSearching(false);
             if (!res || res.success === false || res.error === 'no_active_icp') {
                 const msg = res?.error === 'no_active_icp'
-                    ? "You don't have an active ICP yet. Define one in Settings → ICP Search Strategy, then run this again."
+                    ? "You haven't set up your ideal customer yet. Tap **Ideal customer** at the top of this page and answer a few questions (or fine-tune it in **Settings → Lead search**), then run this again."
                     : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
                 setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
                 return;
@@ -3094,8 +3097,8 @@ export default function AdvancedSearchAIPage() {
                 ...m,
                 loading: false,
                 text: n > 0
-                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your active ICP. Review them and create your outreach campaign.`
-                    : 'No prospects matched your active ICP on this run. Try widening the ICP or raising the result cap in your search strategy.',
+                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your ideal customer. Review them and create your outreach campaign.`
+                    : 'No one matched your ideal customer on this run. Try describing your ideal customer more broadly, or ask for more results.',
                 leads: n > 0 ? mapped.slice(0, 3) : undefined,
                 targeting: n > 0 ? icpTargeting : undefined,
                 outreach_journey: n > 0 ? buildOutreachJourney(mapped, icpTargeting) : undefined,
@@ -3203,7 +3206,7 @@ export default function AdvancedSearchAIPage() {
                             </div>
                             <div>
                                 <div className="text-[13px] font-bold text-[#0b1957]">Image Creation</div>
-                                <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit custom brand designs or ICP target graphics.</div>
+                                <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit custom brand designs or ideal-customer graphics.</div>
                             </div>
                         </button>
                         <button
@@ -4704,7 +4707,7 @@ export default function AdvancedSearchAIPage() {
             if (res.status === 404 || res.status === 501) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself - the Accelerator builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
+                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself - the workflow builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -4714,7 +4717,7 @@ export default function AdvancedSearchAIPage() {
             if (!res.ok || !data?.success) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    `⚠️ I couldn't build that workflow${data?.error ? ` - ${data.error}` : ''}. You can describe it again, or build it in the Accelerator builder.`,
+                    `⚠️ I couldn't build that workflow${data?.error ? ` - ${data.error}` : ''}. You can describe it again, or build it in the workflow builder.`,
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -5504,7 +5507,7 @@ export default function AdvancedSearchAIPage() {
                                     setTotalResults(d.total || prospectLeads.length);
                                     setMessages(p => p.concat({
                                         id: `a-sr-${Date.now()}`, role: 'ai',
-                                        text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length > 0 ? `🎯 **${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length} strong ICP matches** identified.\n\n` : ''}Results include contact details, LinkedIn profiles, and ICP scores.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to find additional prospects.`,
+                                        text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length > 0 ? `🎯 **${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length} strong matches** for your ideal customer.\n\n` : ''}Results include contact details, LinkedIn profiles, and how well each one matches.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to find additional prospects.`,
                                         ts: new Date(),
                                     }));
                                 } else if (!respOk || d?.success === false) {
@@ -5639,7 +5642,7 @@ export default function AdvancedSearchAIPage() {
                             const strongMatches = prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length;
                             setMessages(p => p.concat({
                                 id: `a-sr-${Date.now()}`, role: 'ai',
-                                text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${strongMatches > 0 ? `🎯 **${strongMatches} strong ICP match${strongMatches !== 1 ? 'es' : ''}** identified.\n\n` : ''}Results include company contact details, LinkedIn profiles, and ICP scores.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to discover additional prospects.`,
+                                text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${strongMatches > 0 ? `🎯 **${strongMatches} strong match${strongMatches !== 1 ? 'es' : ''}** for your ideal customer.\n\n` : ''}Results include company contact details, LinkedIn profiles, and how well each one matches.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to discover additional prospects.`,
                                 ts: new Date(),
                             }));
                         } else if (!respOk || d?.success === false) {
@@ -6514,7 +6517,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         if (v === '__wf_bail__') {
-            wfBailToBuilder('🛠️ Opened the Accelerator builder - pick your steps there and configure each one.');
+            wfBailToBuilder('🛠️ Opened the workflow builder - pick your steps there and configure each one.');
             return;
         }
         if (v === '__wf_name__') {
@@ -6585,7 +6588,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
-            rolePushAi('No problem - Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
+            rolePushAi('No problem - Workflow setup cancelled. Pick another from the **Workflows** menu any time.');
             return;
         }
         if (v.startsWith('__role_builder__:')) {
@@ -6605,12 +6608,12 @@ export default function AdvancedSearchAIPage() {
             const { sourceCfg } = splitWizardAnswers(tpl, wiz.answers);
             const query = templateSearchQuery(tpl, sourceCfg);
             if (!query) {
-                rolePushAi('This Accelerator doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
+                rolePushAi('This workflow doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
                 return;
             }
             setRolePreviewing(true);
             setIsSearching(true);
-            rolePushAi(`🔍 Previewing who this Accelerator would reach - searching for **${query}**…`);
+            rolePushAi(`🔍 Previewing who this workflow would reach - searching for **${query}**…`);
             try {
                 // Same structured targeting the Accelerator's source node will run with,
                 // so the preview reflects the real audience rather than an
@@ -6661,17 +6664,17 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 if (previewLeads.length === 0) {
-                    rolePushAi('No profiles came back for that targeting. Widen the titles or location - say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location - say **cancel** and pick the workflow again, or open it in the builder to edit the search.');
                 } else {
                     setLeads(previewLeads);
                     seedDefaultSelection(previewLeads);
                     setTotalResults(d?.total || previewLeads.length);
                     setShowPanel('leads');
-                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles - they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles - they're in the **Leads** panel on the right. Happy with them? Activate the workflow below.`);
                 }
             } catch (e) {
                 console.warn('[role-preview] search failed:', e);
-                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator - it runs its own search when it launches.');
+                rolePushAi('⚠️ The preview search failed. You can still activate the workflow - it runs its own search when it launches.');
             } finally {
                 setIsSearching(false);
                 setRolePreviewing(false);
@@ -6714,13 +6717,13 @@ export default function AdvancedSearchAIPage() {
                 // Remembered so "Open full builder" later carries the same answers.
                 setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
                 setShowPanel('workflow');
-                rolePushAi('Here\'s your Accelerator in the **Workflow** panel - every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
+                rolePushAi('Here\'s your workflow in the **Workflow** panel - every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
                 return;
             }
 
             setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
-            rolePushAi('🚀 Building and launching your Accelerator - you\'ll land on the campaigns page when it\'s live.');
+            rolePushAi('🚀 Building and launching your workflow - you\'ll land on the campaigns page when it\'s live.');
             return;
         }
         // Special action: submit lead detail form data
@@ -7305,7 +7308,7 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
                                         <div>
-                                            <div className="adv-attach-label">Custom Accelerator</div>
+                                            <div className="adv-attach-label">Custom workflow</div>
                                             <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
                                     </div>}
@@ -7372,7 +7375,7 @@ export default function AdvancedSearchAIPage() {
                 <div className="adv-chips-row adv-chips-row-2">
                     <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
-                        Get leads from my active ICP
+                        Find leads that match my ideal customer
                     </button>
                     <button className="adv-chip" onClick={handleStartMediaGeneration}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -7716,7 +7719,7 @@ export default function AdvancedSearchAIPage() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            ICP Discovery
+                            Ideal customer
                             {Object.values(businessProfile).some(v => v) && (
                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 2 }} />
                             )}
@@ -8026,7 +8029,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
                                                             <div>
-                                                                <div className="adv-attach-label">Custom Accelerator</div>
+                                                                <div className="adv-attach-label">Custom workflow</div>
                                                                 <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
                                                         </div>}
@@ -8086,7 +8089,7 @@ export default function AdvancedSearchAIPage() {
                                         <button
                                             className="adv-premium-btn"
                                             onClick={() => setUseSalesNav(v => !v)}
-                                            title={useSalesNav ? 'Premium Search ON - Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
+                                            title={useSalesNav ? 'Premium Search is on: also searches LinkedIn and Google for more people (1 credit per search)' : 'Turn on Premium Search: also search LinkedIn and Google for more people (1 credit per search)'}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
                                                 padding: '3px 8px', borderRadius: '12px', border: 'none',
@@ -8168,7 +8171,7 @@ export default function AdvancedSearchAIPage() {
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
-                                Get leads from my active ICP
+                                Find leads that match my ideal customer
                             </button>
                             <button className="adv-gemini-chip" onClick={handleStartMediaGeneration}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -8196,8 +8199,8 @@ export default function AdvancedSearchAIPage() {
                         <button
                             className="adv-mobile-icp-btn"
                             onClick={() => setShowPlayground(true)}
-                            aria-label="ICP Discovery"
-                            title="ICP Discovery"
+                            aria-label="Ideal customer"
+                            title="Ideal customer"
                         >
                             <Sparkles size={20} />
                         </button>
@@ -8826,9 +8829,9 @@ export default function AdvancedSearchAIPage() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">ICP Discovery</div>
+                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">Your ideal customer</div>
                                             <div className="text-[11.5px] font-semibold text-[#0b1957] dark:text-blue-300">
-                                                {pgIsComplete ? '✅ ICP profile complete!' : 'Answer questions to power smarter lead discovery'}
+                                                {pgIsComplete ? '✅ Ideal customer profile complete!' : 'Answer questions to power smarter lead discovery'}
                                             </div>
                                         </div>
                                     </div>
@@ -9845,7 +9848,7 @@ function ModelPicker({ value, onChange }: { value: ModelChoice; onChange: (c: Mo
         return () => document.removeEventListener('click', h);
     }, [open]);
 
-    const label = value ? `${PROVIDER_LABEL[value.provider] || value.provider}` : 'Auto';
+    const label = value ? `${PROVIDER_LABEL[value.provider] || value.provider}` : 'AI: Auto';
     const hasOptions = Object.keys(providers).length > 0;
 
     return (
@@ -10051,16 +10054,16 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     }, [open]);
     return (
         <div style={{ position: 'relative' }}>
-            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline" aria-label="Accelerators"
+            <button type="button" className="adv-roles-btn" title="Start from a ready-made workflow" aria-label="Workflows"
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                <span className="adv-roles-label">Accelerators</span>
+                <span className="adv-roles-label">Workflows</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
                 <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
                     <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick an Accelerator</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick a workflow</span>
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
                     </div>
                     {(() => {
@@ -10126,7 +10129,7 @@ function roleQuickReplies(
         locations: icp?.icpLocations || icp?.geographicFocus,
     };
     const fromIcp = (icpFor[q.key] || '').trim();
-    if (fromIcp) out.push({ label: 'Use my ICP', value: fromIcp, hint: fromIcp });
+    if (fromIcp) out.push({ label: 'Use my ideal customer', value: fromIcp, hint: fromIcp });
 
     // Skipping keeps whatever the template already carries, so say what that is
     // rather than making "skip" a blind choice.
@@ -10165,7 +10168,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <span className="text-[14px] font-bold text-slate-900 dark:text-white leading-tight">{tpl.name}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Accelerator</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Workflow</span>
                     </div>
                     <div className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{tpl.tagline}</div>
                 </div>
@@ -10257,7 +10260,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
             {card.stage === 'file' && (
                 <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
-                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built. Upload your CSV/Excel in the source node and hit Launch.
+                        This workflow starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built. Upload your spreadsheet in the first step and press Launch.
                     </div>
                     <div className="flex items-center gap-2 mt-3.5">
                         <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
@@ -10312,7 +10315,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                             })}
                         </div>
                     ) : (
-                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure. This Accelerator is ready to go.</div>
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure. This workflow is ready to go.</div>
                     )}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
@@ -10526,7 +10529,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                           </div>
                           <div className="flex-1">
-                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Accelerator</div>
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
                               <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
@@ -11020,7 +11023,7 @@ const TRIGGER_OPTIONS_MAP: Record<string, Array<{ id: string; label: string; des
     linkedin: [
         { id: 'connection_accepted', label: 'After connection accepted', desc: 'Trigger when the lead accepts your LinkedIn connection' },
         { id: 'message_replied', label: 'After responding to message', desc: 'Trigger when the lead replies to your LinkedIn message' },
-        { id: 'profile_visited', label: 'After profile visit', desc: 'Trigger for all visited profiles with ICP score above your threshold' },
+        { id: 'profile_visited', label: 'After profile visit', desc: 'For every visited profile that matches your ideal customer well enough' },
     ],
     email: [
         { id: 'email_read', label: 'After Email Read', desc: 'Trigger when the lead opens your email' },
@@ -11042,7 +11045,7 @@ const TRIGGER_OPTIONS_MAP: Record<string, Array<{ id: string; label: string; des
 const CHANNEL_PRIORITY = ['linkedin', 'email', 'whatsapp', 'voice_call'];
 
 const CP_QUESTIONS = [
-    { id: 'icp_threshold', question: 'What minimum ICP score should leads have?', type: 'select' },
+    { id: 'icp_threshold', question: 'How closely should leads match your ideal customer?', type: 'select' },
     { id: 'next_channels', question: 'Configure your campaign channels', type: 'multi' },
     { id: 'trigger_condition', question: 'When should the next channel step trigger?', type: 'select' },
     { id: 'duration', question: 'How many days should this campaign run?', type: 'select' },

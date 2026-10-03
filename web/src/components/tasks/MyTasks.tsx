@@ -59,6 +59,7 @@ import {
 } from '@lad/frontend-features/tasks';
 import { ChannelIcon } from '@/components/conversations/ChannelIcon';
 import { cn } from '@/lib/utils';
+import { useConnectedChannels } from '@/hooks/useConnectedChannels';
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────
 
@@ -84,21 +85,21 @@ const APPROVAL_COPY: Record<ApprovalType, { label: string; approve: string; reje
   linkedin_invite: { label: 'LinkedIn invite', approve: 'Accept', reject: 'Ignore' },
   linkedin_greeting: { label: 'LinkedIn greeting', approve: 'Send', reject: 'Skip' },
   lead_report: { label: 'Lead report', approve: 'Approve', reject: "Don't send" },
-  market_insight: { label: 'Market insight', approve: 'Add to agent', reject: 'Dismiss' },
+  market_insight: { label: 'Talking point for Mr LAD to use', approve: 'Let Mr LAD use it', reject: 'Dismiss' },
 };
 const APPROVAL_TYPE_PLURAL: Record<ApprovalType, string> = {
   linkedin_post: 'LinkedIn posts',
   linkedin_invite: 'LinkedIn invites',
   linkedin_greeting: 'LinkedIn greetings',
   lead_report: 'lead reports',
-  market_insight: 'market insights',
+  market_insight: 'talking points',
 };
 const APPROVAL_TYPE_SHORT: Record<ApprovalType, string> = {
   linkedin_post: 'Posts',
   linkedin_invite: 'Invites',
   linkedin_greeting: 'Greetings',
   lead_report: 'Reports',
-  market_insight: 'Insights',
+  market_insight: 'Talking points',
 };
 
 type View = 'all' | 'replies' | 'approvals' | 'assigned' | 'alerts';
@@ -437,10 +438,14 @@ export function MyTasks() {
   const [decisionNote, setDecisionNote] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   // ── Replies: oldest wait first — that's the one most at risk.
+  // A channel this workspace never connected is left out, so it can't show up as
+  // a red "Couldn't load" on the to-do list. 'unknown' (probe failed) stays in:
+  // an outage must still say so.
+  const { statuses: channelStatus } = useConnectedChannels();
   const replySources = [
-    { channel: 'waba' as const, q: waba },
-    { channel: 'personal' as const, q: personal },
-  ];
+    { channel: 'waba' as const, q: waba, status: channelStatus.waba },
+    { channel: 'personal' as const, q: personal, status: channelStatus.personal_whatsapp },
+  ].filter((s) => s.status !== 'disconnected');
   const repliesLoading = replySources.some((s) => s.q.isLoading);
   const repliesFailed = replySources.filter((s) => !s.q.isLoading && !s.q.isFetching && s.q.data === undefined);
   const replies: WaitingChat[] = useMemo(

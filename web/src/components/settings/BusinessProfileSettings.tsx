@@ -101,7 +101,7 @@ interface Section { title: string; subtitle: string; fields: ProfileContractFiel
 
 const GROUP_COPY: Record<string, { title: string; subtitle: string }> = {
   company:    { title: 'Company',        subtitle: "Who you are. The wizard's Company step writes these." },
-  icp:        { title: 'Ideal Customer', subtitle: 'Who you sell to. The ICP chat writes these.' },
+  icp:        { title: 'Ideal Customer', subtitle: 'Who you sell to. Mr LAD fills these in from your ideal-customer chat.' },
   candidates: { title: 'Candidates',     subtitle: 'Who you place. The interview asks these for staffing and recruiting workspaces.' },
   custom:     { title: 'Your fields',    subtitle: 'Added for your workspace.' },
 };
@@ -293,7 +293,7 @@ export const BusinessProfileSettings: React.FC = () => {
           <div className="flex-1">
             <h2 className="text-gray-900 dark:text-slate-100 text-xl font-semibold">Business Profile</h2>
             <p className="text-gray-600 dark:text-slate-300 text-sm mt-1">
-              {`The ${contract.required.length} fields that power ICP Discovery`}, lead scoring, and message personalisation.
+              {`The ${contract.required.length} answers Mr LAD uses to find leads`}, judge how well they fit, and write messages that sound like you.
               The wizard fills these in; edit anything here whenever your positioning changes.
             </p>
           </div>
@@ -338,7 +338,7 @@ export const BusinessProfileSettings: React.FC = () => {
         </span>
             </div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
-              {`The ${contract.required.length} fields that power ICP Discovery`}, lead scoring, and outbound message personalization. The strategic AI wizard references these inputs directly; updates apply globally.
+              {`The ${contract.required.length} answers Mr LAD uses to find leads`}, judge how well they fit, and write messages that sound like you. Changes apply everywhere straight away.
             </p>
           </div>
         </div>
