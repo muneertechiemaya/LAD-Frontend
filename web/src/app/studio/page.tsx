@@ -573,7 +573,7 @@ function StudioPageInner() {
           </button>
         )}
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tenant <span className={AI_TEXT}>Studio</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Train <span className={AI_TEXT}>Mr LAD</span></h1>
           {chatAvailable && roomsReturn !== 'chat' && (
             <button type="button" onClick={() => { setRoomsReturn(null); setPhase('chat'); }} className={`${CHIP_BASE} ${CHIP_IDLE} gap-1.5 px-3 py-1.5 text-xs`} data-testid="rooms-open-chat">
               <Sparkles className="h-3.5 w-3.5 text-[#7C5CFF] dark:text-[#B69CFF]" aria-hidden />Chat with Mr LAD
@@ -636,9 +636,9 @@ function StudioPageInner() {
           {curated && (
             <TabsTrigger value="pipelines" className={TAB_TRIGGER} data-testid="tab-pipelines"><SlidersHorizontal className="mr-1.5 h-4 w-4" />Pipelines</TabsTrigger>
           )}
-          <TabsTrigger value="icp" className={TAB_TRIGGER}><Target className="mr-1.5 h-4 w-4" />Train the ICP</TabsTrigger>
+          <TabsTrigger value="icp" className={TAB_TRIGGER}><Target className="mr-1.5 h-4 w-4" />Ideal customer</TabsTrigger>
           <TabsTrigger value="rehearse" className={TAB_TRIGGER}><Theater className="mr-1.5 h-4 w-4" />Rehearse</TabsTrigger>
-          <TabsTrigger value="tailor" className={TAB_TRIGGER}><MessagesSquare className="mr-1.5 h-4 w-4" />Ask the Tailor</TabsTrigger>
+          <TabsTrigger value="tailor" className={TAB_TRIGGER}><MessagesSquare className="mr-1.5 h-4 w-4" />Ask for changes</TabsTrigger>
         </TabsList>
         {curated && (
           <TabsContent value="pipelines" className="mt-4">

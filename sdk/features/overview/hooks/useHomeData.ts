@@ -19,11 +19,13 @@ import {
 } from '../api';
 
 export type PipelinePeriod = 'week' | 'month' | 'quarter';
+/** `previous` is the same-length window just before the current one, for "vs last week". */
+export type PipelineWindow = 'current' | 'previous';
 const PERIOD_DAYS: Record<PipelinePeriod, number> = { week: 7, month: 30, quarter: 90 };
 
 export const homeKeys = {
   all: ['home'] as const,
-  pipeline: (p: PipelinePeriod) => [...homeKeys.all, 'pipeline', p] as const,
+  pipeline: (p: PipelinePeriod, window: PipelineWindow = 'current') => [...homeKeys.all, 'pipeline', p, window] as const,
   linkedin: () => [...homeKeys.all, 'linkedin'] as const,
   email: () => [...homeKeys.all, 'email'] as const,
   instagram: () => [...homeKeys.all, 'instagram'] as const,
@@ -32,12 +34,13 @@ export const homeKeys = {
 
 const OPTS = { staleTime: 60_000, retry: 1 } as const;
 
-export function usePipelineCounts(period: PipelinePeriod) {
+export function usePipelineCounts(period: PipelinePeriod, window: PipelineWindow = 'current') {
   return useQuery({
-    queryKey: homeKeys.pipeline(period),
+    queryKey: homeKeys.pipeline(period, window),
     queryFn: () => {
-      const to = new Date();
-      const from = new Date(to.getTime() - PERIOD_DAYS[period] * 86_400_000);
+      const span = PERIOD_DAYS[period] * 86_400_000;
+      const to = new Date(Date.now() - (window === 'previous' ? span : 0));
+      const from = new Date(to.getTime() - span);
       return getLeadJourneyCounts(from, to);
     },
     ...OPTS,

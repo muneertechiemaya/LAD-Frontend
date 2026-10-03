@@ -354,18 +354,19 @@ export default function FollowUpsPage() {
             sub="Last 24 hours"
           />
           <StatCard
-            label="Eligible Leads"
+            label="Leads to follow up"
             value={statusLoading ? '-' : (status?.eligible_leads ?? 0)}
             icon={Users}
             color="bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300"
-            sub="Need follow-up"
+            sub="Gone quiet, ready for a nudge"
           />
           <StatCard
-            label="Scheduler"
-            value={statusLoading ? '-' : (status?.scheduler_active ? 'Active' : 'Paused')}
-            icon={status?.scheduler_active ? Bell : AlertCircle}
-            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300'}
-            sub={status?.business_hours ? 'Business hours' : 'Outside hours'}
+            label="Automatic sending"
+            value={statusLoading ? '-' : (status?.scheduler_active ? 'On' : 'Waiting')}
+            icon={status?.scheduler_active ? Bell : Clock}
+            // Waiting for business hours is normal, not an error: neutral, not red.
+            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}
+            sub={status?.business_hours ? 'Sending during business hours' : 'Resumes in business hours'}
           />
         </div>
 
@@ -397,7 +398,7 @@ export default function FollowUpsPage() {
               }`}
             >
               <Settings className="w-4 h-4" />
-              ICP Follow-up Settings
+              Follow-up settings
             </button>
           </div>
 
@@ -552,7 +553,7 @@ export default function FollowUpsPage() {
                   <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-5 dark:bg-white/5 dark:border-blue-950/50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">Automated ICP Follow-ups</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">Automatic follow-ups</h3>
                         <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
                           Automatically follow up with members who haven&apos;t completed their profile
                         </p>

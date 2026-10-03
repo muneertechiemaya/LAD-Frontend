@@ -84,21 +84,21 @@ const APPROVAL_COPY: Record<ApprovalType, { label: string; approve: string; reje
   linkedin_invite: { label: 'LinkedIn invite', approve: 'Accept', reject: 'Ignore' },
   linkedin_greeting: { label: 'LinkedIn greeting', approve: 'Send', reject: 'Skip' },
   lead_report: { label: 'Lead report', approve: 'Approve', reject: "Don't send" },
-  market_insight: { label: 'Market insight', approve: 'Add to agent', reject: 'Dismiss' },
+  market_insight: { label: 'Talking point for Mr LAD to use', approve: 'Let Mr LAD use it', reject: 'Dismiss' },
 };
 const APPROVAL_TYPE_PLURAL: Record<ApprovalType, string> = {
   linkedin_post: 'LinkedIn posts',
   linkedin_invite: 'LinkedIn invites',
   linkedin_greeting: 'LinkedIn greetings',
   lead_report: 'lead reports',
-  market_insight: 'market insights',
+  market_insight: 'talking points',
 };
 const APPROVAL_TYPE_SHORT: Record<ApprovalType, string> = {
   linkedin_post: 'Posts',
   linkedin_invite: 'Invites',
   linkedin_greeting: 'Greetings',
   lead_report: 'Reports',
-  market_insight: 'Insights',
+  market_insight: 'Talking points',
 };
 
 type View = 'all' | 'replies' | 'approvals' | 'assigned' | 'alerts';

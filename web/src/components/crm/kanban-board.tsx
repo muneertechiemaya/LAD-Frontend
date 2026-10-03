@@ -92,12 +92,12 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                 {unavailable
                   ? 'could not be loaded'
                   : headerCount === 0
-                  ? 'AED 0 pipeline'
+                  ? 'Nobody here yet'
                   : anyValueTracked
                     ? `${fmtCurrency(pipelineValue)} pipeline`
                     : truncated
-                      ? `${loaded} of ${headerCount} on this page · value not tracked`
-                      : `${headerCount} deal${headerCount === 1 ? '' : 's'} · value not tracked`}
+                      ? `${loaded} of ${headerCount} on this page · no deal values yet`
+                      : `${headerCount} deal${headerCount === 1 ? '' : 's'} · no deal values yet`}
               </p>
 
               {stageLeads.length > 0 ? (
@@ -125,7 +125,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                       ? "We couldn't load this pipeline — this isn't an empty stage."
                       : truncated
                         ? `All ${headerCount} are on other pages — open this stage from the list view to see them.`
-                        : 'Add deals to move them to the next stage.'}
+                        : 'Contacts land here as your campaigns move them along.'}
                   </p>
                 </div>
               )}

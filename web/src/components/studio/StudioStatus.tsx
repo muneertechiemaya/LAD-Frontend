@@ -72,11 +72,11 @@ export default function StudioStatus({ state, onHistory }: { state: StudioState;
       />
       <Room
         icon={Target}
-        title="2. Train the ICP"
+        title="2. Ideal customer"
         ready={icpTraining.ready}
         detail={icpTraining.ready
-          ? 'Paste sample leads, see how the platform scores them, and correct it.'
-          : 'Finish the required profile answers first — the scorer reads them.'}
+          ? 'Paste sample leads, see how well Mr LAD thinks each one fits, and correct it.'
+          : 'Finish the required interview answers first — Mr LAD judges fit from them.'}
       />
       <Room
         icon={Theater}
@@ -89,11 +89,11 @@ export default function StudioStatus({ state, onHistory }: { state: StudioState;
               ? 'Switch the customer support pipeline on and fill in its settings first — the rehearsal runs the instructions that actually run.'
               : 'Finish the interview, then set up the customer support pipeline.')
           : (rehearsal.ready
-            ? `Your LinkedIn agent prompt is live (${agentPrompt.chars.toLocaleString()} characters). Play a prospect against it.`
+            ? 'Mr LAD is ready to write LinkedIn messages for you. Play a prospect and see how it replies.'
             : rehearsal.reason === 'no_agent_prompt'
-              ? 'Generate your LinkedIn agent prompt first — the rehearsal runs the prompt that actually runs.'
-              : 'Finish the interview, then generate the agent prompt.')}
-        action={rehearsal.ready ? undefined : curated ? { href: '/studio?room=pipelines', label: 'Open pipelines' } : { href: '/settings?tab=chat', label: 'Generate the agent prompt' }}
+              ? 'Set up Mr LAD for LinkedIn first — the rehearsal uses the same instructions it really sends with.'
+              : 'Finish the interview, then set up Mr LAD for LinkedIn.')}
+        action={rehearsal.ready ? undefined : curated ? { href: '/studio?room=pipelines', label: 'Open pipelines' } : { href: '/settings?tab=chat', label: 'Set up Mr LAD for LinkedIn' }}
       />
     </div>
     </div>

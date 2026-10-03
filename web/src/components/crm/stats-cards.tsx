@@ -11,6 +11,8 @@ export type CrmView = 'board' | 'all' | 'prospects' | 'leads' | 'clients';
 interface StatCard {
   key: Exclude<CrmView, 'board'>;
   title: string;
+  /** What the number counts, in plain words (md+ only; phones show the short label). */
+  hint: string;
   /** `null` = could not be loaded; renders "—". Matches `StatsCardsProps.counts`,
    *  which has always been nullable — typing this `number` made every one of the
    *  four assignments below a type error. */
@@ -38,10 +40,10 @@ export interface StatsCardsProps {
 
 export default function StatsCards({ counts, selected, onSelect }: StatsCardsProps) {
   const cards: StatCard[] = [
-    { key: 'all',       title: 'All Contacts', value: counts.all,       Icon: Users,       bg: 'bg-blue-100 dark:bg-[#172560]',        ic: 'text-[#0B1957] dark:text-blue-200' },
-    { key: 'prospects', title: 'Prospects',    value: counts.prospects, Icon: Sparkles,    bg: 'bg-indigo-100 dark:bg-indigo-950/40',  ic: 'text-[#0B1957] dark:text-indigo-200' },
-    { key: 'leads',     title: 'Leads',        value: counts.leads,     Icon: TrendingUp,  bg: 'bg-sky-100 dark:bg-sky-950/40',        ic: 'text-sky-700 dark:text-sky-200' },
-    { key: 'clients',   title: 'Clients',      value: counts.clients,   Icon: BadgeCheck,  bg: 'bg-emerald-50 dark:bg-emerald-950/40', ic: 'text-emerald-600' },
+    { key: 'all',       title: 'All Contacts', hint: 'Everyone in your funnel', value: counts.all,       Icon: Users,       bg: 'bg-blue-100 dark:bg-[#172560]',        ic: 'text-[#0B1957] dark:text-blue-200' },
+    { key: 'prospects', title: 'Prospects',    hint: 'Contacted, no interest yet', value: counts.prospects, Icon: Sparkles,    bg: 'bg-indigo-100 dark:bg-indigo-950/40',  ic: 'text-[#0B1957] dark:text-indigo-200' },
+    { key: 'leads',     title: 'Leads',        hint: 'Showed interest', value: counts.leads,     Icon: TrendingUp,  bg: 'bg-sky-100 dark:bg-sky-950/40',        ic: 'text-sky-700 dark:text-sky-200' },
+    { key: 'clients',   title: 'Clients',      hint: 'Became customers', value: counts.clients,   Icon: BadgeCheck,  bg: 'bg-emerald-50 dark:bg-emerald-950/40', ic: 'text-emerald-600' },
   ];
 
   return (
@@ -77,6 +79,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                   >
                     {c.value ?? '—'}
                   </h5>
+                  <p className="hidden text-xs text-slate-600 dark:text-slate-400 md:mt-1 md:block">{c.hint}</p>
                 </div>
               </div>
             </button>

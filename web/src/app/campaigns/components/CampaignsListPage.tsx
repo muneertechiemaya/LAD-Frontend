@@ -282,7 +282,7 @@ export default function CampaignsListPage() {
             className="bg-[#0b1957] dark:bg-[#2563eb] text-white dark:hover:text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing..." : "Refresh Connections"}
+            {syncing ? "Syncing..." : "Sync LinkedIn"}
           </Button>
 
           {/* Phones: the three "+" actions share one row as even columns. */}
@@ -325,7 +325,7 @@ export default function CampaignsListPage() {
               ) : (
                 <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
               )}
-              <span className="truncate"><span className="hidden sm:inline">Custom </span>Accelerator</span>
+              <span className="truncate"><span className="hidden sm:inline">Custom </span>workflow</span>
             </Button>
           </div>
         </div>
@@ -333,8 +333,9 @@ export default function CampaignsListPage() {
       {/* Stats Cards */}
       {stats && <CampaignStatsCards stats={stats} />}
 
-      {/* LinkedIn Rate Limits Section */}
-      {(stats as any)?.linkedin_rate_limits && (() => {
+      {/* LinkedIn Rate Limits Section - only once a LinkedIn account is connected;
+          without one it was a screen of zeros above the campaigns themselves. */}
+      {(stats as any)?.linkedin_rate_limits?.daily?.account_count > 0 && (() => {
         const linkedinStats = (stats as any).linkedin_rate_limits;
         return (
         <div className="mb-8 mt-8 pt-8 border-t border-[#E2E8F0] dark:border-blue-950/40">

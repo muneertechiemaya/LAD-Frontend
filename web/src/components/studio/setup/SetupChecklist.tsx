@@ -143,7 +143,7 @@ export default function SetupChecklist({ state, firstCampaign, blockingMissing =
       title: 'A channel ready',
       status: state.rehearsal.ready ? 'ready' : 'needed',
       detail: state.rehearsal.ready
-        ? `Your agent prompt is live (${state.agentPrompt.chars.toLocaleString()} characters).`
+        ? 'Mr LAD is ready to reply for you.'
         : channelsReady.length
           ? `${channelsReady.map((c) => c.agentName?.trim() ? `${c.agentName.trim()} (${CHANNEL_LABELS[c.channel] ?? c.channel})` : CHANNEL_LABELS[c.channel] ?? c.channel).join(', ')} ${channelsReady.length === 1 ? 'is' : 'are'} set up — generate the agents so they can speak for you.`
           : channelsOn.length

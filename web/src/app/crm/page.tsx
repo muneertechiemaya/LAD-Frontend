@@ -295,7 +295,7 @@ export default function CrmPage() {
                 Contacts Funnel
               </h1>
               <p className="text-[13px] text-[#6b7280] dark:text-slate-300">
-                Live cross-channel prospects across all your channels
+                Everyone you are talking to, from first contact to paying client
               </p>
             </div>
           </div>

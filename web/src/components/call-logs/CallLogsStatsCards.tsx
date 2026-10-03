@@ -1,30 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Phone, PhoneOff, PhoneMissed, PhoneCall, Clock, Flame, Sun, Snowflake, BookUser, CardSim
 } from 'lucide-react';
 import type { CallLogsStats } from '@lad/frontend-features/call-logs';
 
-// Custom hook for counter animation
-const useCountUp = (end: number, duration: number = 2000) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp: number;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
-
-  return count;
-};
+// Numbers render final straight away: a 2 s count-up let people read a
+// half-way value as the real total, and froze mid-count in a background tab.
+const nf = new Intl.NumberFormat();
 
 // Skeleton loading component
 const SkeletonCard = () => (
@@ -48,7 +32,7 @@ const SkeletonCard = () => (
 // Component to handle animated values
 const AnimatedValue = ({ value }: { value: number | string }) => {
   const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value || 0;
-  const animatedValue = useCountUp(numericValue, 2000);
+  const animatedValue = nf.format(numericValue);
   return <>{animatedValue}</>;
 };
 

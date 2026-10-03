@@ -606,7 +606,7 @@ export default function MakeCallContent() {
             className="flex items-center gap-2 font-semibold shadow-xs transition-colors self-end sm:self-start sm:mt-2 bg-slate-900 text-white hover:bg-slate-800 dark:bg-input/30 dark:border dark:border-blue-950/60 dark:text-white dark:hover:bg-input/50"
           >
             <Sparkles className="w-4 h-4" />
-            VOAG- Playground
+            Test a voice agent
           </Button>
         </div>
 

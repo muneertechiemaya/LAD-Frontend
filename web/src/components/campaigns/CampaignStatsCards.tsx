@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -7,25 +7,9 @@ import {
 } from 'lucide-react';
 import type { CampaignStats } from '@lad/frontend-features/campaigns';
 
-// Custom hook for counter animation
-const useCountUp = (end: number, duration: number = 2000) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp: number;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
-
-  return count;
-};
+// Numbers render final straight away: a 2 s count-up let people read a
+// half-way value as the real total, and froze mid-count in a background tab.
+const nf = new Intl.NumberFormat();
 
 // Skeleton loading component
 const SkeletonCard = () => (
@@ -50,11 +34,11 @@ const SkeletonCard = () => (
 const AnimatedValue = ({ value, suffix = '' }: { value: string | number, suffix?: string }) => {
   // Extract numeric value from string (for percentages)
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-  const animatedValue = useCountUp(numericValue || 0, 2000);
+  const animatedValue = nf.format(numericValue || 0);
 
   // Format the animated value based on the original format
   if (typeof value === 'string' && value.includes('%')) {
-    return <>{animatedValue.toFixed(1)}%</>;
+    return <>{(numericValue || 0).toFixed(1)}%</>;
   }
   return <>{animatedValue}{suffix}</>;
 };
