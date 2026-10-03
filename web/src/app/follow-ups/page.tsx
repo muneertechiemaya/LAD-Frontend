@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Bell,
   Clock,
@@ -119,8 +120,8 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 dark:bg-[#071131] dark:border-blue-950/50">
-      <div className={`p-2.5 rounded-lg ${color}`}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-2 sm:gap-4 dark:bg-[#071131] dark:border-blue-950/50">
+      <div className={`p-2 sm:p-2.5 rounded-lg ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
@@ -152,6 +153,7 @@ export default function FollowUpsPage() {
   const [configSaving, setConfigSaving] = useState(false);
   const [configDirty, setConfigDirty] = useState(false);
   const [icpStatus, setIcpStatus] = useState<IcpStatusData | null>(null);
+  const [icpStatusFailed, setIcpStatusFailed] = useState(false);
   const [templates, setTemplates] = useState<WaTemplate[]>([]);
   const [templateSending, setTemplateSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -185,7 +187,10 @@ export default function FollowUpsPage() {
     setConfigLoading(true);
     try {
       const d = await apiFetch('/api/whatsapp-conversations/followup-settings');
-      if (d && !d.error) { setConfig(d); setConfigDirty(false); }
+      // The service answers { success, data: config }. Keeping the envelope left
+      // every field undefined: blank inputs and "Disabled" whatever was saved.
+      const cfg = d?.data ?? d;
+      if (cfg && !d.error && typeof cfg === 'object') { setConfig(cfg); setConfigDirty(false); }
     } catch {/* ignore */} finally {
       setConfigLoading(false);
     }
@@ -195,8 +200,8 @@ export default function FollowUpsPage() {
   const loadIcpStatus = useCallback(async () => {
     try {
       const d = await apiFetch('/api/whatsapp-conversations/followup-settings/status');
-      if (d && !d.error) setIcpStatus(d);
-    } catch {/* ignore */}
+      if (d && !d.error) { setIcpStatus(d); setIcpStatusFailed(false); } else setIcpStatusFailed(true);
+    } catch { setIcpStatusFailed(true); }
   }, []);
 
   // ── Load WA templates ──
@@ -273,7 +278,8 @@ export default function FollowUpsPage() {
         method: 'PUT',
         body: JSON.stringify(config),
       });
-      if (d && !d.error) { setConfig(d); setConfigDirty(false); }
+      const saved = d?.data ?? d;
+      if (saved && !d.error && typeof saved === 'object') { setConfig(saved); setConfigDirty(false); }
     } catch {/* ignore */} finally {
       setConfigSaving(false);
     }
@@ -335,7 +341,7 @@ export default function FollowUpsPage() {
         </button>
       </div>
 
-      <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full">
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -531,6 +537,11 @@ export default function FollowUpsPage() {
                 </div>
               ) : (
                 <>
+                  {icpStatusFailed && !icpStatus && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/50 dark:bg-amber-500/10 dark:text-amber-200">
+                      Couldn&apos;t load how many members are waiting. The settings below still work.
+                    </p>
+                  )}
                   {/* ICP Status cards */}
                   {icpStatus && (
                     <div className="grid grid-cols-3 gap-4">
@@ -555,7 +566,7 @@ export default function FollowUpsPage() {
                       <div>
                         <h3 className="font-medium text-gray-900 dark:text-white">Automatic follow-ups</h3>
                         <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
-                          Automatically follow up with members who haven&apos;t completed their profile
+                          Remind WhatsApp members who went quiet before finishing their profile
                         </p>
                       </div>
                       <button
@@ -575,8 +586,8 @@ export default function FollowUpsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">
-                          Idle Hours Before First Follow-up
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Hours of silence before the first reminder
                         </label>
                         <input
                           type="number"
@@ -586,11 +597,11 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ idle_hours: parseInt(e.target.value) || 1 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Hours of inactivity before sending (1-168)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">1 to 168 hours</p>
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">
-                          Repeat Interval (minutes)
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Minutes between reminders
                         </label>
                         <input
                           type="number"
@@ -600,11 +611,11 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ interval_minutes: parseInt(e.target.value) || 5 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Minutes between repeat messages (5-1440)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">5 to 1,440 minutes (one day)</p>
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">
-                          Max Attempts
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Most reminders per member
                         </label>
                         <input
                           type="number"
@@ -614,14 +625,14 @@ export default function FollowUpsPage() {
                           onChange={(e) => updateConfig({ max_attempts: parseInt(e.target.value) || 1 })}
                           className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Max follow-up messages per member (1-10)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">1 to 10</p>
                       </div>
                     </div>
 
                     {/* Message type */}
                     <div>
-                      <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">
-                        Message Type
+                      <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                        What to send
                       </label>
                       <div className="flex gap-3 mt-1.5">
                         {(['template', 'custom'] as const).map((t) => (
@@ -634,7 +645,7 @@ export default function FollowUpsPage() {
                                 : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 dark:bg-[#071131] dark:text-slate-300 dark:border-slate-700'
                             }`}
                           >
-                            {t === 'template' ? '📋 Template' : '✏️ Custom'}
+                            {t === 'template' ? 'Approved template' : 'Your own message'}
                           </button>
                         ))}
                       </div>
@@ -642,7 +653,7 @@ export default function FollowUpsPage() {
 
                     {config.message_type === 'custom' && (
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
                           Custom Message
                           <span className="ml-1 text-gray-500 dark:text-slate-400 normal-case font-normal">(use {'{member_name}'} for personalisation)</span>
                         </label>
@@ -689,13 +700,17 @@ export default function FollowUpsPage() {
                     {templates.length === 0 ? (
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 bg-white rounded-lg border border-dashed border-gray-200 p-4 dark:bg-[#071131] dark:border-slate-700">
                         <AlertCircle className="w-4 h-4 shrink-0" />
-                        No approved templates found. Create templates in Meta Business Manager.
+                        <span>
+                          No approved WhatsApp templates yet.{' '}
+                          <Link href="/conversations/templates" className="font-medium text-blue-700 underline-offset-2 hover:underline dark:text-blue-300">Create one in Templates</Link>
+                          {' '}— Meta reviews each one before it can be sent.
+                        </span>
                       </div>
                     ) : (
                       <>
                         <div className="flex gap-3 flex-wrap">
                           <div className="flex-1 min-w-48">
-                            <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">Template</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">Template</label>
                             <div className="relative mt-1.5">
                               <select
                                 value={selectedTemplate}
@@ -712,7 +727,7 @@ export default function FollowUpsPage() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-36">
-                            <label className="text-xs font-medium text-gray-600 uppercase tracking-wider dark:text-slate-300">Send to</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">Send to</label>
                             <div className="relative mt-1.5">
                               <select
                                 value={templateTarget}
