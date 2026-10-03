@@ -71,7 +71,7 @@ export default function TeamStrip({ channels, onEdit }: TeamStripProps) {
                   {isOn && !isReady && <CircleAlert className={`h-3.5 w-3.5 shrink-0 ${TINT.needed}`} aria-label="not ready" />}
                 </span>
                 <span className="block truncate text-[11px] text-muted-foreground">
-                  {!isOn ? 'Off' : c?.agentName?.trim() ? `${c.agentName.trim()}${isReady ? '' : ' · needs a first line'}` : isReady ? 'Ready' : 'Needs a first line'}
+                  {!isOn ? (c?.agentName?.trim() ? `${c.agentName.trim()} · off` : 'Off') : c?.agentName?.trim() ? `${c.agentName.trim()}${isReady ? '' : ' · needs a first line'}` : isReady ? 'Ready' : 'Needs a first line'}
                 </span>
               </span>
             </li>

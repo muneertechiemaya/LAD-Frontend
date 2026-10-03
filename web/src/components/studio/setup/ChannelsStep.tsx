@@ -66,14 +66,14 @@ const CHANNEL_META: Record<StudioChannel, { label: string; icon: typeof Mail; op
   email: {
     label: 'Email',
     icon: Mail,
-    openerPlaceholder: 'Hi {first name}, quick one — saw you are hiring for data roles and wondered whether contract cover would help while you fill them.',
+    openerPlaceholder: 'Hi {first name}, quick one — saw you opened a second office and wondered how your team is handling the extra work.',
     openerHint: 'A subject line and the first sentence of the email.',
     neverSay: ['Buzzwords like synergy or leverage', 'Guaranteed results', 'Discounts or prices', 'False urgency'],
   },
   whatsapp: {
     label: 'WhatsApp',
     icon: MessageCircle,
-    openerPlaceholder: 'Hi {first name}, it’s Rachana from Proximate. You asked about contract Databricks engineers, is now an OK time?',
+    openerPlaceholder: 'Hi {first name}, it’s Sam from Acme. You asked about a quote last week, is now an OK time?',
     openerHint: 'One short message, the way you would actually type it.',
     neverSay: ['Long paragraphs', 'Prices before a call', 'Guaranteed results', 'Formal sign-offs'],
   },
@@ -87,7 +87,7 @@ const CHANNEL_META: Record<StudioChannel, { label: string; icon: typeof Mail; op
   linkedin: {
     label: 'LinkedIn',
     icon: Linkedin,
-    openerPlaceholder: 'Hi {first name}, thanks for connecting. Saw the roles you posted this week, how’s that search going?',
+    openerPlaceholder: 'Hi {first name}, thanks for connecting. Saw your post about the new launch, how’s it going?',
     openerHint: 'The first message after a connection is accepted.',
     neverSay: ['Guaranteed results', 'Limited-time offers', 'Discounts or prices', 'Competitor names'],
   },
@@ -540,7 +540,7 @@ function AgentTile({ row, open, status, defaultName, onToggle, onOpen, onPatch, 
             </button>
             {ready && <CheckCircle2 className={`h-4 w-4 shrink-0 ${TINT.ready} ${READY_PULSE}`} aria-label="ready" data-testid={`ready-${row.channel}`} />}
             <span className="ml-auto flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">{filled}/{FIELD_TOTAL}</span>
+              <span className="text-[11px] text-muted-foreground">{filled}/{FIELD_TOTAL} filled</span>
               <Switch checked={row.isOn} onCheckedChange={onToggle} aria-label={`${meta.label} on or off`} />
               <button
                 type="button"
@@ -548,7 +548,7 @@ function AgentTile({ row, open, status, defaultName, onToggle, onOpen, onPatch, 
                 aria-expanded={open}
                 aria-controls={`agent-editor-${row.channel}`}
                 aria-label={open ? `Collapse ${meta.label} settings` : `Expand ${meta.label} settings`}
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center"
                 data-testid={`toggle-editor-${row.channel}`}
               >
                 {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

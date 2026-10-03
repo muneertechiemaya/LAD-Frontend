@@ -56,7 +56,7 @@ export default function StudioStatus({ state, onHistory }: { state: StudioState;
         <span>{history.lastChangeAt ? `Last change: ${timeAgo(history.lastChangeAt)}` : 'No changes yet'}</span>
         <span aria-hidden>·</span>
         <button type="button" onClick={onHistory} className={LINK}>
-          {history.undoable ? 'Undo' : 'History'}
+          {history.undoable ? 'See or undo changes' : 'See changes'}
         </button>
       </p>
     )}
@@ -67,7 +67,7 @@ export default function StudioStatus({ state, onHistory }: { state: StudioState;
         ready={interview.complete}
         detail={interview.complete
           ? `Profile complete — ${interview.required} required and ${interview.optionalFilled} of ${interview.optionalTotal} optional answered.`
-          : `${interview.filled} of ${interview.required} required answered. Missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? '…' : ''}.`}
+          : `${interview.filled} of ${interview.required} required answered. Missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` and ${missing.length - 4} more` : ''}.`}
         action={{ href: '/settings?tab=businessprofile', label: interview.complete ? 'Review your answers' : 'Continue the interview' }}
       />
       <Room

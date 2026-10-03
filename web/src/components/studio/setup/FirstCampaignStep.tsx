@@ -630,7 +630,7 @@ export default function FirstCampaignStep({ channels, workspace, onContinue, con
           <Input
             value={offering}
             onChange={(e) => setOffering(e.target.value)}
-            placeholder={offerChips.length ? 'Or something else…' : 'e.g. Contract nursing staff for hospitals'}
+            placeholder={offerChips.length ? 'Or something else…' : 'e.g. A free 30-minute review of their setup'}
             aria-label="What you are leading with"
             disabled={drafting}
             className={`h-9 text-sm ${INPUT_FOCUS}`}

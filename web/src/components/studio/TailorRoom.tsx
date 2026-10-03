@@ -24,12 +24,20 @@ import { useTailorChat, type ChatTurn, type Overlay, type TailorTurn } from '@la
 import ReviewCard from './ReviewCard';
 import { BORDER, BUBBLE_AGENT, BUBBLE_ME, CARD, CTA_PRIMARY, INPUT_FOCUS, PANEL } from './studio-theme';
 
-/** Builder workspaces (staffing-flavoured). */
-const BUILDER_EXAMPLES = [
+/** Staffing workspaces (`vertical === 'staffing'`). */
+const STAFFING_EXAMPLES = [
   'Treat "bill rate" and "markup" as pricing questions worth handing to a human.',
   'When a prospect says they already use two agencies, offer to take one hard-to-fill role rather than backing off.',
   'Add a pipeline stage called "Intake scheduled" after "Req received".',
   'Boost hiring signals to the maximum and add a signal for companies opening a new site.',
+];
+
+/** Every other builder workspace: no industry assumed. */
+const BUILDER_EXAMPLES = [
+  'Treat questions about price or contract terms as worth handing to a human.',
+  'When a prospect says they already work with someone, ask what they would change rather than backing off.',
+  'Add a pipeline stage called "Demo booked" after "Replied".',
+  'Boost signals for companies that are hiring or have just raised funding.',
 ];
 
 /** Curated workspaces (wellness): the WhatsApp support agent's instructions. */
@@ -45,11 +53,13 @@ export interface TailorRoomProps {
   onDraft: (o?: Overlay) => void;
   /** Curated workspace: the examples and copy name the WhatsApp support agent. */
   curated?: boolean;
+  /** `state.vertical`; 'staffing' keeps the staffing examples. */
+  vertical?: string | null;
 }
 
-export default function TailorRoom({ draft, onDraft, curated = false }: TailorRoomProps) {
+export default function TailorRoom({ draft, onDraft, curated = false, vertical = null }: TailorRoomProps) {
   const { toast } = useToast();
-  const EXAMPLES = curated ? CURATED_EXAMPLES : BUILDER_EXAMPLES;
+  const EXAMPLES = curated ? CURATED_EXAMPLES : vertical === 'staffing' ? STAFFING_EXAMPLES : BUILDER_EXAMPLES;
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [message, setMessage] = useState('');
   const [last, setLast] = useState<TailorTurn | null>(null);
@@ -79,7 +89,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
           <p className="text-xs text-muted-foreground" data-testid="tailor-hint">
             {curated
               ? 'How your support agent greets, answers, books, reschedules and cancels on WhatsApp — in your words.'
-              : 'Handoff phrases, pipeline stages, signals, research, the agent\'s instructions, the profile questions — in your words.'}
+              : 'In your words: when to hand a conversation to you, how the agent replies, how it researches leads, your pipeline stages, the buying signals to watch for, or the profile questions.'}
           </p>
         </div>
         <div className="max-h-[420px] min-h-[160px] space-y-2 overflow-y-auto px-4 py-3" aria-live="polite">
@@ -100,7 +110,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
         <div className={`flex gap-2 border-t ${BORDER} p-3`}>
           <Textarea rows={2} value={message} onChange={e => setMessage(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder={draft ? 'Refine the proposal on the right, or ask for something else…' : curated ? 'What should your support agent do differently?' : 'What should change?'} disabled={chat.isPending} className={INPUT_FOCUS} />
+            placeholder={draft ? 'Refine the proposed change, or ask for something else…' : curated ? 'What should your support agent do differently?' : 'What should change?'} aria-label="What should change" disabled={chat.isPending} className={INPUT_FOCUS} />
           <Button onClick={() => void send()} disabled={chat.isPending || !message.trim()} aria-label="Send" className={CTA_PRIMARY}>
             {chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
@@ -124,7 +134,7 @@ export default function TailorRoom({ draft, onDraft, curated = false }: TailorRo
           </>
         ) : (
           <p className={`${PANEL} p-4 text-sm text-muted-foreground`}>
-            {last ? 'No change proposed yet — answer Mr LAD\'s question on the left.' : 'A proposal appears here with every change spelled out. Nothing is applied until you say so.'}
+            {last ? 'No change proposed yet — answer Mr LAD\'s question in the chat.' : 'A proposal appears here with every change spelled out. Nothing is applied until you say so.'}
           </p>
         )}
       </section>
