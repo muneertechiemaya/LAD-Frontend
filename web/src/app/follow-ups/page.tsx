@@ -323,7 +323,7 @@ export default function FollowUpsPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Follow-ups</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Manage automated follow-ups and re-engagement messages</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Leads who went quiet, and the nudges Mr LAD sends them</p>
           </div>
         </div>
         <button
@@ -382,7 +382,7 @@ export default function FollowUpsPage() {
               }`}
             >
               <Users className="w-4 h-4" />
-              Inactive Leads
+              Gone quiet
               {leads.length > 0 && (
                 <span className="bg-orange-100 text-orange-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {leads.length}
@@ -439,13 +439,13 @@ export default function FollowUpsPage() {
               {leadsLoading ? (
                 <div className="flex items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Loading inactive leads…
+                  Loading leads who went quiet…
                 </div>
               ) : filteredLeads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-3">
                   <CheckCircle className="w-10 h-10 text-green-300" />
-                  <p className="font-medium text-gray-600 dark:text-slate-300">No inactive leads found</p>
-                  <p className="text-sm">All leads are engaged or there are no eligible leads at this time.</p>
+                  <p className="font-medium text-gray-600 dark:text-slate-300">Nobody needs a nudge right now</p>
+                  <p className="text-sm">Leads who stop replying after a few days show up here, ready for a follow-up.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
