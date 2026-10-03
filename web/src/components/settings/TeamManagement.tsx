@@ -245,7 +245,7 @@ export const TeamManagement: React.FC = () => {
             Team Management
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-semibold leading-relaxed">
-            Manage team members and their granular page permissions
+            Add teammates and choose which pages each one can open
           </p>
         </div>
         <Button
@@ -370,7 +370,7 @@ export const TeamManagement: React.FC = () => {
                             {(user.name || user.email || '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm text-slate-900 dark:text-white">{user.name || '-'}</span>
+                            <span className={user.name ? 'font-bold text-sm text-slate-900 dark:text-white' : 'text-sm italic text-slate-600 dark:text-slate-300'}>{user.name || 'No name yet'}</span>
                             <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
                               <Mail className="h-3 w-3 opacity-60 text-slate-400" />
                               {user.email}
@@ -404,9 +404,9 @@ export const TeamManagement: React.FC = () => {
                             </Select>
                           )}
 
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide uppercase pl-0.5">
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase pl-0.5">
                             <span className={cn("h-1.5 w-1.5 rounded-full", user.status === 'inactive' ? "bg-rose-500" : "bg-emerald-500 dark:bg-emerald-400")} />
-                            <span className={user.status === 'inactive' ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
+                            <span className={user.status === 'inactive' ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}>
                               {user.status || 'ACTIVE'}
                             </span>
                           </div>

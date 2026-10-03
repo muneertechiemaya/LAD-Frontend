@@ -447,8 +447,8 @@ export function AgentForm({
                   Saved on the selected voice, so they apply to every agent using it.
                 </p>
                 {!selectedVoiceForDynamics && (
-                  <p className="text-xs text-amber-600 dark:text-amber-500">
-                    Select a voice above to enable these controls.
+                  <p className="text-xs text-amber-800 dark:text-amber-400">
+                    Pick a voice above to change these.
                   </p>
                 )}
                 {selectedVoiceForDynamics?.provider === 'cartesia' && (

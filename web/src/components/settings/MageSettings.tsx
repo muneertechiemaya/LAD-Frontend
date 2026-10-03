@@ -372,7 +372,7 @@ const ManageButton: React.FC<{ onClick: () => void; label?: string; hint: string
     <button
       onClick={onClick}
       title={hint}
-      className="font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      className="max-lg:min-h-11 font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       style={{
         fontSize: 'clamp(0.72rem, 0.8vw, 0.82rem)',
         padding: 'clamp(0.3rem, 0.45vw, 0.42rem) clamp(0.6rem, 0.8vw, 0.85rem)',
@@ -1133,7 +1133,7 @@ export const MageSettings: React.FC = () => {
           onClick={triggerRun}
           disabled={busy === 'run' || jobs?.active_run}
           title="Sync your Drive folders, then work through everything queued. Results appear in the gallery."
-          className="ml-auto inline-flex items-center justify-center gap-2 font-semibold rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          className="ml-auto inline-flex items-center justify-center gap-2 max-lg:min-h-11 font-semibold rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           style={{
             // Bigger than the secondary actions: this is the one button on the
             // card that makes something happen, and at the old size it read as
@@ -1171,7 +1171,7 @@ export const MageSettings: React.FC = () => {
                 onClick={loadJobs}
                 disabled={jobsLoading}
                 title="Check both Drive folders for anything new"
-                className="inline-flex items-center justify-center gap-2 font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center justify-center gap-2 max-lg:min-h-11 font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100 disabled:opacity-50 transition-colors"
                 style={{
                   fontSize: 'clamp(0.72rem, 0.8vw, 0.82rem)',
                   padding: 'clamp(0.34rem, 0.5vw, 0.46rem) clamp(0.7rem, 0.95vw, 1rem)',
@@ -1189,7 +1189,7 @@ export const MageSettings: React.FC = () => {
               <button
                 onClick={() => setModal('request')}
                 title="Upload an image and describe what you want made"
-                className="inline-flex items-center justify-center gap-2 font-semibold rounded-lg border border-[#0b1957]/25 text-[#0b1957] hover:bg-[#0b1957]/[0.06] dark:border-blue-500/40 dark:text-blue-300 dark:hover:bg-blue-500/10 transition-colors"
+                className="inline-flex items-center justify-center gap-2 max-lg:min-h-11 font-semibold rounded-lg border border-[#0b1957]/25 text-[#0b1957] hover:bg-[#0b1957]/[0.06] dark:border-blue-500/40 dark:text-blue-300 dark:hover:bg-blue-500/10 transition-colors"
                 style={{
                   fontSize: 'clamp(0.74rem, 0.82vw, 0.85rem)',
                   padding: 'clamp(0.36rem, 0.52vw, 0.48rem) clamp(0.75rem, 1vw, 1.05rem)',
