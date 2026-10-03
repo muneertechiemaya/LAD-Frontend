@@ -38,7 +38,7 @@ export const CreditsSettings: React.FC = () => {
           </div>
           <button
             onClick={() => setShowAddCreditsModal(true)}
-            className="bg-white/10 hover:bg-white/20 text-[#ffffff] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center dark:bg-blue-600 dark:hover:bg-blue-700"
+            className="bg-white/10 hover:bg-white/20 text-[#ffffff] px-3 py-1.5 max-lg:min-h-11 rounded-lg text-xs font-medium transition-colors flex items-center dark:bg-blue-600 dark:hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Credits

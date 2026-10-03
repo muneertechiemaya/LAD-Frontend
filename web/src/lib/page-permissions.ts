@@ -54,6 +54,8 @@ export const FEATURE = {
   SALES_PLAYBOOK: ['sales_playbook', 'sales-playbook'],
 } as const;
 
+// `label` uses the sidebar's names (Home, Outreach, Inbox…) so an admin can
+// tell which nav items a member gets; `key` is what is granted.
 export type PagePermission = {
   /** The user_capabilities key this checkbox GRANTS — the one nav actually reads. */
   key: string;
@@ -80,22 +82,22 @@ export type PagePermission = {
 };
 
 export const PAGE_PERMISSIONS: readonly PagePermission[] = [
-  { key: 'view_overview',      label: 'Overview',      features: FEATURE.OVERVIEW },
-  { key: 'view_ai_assistant',  label: 'AI Assistant',  features: FEATURE.AI_CHAT },
-  { key: 'view_campaigns',     label: 'Campaigns',     features: FEATURE.CAMPAIGNS },
-  { key: 'view_conversations', label: 'Conversations', features: FEATURE.CONVERSATIONS },
-  { key: 'view_community_roi', label: 'Community ROI', features: FEATURE.COMMUNITY_ROI },
-  { key: 'view_make_call',     label: 'Make a Call',   features: FEATURE.VOICE_AGENT },
-  { key: 'view_call_logs',     label: 'Call Logs',     features: FEATURE.VOICE_AGENT },
-  { key: 'view_followups',     label: 'Follow-up',     features: FEATURE.FOLLOWUPS,
+  { key: 'view_overview',      label: 'Home',          features: FEATURE.OVERVIEW },
+  { key: 'view_ai_assistant',  label: 'Ask Mr LAD',    features: FEATURE.AI_CHAT },
+  { key: 'view_campaigns',     label: 'Outreach',      features: FEATURE.CAMPAIGNS },
+  { key: 'view_conversations', label: 'Inbox',         features: FEATURE.CONVERSATIONS },
+  { key: 'view_community_roi', label: 'Referral ROI',  features: FEATURE.COMMUNITY_ROI },
+  { key: 'view_make_call',     label: 'Calls',         features: FEATURE.VOICE_AGENT },
+  { key: 'view_call_logs',     label: 'Call history',  features: FEATURE.VOICE_AGENT },
+  { key: 'view_followups',     label: 'Follow-ups',    features: FEATURE.FOLLOWUPS,
     aliases: ['view_followup'] },
   // `null` is deliberate and load-bearing. view_pipeline unlocks /pipeline
   // (gated on deals_pipeline) AND /crm "Contacts Funnel", which has NO feature
   // gate — the one place a capability alone decides access. Gating this row on
   // deals_pipeline would remove an admin's ability to grant /crm, which works
   // today, while members already holding it keep it unrevocably.
-  { key: 'view_pipeline',      label: 'Pipeline',      features: [...FEATURE.DEALS_PIPELINE, null] },
-  { key: 'view_sales_playbook', label: 'Sales Playbook', features: FEATURE.SALES_PLAYBOOK },
+  { key: 'view_pipeline',      label: 'Pipeline and Contacts', features: [...FEATURE.DEALS_PIPELINE, null] },
+  { key: 'view_sales_playbook', label: 'Playbook', features: FEATURE.SALES_PLAYBOOK },
 
   // UNGATED — kept, not dropped. These unlock pages with no feature gate and no
   // nav item, so no entitlement can be shown to justify hiding them. Removing a
