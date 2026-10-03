@@ -11,7 +11,7 @@ export type CrmView = 'board' | 'all' | 'prospects' | 'leads' | 'clients';
 interface StatCard {
   key: Exclude<CrmView, 'board'>;
   title: string;
-  /** What the number counts, in plain words (md+ only; phones show the short label). */
+  /** What the number counts, in plain words (under the label on phones too). */
   hint: string;
   /** `null` = could not be loaded; renders "—". Matches `StatsCardsProps.counts`,
    *  which has always been nullable — typing this `number` made every one of the
@@ -47,8 +47,9 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
   ];
 
   return (
-    // Phones: one compact row of four (count over label). md+: the full cards.
-    <div className="mb-4 grid grid-cols-4 gap-2 md:mb-5 md:flex md:flex-wrap md:items-stretch md:gap-4">
+    // Phones: 2×2 (count, label, hint), like the Pipeline cards; a row of four
+    // had no room for the hint. md+: the full cards.
+    <div className="mb-4 grid grid-cols-2 gap-2 md:mb-5 md:flex md:flex-wrap md:items-stretch md:gap-4">
       {cards.map((c) => {
         const isSel = selected === c.key;
         const Icon = c.Icon;
@@ -79,7 +80,8 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                   >
                     {c.value ?? '—'}
                   </h5>
-                  <p className="hidden text-xs text-slate-600 dark:text-slate-400 md:mt-1 md:block">{c.hint}</p>
+                  {/* order-first inside the phone flex-col-reverse puts the hint last: number, label, hint. */}
+                  <p className="max-md:order-first mt-0.5 text-center text-xs leading-tight text-slate-600 dark:text-slate-400 md:mt-1 md:text-left">{c.hint}</p>
                 </div>
               </div>
             </button>

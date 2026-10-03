@@ -134,7 +134,7 @@ export default function PipelinePage(): JSX.Element {
             <h1 className="text-3xl font-bold text-[#1e293b] dark:text-white">{labels.title}</h1>
             <p className="text-[#6b7280] dark:text-slate-300">
               {labels.subtitle}.{' '}
-              <Link href="/tasks" className="font-medium text-blue-700 hover:underline dark:text-blue-300">
+              <Link href="/tasks" className="font-medium text-blue-700 hover:underline dark:text-blue-300 max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
                 See who needs you today →
               </Link>
             </p>

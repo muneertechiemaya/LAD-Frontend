@@ -581,6 +581,19 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
       ? <ArrowUp className="h-3.5 w-3.5 text-primary" />
       : <ArrowDown className="h-3.5 w-3.5 text-primary" />;
   };
+  // Company falls back to the enrichment payload when the column is empty.
+  const getDisplayCompany = (lead: Lead): string => {
+    const rawData = lead.raw_data as Record<string, unknown> | undefined;
+    const fullData = rawData?._full_data as Record<string, unknown> | undefined;
+    const employeeData = rawData?.employee_data as Record<string, unknown> | undefined;
+    const fullOrg = fullData?.organization as Record<string, string> | undefined;
+    const empOrg = employeeData?.organization as Record<string, string> | undefined;
+    const companyFromRaw = (rawData?.company_name as string) ||
+      (fullData?.company_name as string) ||
+      fullOrg?.name ||
+      empOrg?.name;
+    return String(lead.company || companyFromRaw || '-');
+  };
   const renderCellContent = (lead: Lead, column: string): React.ReactNode => {
     const handleDropdownChange = async (field: string, newValue: string) => {
       try {
@@ -615,17 +628,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
           </div>
         );
       case 'company': {
-        // Extract company name from raw_data if company is null
-        const rawData = lead.raw_data as Record<string, unknown> | undefined;
-        const fullData = rawData?._full_data as Record<string, unknown> | undefined;
-        const employeeData = rawData?.employee_data as Record<string, unknown> | undefined;
-        const fullOrg = fullData?.organization as Record<string, string> | undefined;
-        const empOrg = employeeData?.organization as Record<string, string> | undefined;
-        const companyFromRaw = (rawData?.company_name as string) ||
-          (fullData?.company_name as string) ||
-          fullOrg?.name ||
-          empOrg?.name;
-        const displayCompany = lead.company || companyFromRaw || '-';
+        const displayCompany = getDisplayCompany(lead);
         return (
           <p className="text-sm max-w-[150px] truncate" title={String(displayCompany)}>
             {displayCompany}
@@ -998,7 +1001,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
           <div className="flex items-center gap-2 w-full lg:w-auto">
             <Button
               variant="outline"
-              className="flex-1 lg:flex-none rounded-xl text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 text-sm"
+              className="flex-1 lg:flex-none rounded-xl text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 max-lg:h-11 text-sm"
               onClick={(e) => {
                 e.stopPropagation();
                 dispatch(setFilterDialogOpen(true));
@@ -1011,7 +1014,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="flex-1 lg:flex-none rounded-xl text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 text-sm"
+                  className="flex-1 lg:flex-none rounded-xl text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 max-lg:h-11 text-sm"
                   disabled={!onExport && !onExportWithDateRange}
                 >
                   <Download className="h-4 w-4 mr-1.5" />
@@ -1050,7 +1053,81 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
           </div>
         </div>
       </div>
-      <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative">
+      {/* Phones and tablets: one card per lead. The 11-column table is 1,400px
+          wide, so on a 390px screen only the number, name and company showed and
+          the stage was off-screen. Cards show what matters and open the lead. */}
+      {/* The table's sortable headers don't exist on phones; offer the useful orders. */}
+      <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-[#E2E8F0] dark:border-[#262831]">
+        <span className="text-xs text-slate-600 dark:text-slate-400">Sort</span>
+        <Select
+          value={`${globalSortConfig?.field || 'createdAt'}:${globalSortConfig?.direction || 'desc'}`}
+          onValueChange={(v) => {
+            const [field, direction] = v.split(':');
+            dispatch(setPipelineSortConfig({ field, direction: direction as 'asc' | 'desc' }));
+          }}
+        >
+          <SelectTrigger className="h-11 w-auto min-w-[180px] text-sm" aria-label="Sort leads">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt:desc">Newest first</SelectItem>
+            <SelectItem value="lastActivity:desc">Recent activity first</SelectItem>
+            <SelectItem value="createdAt:asc">Oldest first</SelectItem>
+            <SelectItem value="name:asc">Name A–Z</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <ul className="lg:hidden divide-y divide-[#E2E8F0] dark:divide-[#262831] border-b border-[#E2E8F0] dark:border-[#262831]">
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+            <li key={`card-skeleton-${i}`} className="animate-pulse px-4 py-4 space-y-2">
+              <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-[#253456]" />
+              <div className="h-3 w-1/3 rounded bg-gray-200 dark:bg-[#253456]" />
+              <div className="h-11 w-40 rounded bg-gray-200 dark:bg-[#253456]" />
+            </li>
+          ))
+          : paginatedLeads.map((lead) => {
+            const name = lead.name || 'Unnamed Lead';
+            const company = getDisplayCompany(lead);
+            const phone = lead.phone && lead.phone !== lead.name ? String(lead.phone) : '';
+            const sub = [company !== '-' ? company : '', phone].filter(Boolean).join(' · ');
+            const lastActivity = formatDateTimeUnified(getFieldValue(lead, 'lastActivity') || getFieldValue(lead, 'updated_at'));
+            return (
+              <li key={lead.id}>
+                {/* The name is the one button that opens the lead; it is stretched over
+                    the card, and the pickers sit above it. A role=button card around
+                    the pickers hid them from screen readers (nested interactive). */}
+                <div className="relative flex flex-col gap-2 px-4 py-3 active:bg-gray-50 dark:active:bg-[#1a2a43]">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => handleRowClick(lead)}
+                        className="block max-w-full truncate text-left text-sm font-semibold text-[#1E293B] dark:text-white after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-blue-500"
+                      >
+                        {name}
+                      </button>
+                      {sub && <p className="truncate text-xs text-slate-600 dark:text-slate-400">{sub}</p>}
+                    </div>
+                    <div className="relative z-10 shrink-0 [&_button]:h-11 [&_button]:w-auto [&_button]:min-w-24 [&_button]:gap-2">{renderCellContent(lead, 'tags')}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Stage</span>
+                    <div className="relative z-10 min-w-0 flex-1 [&_button]:h-11 [&_button]:min-w-[160px] [&_button]:max-w-full [&_button]:text-sm">{renderCellContent(lead, 'stage')}</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Last activity {lastActivity}</p>
+                </div>
+              </li>
+            );
+          })}
+        {!isLoading && filteredAndSortedLeads.length === 0 && (
+          <li className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+            <UserPlus className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+            <p className="text-base font-semibold text-[#1E293B] dark:text-white">No leads found</p>
+          </li>
+        )}
+      </ul>
+      <div className="hidden lg:block w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative">
         <div className="min-w-[1000px] w-full relative">
           <Table containerClassName="overflow-visible" className={`${compactMode ? 'text-sm' : ''} border-separate border-spacing-0`}>
             <TableHeader className="sticky top-0 z-40 bg-[#F8FAFC] dark:bg-[#1a2a43] shadow-sm">
@@ -1125,7 +1202,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
       </div>
       {/* Pagination Controls */}
       {filteredAndSortedLeads.length > 0 && (
-        <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
+        <div className="flex items-center justify-between max-lg:flex-wrap max-lg:gap-y-2 px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
           {/* Left Side: Records per page and total count info */}
           <div className="flex items-center gap-2 text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3]">
             <div className="flex items-center gap-2">
@@ -1136,7 +1213,7 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                   handlePageSizeChange(Number(val));
                 }}
               >
-                <SelectTrigger className="w-[70px] h-7 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
+                <SelectTrigger className="w-[70px] h-7 max-lg:h-11 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
                   <SelectValue placeholder={pageSize} />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40 min-w-[70px] max-w-[70px] w-[70px] p-0">
@@ -1172,7 +1249,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 size="sm"
                 onClick={() => handlePageChange(1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                aria-label="First page"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -1181,7 +1259,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 size="sm"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                aria-label="Previous page"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1190,7 +1269,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                aria-label="Next page"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -1199,7 +1279,8 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
                 size="sm"
                 onClick={() => handlePageChange(totalPages)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                aria-label="Last page"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>

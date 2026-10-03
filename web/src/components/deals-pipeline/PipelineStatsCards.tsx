@@ -117,8 +117,8 @@ export default function PipelineStatsCards({
       />
 
       <StatCard
-        title="LinkedIn invites sent"
-        hint="Connection requests sent"
+        title="Reached on LinkedIn"
+        hint="Leads a campaign sent a LinkedIn invite or message"
         renderValue={() => value(connectionSentCount)}
         icon={<Link2 className="w-6 h-6 text-black-600" />}
         bgColor="bg-slate-100"
@@ -128,7 +128,7 @@ export default function PipelineStatsCards({
 
       <StatCard
         title="Contacted"
-        hint="Reached by call, email or message"
+        hint="Leads in any stage after New, Profile visited and Connection sent"
         renderValue={() => value(contacted)}
         icon={<BadgeCheck className="w-6 h-6 text-green-600" />}
         bgColor="bg-green-100"
@@ -138,7 +138,7 @@ export default function PipelineStatsCards({
 
       <StatCard
         title="Messages sent"
-        hint="LinkedIn messages after connecting"
+        hint="People messaged by a campaign, any channel"
         renderValue={() => value(messageSentCount)}
         icon={<Send className="w-6 h-6 text-purple-600" />}
         bgColor="bg-purple-100"
