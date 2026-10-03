@@ -153,7 +153,7 @@ export default function CallSheet({ onSaved }: { onSaved?: () => void }) {
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* nothing to clear */ }
       onSaved?.();
     } catch {
-      setSaveError('Could not save to the records service. Use Copy row so nothing is lost.');
+      setSaveError("Couldn't save the call. Use Copy for spreadsheet so nothing is lost.");
     }
   }, [buildRecord, saveCall, answers.costCurrency, answers.costDayRate, onSaved]);
 
@@ -364,15 +364,15 @@ export default function CallSheet({ onSaved }: { onSaved?: () => void }) {
             >
               <Clock className="h-3.5 w-3.5" />{mmss(elapsed)} / {mmss(TOTAL_BUDGET_SECONDS)}
             </button>
-            {([['painScore', 'Pain'], ['budgetFit', 'Budget'], ['buildEffort', 'Build'], ['urgency', 'Urgency'], ['leadScore', 'Lead']] as const).map(([id, label]) => (
+            {([['painScore', 'Pain'], ['budgetFit', 'Budget'], ['buildEffort', 'Build effort'], ['urgency', 'Urgency'], ['leadScore', 'Lead']] as const).map(([id, label]) => (
               <span key={id} className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${TONE_CHIP[toneOf(id, answers[id])]}`}>
                 {label} {answers[id] || '–'}
               </span>
             ))}
           </div>
-          <button type="button" onClick={copyRow}
+          <button type="button" onClick={copyRow} title="Copies this call as one spreadsheet row"
             className="flex items-center gap-1.5 max-lg:min-h-11 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/10">
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? 'Copied' : 'Copy row'}
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? 'Copied' : 'Copy for spreadsheet'}
           </button>
           <button type="button" disabled={phaseIx === 0} onClick={() => setPhaseIx(i => Math.max(0, i - 1))}
             className="flex items-center gap-1 max-lg:min-h-11 rounded-md border border-border px-3 py-1.5 text-sm font-semibold disabled:opacity-40">

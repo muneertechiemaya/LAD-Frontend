@@ -66,8 +66,8 @@ export default function SavedCalls() {
         <ServerCrash className="mx-auto mb-3 h-8 w-8 text-amber-600 dark:text-amber-400" />
         <h3 className="text-base font-bold">Saved calls could not be loaded</h3>
         <p className="mx-auto mt-1 max-w-[46ch] text-sm text-muted-foreground">
-          The records service did not answer, so this list is unavailable — not empty.
-          Running a call still works, and <strong>Copy row</strong> puts the record on your clipboard.
+          The list couldn&apos;t be loaded, so it&apos;s unavailable — not empty.
+          Running a call still works, and <strong>Copy for spreadsheet</strong> puts the call on your clipboard.
         </p>
       </div>
     );
@@ -104,7 +104,7 @@ export default function SavedCalls() {
           <table className="w-full min-w-[860px] border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5">
-                {['Prospect', 'Date', 'Pain', 'Budget', 'Build', 'Setup', 'Monthly', 'Urgency', 'Lead', 'Next action'].map(h => (
+                {['Prospect', 'Date', 'Pain', 'Budget', 'Build effort', 'Setup', 'Monthly', 'Urgency', 'Lead', 'Next action'].map(h => (
                   <th key={h} className="whitespace-nowrap border-b border-border px-3 py-2 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                 ))}
               </tr>
