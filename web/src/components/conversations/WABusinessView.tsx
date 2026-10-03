@@ -1877,13 +1877,11 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#161717]">
-        <div className="flex gap-6 mt-8">
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
-              <FileText className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
-            </div>
-            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send Template</span>
-          </div>
+        {/* "Send Template" here had no click handler at all — it did nothing.
+            Say what to do instead, and keep the one action that works. */}
+        <p className="text-base font-medium text-[#111b21] dark:text-[#e9edef]">Pick a chat on the left to read and reply</p>
+        <p className="mt-1 text-sm text-[#54656f] dark:text-[#aebac1]">Or bring in new people to message:</p>
+        <div className="flex gap-6 mt-6">
           <button
             type="button"
             onClick={onOpenImportLeads}

@@ -297,10 +297,10 @@ function PipelineCard() {
                       {pct != null && <span className="ml-1">· {pct}%</span>}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="text-xs text-slate-600 dark:text-slate-400">{s.hint}</span>
-                    <Delta now={s.value} before={s.before} period={period} />
-                  </div>
+                  {/* Hint, then the comparison on its own line: side by side they
+                      wrapped differently on every row. */}
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{s.hint}</p>
+                  <p><Delta now={s.value} before={s.before} period={period} /></p>
                   <div className="mt-1.5 h-2.5 w-full rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true">
                     <div
                       className={cn('h-full rounded-full', i === stages.length - 1 ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#0b1957]/25 dark:bg-blue-400/40')}
@@ -730,7 +730,7 @@ export function HomeDashboard() {
           failed={!meetingsQ.isLoading && meetingsQ.data === undefined}
         />
         <TodayTile
-          label="Campaign replies this week"
+          label="Campaign replies"
           value={fmt(weekQ.data?.responded)}
           sub={
             replyDelta == null

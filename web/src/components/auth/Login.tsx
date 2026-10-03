@@ -239,8 +239,16 @@ const Login: React.FC = () => {
               htmlFor="rememberMe"
               className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer select-none max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:pr-2"
             >
-              Remember
+              Remember me
             </label>
+            {/* There is no self-serve reset yet, so point people at a person
+                instead of leaving them locked out with no next step. */}
+            <a
+              href="mailto:support@techiemaya.com?subject=Password%20reset%20for%20Mr%20LAD"
+              className="ml-auto text-sm font-medium text-blue-700 hover:underline dark:text-blue-300 max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
+            >
+              Forgot password?
+            </a>
           </div>
           {/* Login Button */}
           <Button
