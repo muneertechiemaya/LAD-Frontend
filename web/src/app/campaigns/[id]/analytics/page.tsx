@@ -186,7 +186,7 @@ export default function CampaignAnalyticsPage() {
     return (
       <div className="p-3 bg-[#F8F9FE] dark:bg-[#000724] h-full overflow-auto">
         {/* Skeleton Header */}
-        <div className="mb-5 flex flex-col sm:flex-row justify-between mt-10 items-stretch sm:items-start gap-4">
+        <div className="mb-5 flex flex-col sm:flex-row justify-between mt-2 sm:mt-10 items-stretch sm:items-start gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-8 w-8 bg-gray-200 dark:bg-slate-800 rounded animate-pulse"></div>
@@ -402,6 +402,17 @@ export default function CampaignAnalyticsPage() {
 
   const campaignType = hasLinkedIn ? 'linkedin' : hasEmail ? 'email' : hasWhatsApp ? 'whatsapp' : hasVoice ? 'voice' : 'mixed';
 
+  // Show only the numbers this campaign's channels can produce: a WhatsApp
+  // campaign has no opens, clicks or LinkedIn connections, and a wall of
+  // zeros for them read as "nothing worked". No recognised step = show all.
+  const knownChannel = hasLinkedIn || hasEmail || hasWhatsApp || hasVoice;
+  const showConnected = !knownChannel || hasLinkedIn || hasVoice;
+  const connectedLabel = hasLinkedIn ? 'Connected' : 'Calls answered';
+  const showDelivered = !knownChannel || hasEmail || hasWhatsApp;
+  const showOpens = !knownChannel || hasEmail;
+  // Replies per connection only means something on LinkedIn; elsewhere it is per message sent.
+  const replyBase = hasLinkedIn ? analytics.overview.connected : analytics.overview.sent;
+
   // Theme colors
   const theme = {
     bg: isDarkMode ? '#1644ad' : 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #DDD6FE 100%)',
@@ -418,9 +429,9 @@ export default function CampaignAnalyticsPage() {
   return (
     <div className="p-3 bg-[#F8F9FE] dark:bg-[#000724] h-full overflow-auto">
       {/* Header */}
-      <div className="mb-5 flex flex-col sm:flex-row justify-between mt-10 items-stretch sm:items-start gap-4">
+      <div className="mb-5 flex flex-col sm:flex-row justify-between mt-2 sm:mt-10 items-stretch sm:items-start gap-4">
         <div className="flex-1">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/campaigns')} className="h-8 w-8 text-[#1E293B] dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/campaigns')} aria-label="Back to campaigns" className="h-8 w-8 text-[#1E293B] dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800">
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex items-center gap-3 mb-3 mt-2">
@@ -434,7 +445,8 @@ export default function CampaignAnalyticsPage() {
               <div className="w-2 h-2 rounded-full mr-2 dark:!hidden" style={{ backgroundColor: analytics.campaign.status === 'running' ? '#10B981' : '#F59E0B' }} />
               {analytics.campaign.status}
             </Badge>
-            <LiveBadge isConnected={isConnected} showOffline className="font-semibold" />
+            {/* "Offline" beside "Paused" read as the system being down; Live shows only while it runs. */}
+            <LiveBadge isConnected={isConnected} className="font-semibold" />
             <p className="text-sm text-[#64748B] dark:text-slate-300">Created {new Date(analytics.campaign.created_at).toLocaleDateString()}</p>
           </div>
         </div>
@@ -461,13 +473,13 @@ export default function CampaignAnalyticsPage() {
       </div>
 
       {/* Quick Stats Row */}
-      <div className="flex gap-4 mb-6 flex-wrap items-stretch">
+      <div className="flex gap-x-4 gap-y-3 mb-6 flex-wrap items-stretch">
         {/* Total Leads */}
         <div
-          className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
+          className="w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
           onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=all`)}
         >
-          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[104px] sm:min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
@@ -492,10 +504,10 @@ export default function CampaignAnalyticsPage() {
 
         {/* Sent (Dynamic) */}
         <div
-          className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
+          className="w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
           onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=sent`)}
         >
-          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[104px] sm:min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
@@ -518,12 +530,12 @@ export default function CampaignAnalyticsPage() {
           </div>
         </div>
 
-        {/* Connected */}
-        <div
-          className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
+        {/* Connected — LinkedIn acceptances / answered calls; meaningless for email or WhatsApp. */}
+        {showConnected && <div
+          className="w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
           onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=connected`)}
         >
-          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[104px] sm:min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
@@ -535,7 +547,7 @@ export default function CampaignAnalyticsPage() {
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
                   <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                    Connected
+                    {connectedLabel}
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
                     {analytics.overview.connected}
@@ -544,14 +556,14 @@ export default function CampaignAnalyticsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Replied */}
         <div
-          className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
+          className="w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
           onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=replied`)}
         >
-          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 shadow-sm w-full flex flex-col h-full min-h-[104px] sm:min-h-[120px] transition-all duration-300 ease-out hover:shadow-md hover:scale-[1.02]">
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
@@ -563,7 +575,7 @@ export default function CampaignAnalyticsPage() {
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
                   <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                    Lead Contact Back
+                    Replied
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
                     {analytics.overview.replied}
@@ -865,6 +877,7 @@ export default function CampaignAnalyticsPage() {
                       ? ((item.connected + item.replied) / item.actions) * 100
                       : 0;
                   const safeRate = Number.isFinite(computedRate) ? computedRate : 0;
+                  const reachable = item.platform === 'linkedin' || item.platform === 'voice';
 
                   return (
                     <div key={item.platform} className="p-4 rounded-lg border border-[#E2E8F0] dark:border-blue-950/40 bg-white dark:bg-transparent">
@@ -880,33 +893,33 @@ export default function CampaignAnalyticsPage() {
                           </Avatar>
                           <div>
                             <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{config.name}</p>
-                            <p className="text-xs text-[#64748B] dark:text-slate-300">{item.actions > 0 ? 'Active' : 'Ready'}</p>
+                            <p className="text-xs text-[#64748B] dark:text-slate-300">{item.sent > 0 ? 'Sending' : 'Nothing sent yet'}</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-2 mb-3">
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-[color-mix(in_srgb,var(--tone)_60%,#000)] dark:text-[color-mix(in_srgb,var(--tone)_55%,#fff)]" style={{ '--tone': config.color } as React.CSSProperties}>{item.actions}</p>
-                          <p className="text-xs text-[#64748B] dark:text-slate-300">Actions</p>
-                        </div>
+                      {/* Per channel: what went out, who accepted / answered (LinkedIn, calls only), who replied.
+                          "Actions" repeated Sent, and the campaign-wide follow-up count sat under every channel. */}
+                      <div className={`grid ${reachable ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-3`}>
                         <div className="text-center">
                           <p className="text-lg font-bold text-green-600 dark:text-emerald-400">{item.sent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-slate-300">Sent</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">{item.platform === 'voice' ? 'Calls' : 'Sent'}</p>
                         </div>
+                        {reachable && (
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-blue-600 dark:text-sky-400">{item.connected}</p>
+                            <p className="text-xs text-[#64748B] dark:text-slate-300">{item.platform === 'voice' ? 'Answered' : 'Accepted'}</p>
+                          </div>
+                        )}
                         <div className="text-center">
-                          <p className="text-lg font-bold text-blue-600 dark:text-sky-400">{item.connected}</p>
-                          <p className="text-xs text-[#64748B] dark:text-slate-300">Connected</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{totalFollowupsSent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-slate-300">Follow-ups</p>
+                          <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{item.replied}</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Replied</p>
                         </div>
                       </div>
 
                       <div>
                         <div className="flex justify-between mb-1">
-                          <p className="text-xs text-[#64748B] dark:text-slate-300">Success Rate</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">{reachable ? (item.platform === 'voice' ? 'Answered or replied' : 'Accepted or replied') : 'Reply rate'}</p>
                           <p className="text-xs font-bold text-[color-mix(in_srgb,var(--tone)_60%,#000)] dark:text-[color-mix(in_srgb,var(--tone)_55%,#fff)]" style={{ '--tone': config.color } as React.CSSProperties}>{safeRate.toFixed(1)}%</p>
                         </div>
                         <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-600">
@@ -942,13 +955,13 @@ export default function CampaignAnalyticsPage() {
             </div>
             <div className="flex flex-col gap-4">
               {[
-                { label: 'Sent', value: analytics.overview.sent, icon: Send, color: '#6366F1' },
-                { label: 'Delivered', value: analytics.overview.delivered, icon: CheckCircle, color: '#10B981' },
-                { label: 'Opened', value: analytics.overview.opened, icon: ExternalLink, color: '#8B5CF6' },
-                { label: 'Clicked', value: analytics.overview.clicked, icon: MousePointerClick, color: '#EC4899' },
-                { label: 'Connected', value: analytics.overview.connected, icon: Linkedin, color: '#0A66C2' },
-                { label: 'Replied', value: analytics.overview.replied, icon: Reply, color: '#F59E0B' },
-              ].map((metric) => (
+                { label: 'Sent', value: analytics.overview.sent, icon: Send, color: '#6366F1', show: true },
+                { label: 'Delivered', value: analytics.overview.delivered, icon: CheckCircle, color: '#10B981', show: showDelivered },
+                { label: 'Opened', value: analytics.overview.opened, icon: ExternalLink, color: '#8B5CF6', show: showOpens },
+                { label: 'Clicked', value: analytics.overview.clicked, icon: MousePointerClick, color: '#EC4899', show: showOpens },
+                { label: connectedLabel, value: analytics.overview.connected, icon: Linkedin, color: '#0A66C2', show: showConnected },
+                { label: 'Replied', value: analytics.overview.replied, icon: Reply, color: '#F59E0B', show: true },
+              ].filter((m) => m.show).map((metric) => (
                 <div key={metric.label} className="flex justify-between items-center p-4 rounded-lg border border-[#E2E8F0] dark:border-blue-950/40 bg-white dark:bg-transparent">
                   <div className="flex items-center gap-4">
                     <Avatar className="w-9 h-9 dark:!bg-blue-500/20" style={{ backgroundColor: `${metric.color}20` }}>
@@ -977,12 +990,12 @@ export default function CampaignAnalyticsPage() {
             </div>
             <div className="flex flex-col gap-4">
               {[
-                { label: 'Delivery Rate', value: analytics.overview.sent ? ((analytics.overview.delivered / analytics.overview.sent) * 100) : (analytics.metrics.delivery_rate ?? 0), color: '#10B981' },
-                { label: 'Open Rate', value: analytics.overview.delivered ? ((analytics.overview.opened / analytics.overview.delivered) * 100) : (analytics.metrics.open_rate ?? 0), color: '#8B5CF6' },
-                { label: 'Click Rate', value: analytics.overview.opened ? ((analytics.overview.clicked / analytics.overview.opened) * 100) : (analytics.metrics.click_rate ?? 0), color: '#EC4899' },
-                { label: 'Connection Rate', value: analytics.overview.sent ? ((analytics.overview.connected / analytics.overview.sent) * 100) : (analytics.metrics.connection_rate ?? 0), color: '#0A66C2' },
-                { label: 'Reply Rate', value: analytics.overview.connected ? ((analytics.overview.replied / analytics.overview.connected) * 100) : (analytics.metrics.reply_rate ?? 0), color: '#F59E0B' },
-              ].map((rate) => (
+                { label: 'Delivery Rate', value: analytics.overview.sent ? ((analytics.overview.delivered / analytics.overview.sent) * 100) : (analytics.metrics.delivery_rate ?? 0), color: '#10B981', show: showDelivered },
+                { label: 'Open Rate', value: analytics.overview.delivered ? ((analytics.overview.opened / analytics.overview.delivered) * 100) : (analytics.metrics.open_rate ?? 0), color: '#8B5CF6', show: showOpens },
+                { label: 'Click Rate', value: analytics.overview.opened ? ((analytics.overview.clicked / analytics.overview.opened) * 100) : (analytics.metrics.click_rate ?? 0), color: '#EC4899', show: showOpens },
+                { label: hasLinkedIn ? 'Connection Rate' : 'Answer Rate', value: analytics.overview.sent ? ((analytics.overview.connected / analytics.overview.sent) * 100) : (analytics.metrics.connection_rate ?? 0), color: '#0A66C2', show: showConnected },
+                { label: 'Reply Rate', value: replyBase ? ((analytics.overview.replied / replyBase) * 100) : (analytics.metrics.reply_rate ?? 0), color: '#F59E0B', show: true },
+              ].filter((r) => r.show).map((rate) => (
                 <div key={rate.label}>
                   <div className="flex justify-between mb-2">
                     <p className="text-[#64748B] dark:text-slate-300">{rate.label}</p>
