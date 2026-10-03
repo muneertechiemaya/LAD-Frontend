@@ -8,6 +8,7 @@
 
 export type LifecycleStage =
   | 'new'
+  | 'contacted'
   | 'engaged'
   | 'qualified'
   | 'sah'

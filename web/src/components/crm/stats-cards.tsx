@@ -41,9 +41,9 @@ export interface StatsCardsProps {
 export default function StatsCards({ counts, selected, onSelect }: StatsCardsProps) {
   const cards: StatCard[] = [
     { key: 'all',       title: 'All Contacts', hint: 'Everyone in your funnel', value: counts.all,       Icon: Users,       bg: 'bg-blue-100 dark:bg-[#172560]',        ic: 'text-[#0B1957] dark:text-blue-200' },
-    { key: 'prospects', title: 'Prospects',    hint: 'Contacted, no interest yet', value: counts.prospects, Icon: Sparkles,    bg: 'bg-indigo-100 dark:bg-indigo-950/40',  ic: 'text-[#0B1957] dark:text-indigo-200' },
-    { key: 'leads',     title: 'Leads',        hint: 'Showed interest', value: counts.leads,     Icon: TrendingUp,  bg: 'bg-sky-100 dark:bg-sky-950/40',        ic: 'text-sky-700 dark:text-sky-200' },
-    { key: 'clients',   title: 'Clients',      hint: 'Became customers', value: counts.clients,   Icon: BadgeCheck,  bg: 'bg-emerald-50 dark:bg-emerald-950/40', ic: 'text-emerald-600' },
+    { key: 'prospects', title: 'Prospects',    hint: 'Not qualified yet', value: counts.prospects, Icon: Sparkles,    bg: 'bg-indigo-100 dark:bg-indigo-950/40',  ic: 'text-[#0B1957] dark:text-indigo-200' },
+    { key: 'leads',     title: 'Leads',        hint: 'Qualified or handed to your team', value: counts.leads,     Icon: TrendingUp,  bg: 'bg-sky-100 dark:bg-sky-950/40',        ic: 'text-sky-700 dark:text-sky-200' },
+    { key: 'clients',   title: 'Clients',      hint: 'Won', value: counts.clients,   Icon: BadgeCheck,  bg: 'bg-emerald-50 dark:bg-emerald-950/40', ic: 'text-emerald-600' },
   ];
 
   return (
