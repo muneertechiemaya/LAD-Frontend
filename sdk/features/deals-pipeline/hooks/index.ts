@@ -26,7 +26,7 @@ export {
   useUpdateLeadNote,
   useDeleteLeadNote,
 } from './useNotes';
-export { usePipelineData, usePipelineStats } from './usePipeline';
+export { usePipelineData, usePipelineStats, useLeadStageTotals } from './usePipeline';
 export { useStatuses, useSources, usePriorities } from './useReferenceData';
 export { useStages, useCreateStage, useUpdateStage, useDeleteStage, useReorderStages } from './useStages';
 export { useLeadTags, useAddTagToLead } from './useTags';

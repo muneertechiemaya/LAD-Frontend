@@ -520,7 +520,7 @@ function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
             phone: c.phone_e164 || undefined,
             icp_score: Math.round(conf * 100),
             match_level: match,
-            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ICP`,
+            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ideal customer`,
         };
     });
 }
@@ -3075,7 +3075,7 @@ export default function AdvancedSearchAIPage() {
             if (!res || res.success === false || res.error === 'no_active_icp') {
                 const msg = res?.error === 'no_active_icp'
                     ? "You haven't set up your ideal customer yet. Tap **Ideal customer** at the top of this page and answer a few questions (or fine-tune it in **Settings → Lead search**), then run this again."
-                    : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
+                    : "Couldn't finish the search for people who match your ideal customer. Please try again in a minute.";
                 setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
                 return;
             }
@@ -3106,7 +3106,7 @@ export default function AdvancedSearchAIPage() {
             if (n > 0) setTimeout(() => setShowPanel('leads'), 300);
         } catch (e: any) {
             setIsSearching(false);
-            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: `ICP search failed: ${e?.message || 'unknown error'}` } : m));
+            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: "Couldn't finish the search for people who match your ideal customer. Please try again in a minute." } : m));
         } finally {
             setBusy(false);
         }
@@ -5224,7 +5224,7 @@ export default function AdvancedSearchAIPage() {
 
                     const dms: any[] = (c.key_decision_makers || []).sort((a: any, b: any) => (b.icp_score || 0) - (a.icp_score || 0));
                     if (dms.length > 0) {
-                        parts.push(`**Key Decision Makers & ICP Scores:**`);
+                        parts.push(`**Key decision makers and how well each one fits:**`);
                         dms.slice(0, 6).forEach((dm: any) => {
                             // Same 0-1 vs 0-100 hazard as the lead badges: the ABM
                             // company_search path stamps a 0.8 float over the real
@@ -6304,7 +6304,7 @@ export default function AdvancedSearchAIPage() {
                         if (icpWasApplied) {
                             const strongCount = realLeads.filter(l => l.match_level === 'strong').length;
                             const moderateCount = realLeads.filter(l => l.match_level === 'moderate').length;
-                            finalText += `\n\n🎯 **ICP Qualification:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate - sorted by relevance.`;
+                            finalText += `\n\n🎯 **How well they match your ideal customer:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate - best matches first.`;
                         }
                     }
                     if (realLeads.length > 0) setTimeout(() => setShowPanel('leads'), 500);
@@ -7704,7 +7704,7 @@ export default function AdvancedSearchAIPage() {
                     {(!isMobile || messages.length === 0) && (
                         <button
                             onClick={() => setShowPlayground(true)}
-                            title="Configure AI context: company, ICP, sales script, etc."
+                            title="Tell the AI about your company, your ideal customer and your sales script"
                             className={`adv-icp-discover-btn absolute top-4 right-5 z-10 flex items-center gap-2 px-4 h-9 sm:h-10 rounded-full text-xs font-bold uppercase tracking-wider text-white !text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all shadow-md active:scale-[0.98] cursor-pointer outline-none border-none ${
                               Object.values(businessProfile).some((v) => v)
                                 ? 'opacity-100 ring-2 ring-emerald-500/50 dark:ring-emerald-400/40'
@@ -8471,7 +8471,7 @@ export default function AdvancedSearchAIPage() {
                                                         {!targetingFiltersActive && lead.icp_score === undefined && icpScoringPending && (
                                                           <span
                                                             className="adv-icp-pending inline-flex items-center gap-[5px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                                                            title="Scoring this lead against your ICP…"
+                                                            title="Checking how well this lead matches your ideal customer…"
                                                           >
                                                             <span className="adv-icp-pending-dot" />
                                                             Scoring
@@ -8790,10 +8790,10 @@ export default function AdvancedSearchAIPage() {
                               {/* Workflow panel header */}
                               <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
                                   <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
-                                      Campaign Accelerator
+                                      Your workflow
                                   </div>
                                   <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
-                                      Live preview of your outreach sequence
+                                      Live preview of every step, including outreach
                                   </div>
                               </div>
 
@@ -10190,7 +10190,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                     {card.nudge && (
                         <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-amber-600 dark:text-amber-400 mb-1.5">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
-                            This one&apos;s required to launch the Accelerator
+                            This one&apos;s required to launch the workflow
                         </div>
                     )}
                     {/* The question itself - highlighted in the same navy as the
@@ -10518,7 +10518,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                                   {leadsCount > 0
                                     ? `${leadsCount} Leads found`
                                     : filteredLeadsCount && filteredLeadsCount > 0
-                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
+                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (not a close enough match)`
                                       : '0 Leads found'}
                               </div>
                           </div>

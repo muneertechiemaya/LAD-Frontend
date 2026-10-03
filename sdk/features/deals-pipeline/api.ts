@@ -338,6 +338,28 @@ export async function getPipelineStats(filters?: LeadFilters): Promise<PipelineS
 }
 
 /**
+ * True lead count per stage across the whole pipeline, keyed by lower-case
+ * stage key. The board itself only loads a page of leads, so its column
+ * counts are page counts; /pipeline/stats sends no per-stage totals. This
+ * endpoint is a plain GROUP BY (no filters, no AI enrichment), so it is cheap.
+ */
+export async function getLeadStageTotals(): Promise<Record<string, number>> {
+  const response = await apiGet<any>("/api/deals-pipeline/leads/stats");
+  const rows: Array<{ stage?: string | null; count?: string | number }> = Array.isArray(response.data)
+    ? response.data
+    : Array.isArray(response.data?.data)
+      ? response.data.data
+      : [];
+  const totals: Record<string, number> = {};
+  for (const row of rows) {
+    if (row?.stage == null) continue;
+    const key = String(row.stage).toLowerCase();
+    totals[key] = (totals[key] ?? 0) + (Number(row.count) || 0);
+  }
+  return totals;
+}
+
+/**
  * Move lead to a different stage
  */
 export async function moveLeadToStage(
