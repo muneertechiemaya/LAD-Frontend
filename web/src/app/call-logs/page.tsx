@@ -1071,11 +1071,11 @@ export default function CallLogsPage() {
           <div className="flex items-center gap-2 mb-1">
             <ScrollText className="w-6 h-6 text-[#1E293B] dark:text-white" />
             <h1 className="text-2xl sm:text-4xl font-bold text-[#1E293B] dark:text-white">
-              Call Logs
+              Call history
             </h1>
           </div>
           <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] ml-2">
-            View and manage your call history
+            Every call Mr LAD made, how it ended and how interested each lead was
           </p>
         </div>
         {selected.size > 0 && (

@@ -334,6 +334,19 @@ export function CallLogsTable({
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
+  // Telephony end reasons in plain words; anything unlisted shows as sent.
+  const CALL_END_REASON: Record<string, string> = {
+    'agent hangup': 'Mr LAD ended the call',
+    'customer hangup': 'Lead hung up',
+    'user hangup': 'Lead hung up',
+    'receiver hangup': 'Lead hung up',
+    'silence timeout': 'Ended after a long silence',
+    'sip carrier timeout': "Couldn't reach the phone network",
+    'no answer': 'No answer',
+    'busy': 'Line busy',
+    'voicemail': 'Went to voicemail',
+    'failed': "Didn't connect",
+  };
   const getStatusReason = (item: CallLog): string | undefined => {
     const raw: any = (item as any)?.metadata;
     if (!raw) return undefined;
@@ -351,7 +364,8 @@ export function CallLogsTable({
     }
 
     if (reason && typeof reason === 'string') {
-      return reason.replace(/_/g, ' ');
+      const plain = reason.replace(/_/g, ' ').trim();
+      return CALL_END_REASON[plain.toLowerCase()] ?? plain.charAt(0).toUpperCase() + plain.slice(1);
     }
 
     return reason;
@@ -559,7 +573,7 @@ export function CallLogsTable({
       id: "response",
       header: "Response",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground capitalize">
+        <span className="text-sm text-muted-foreground">
           {getStatusReason(row.original) || "-"}
         </span>
       ),

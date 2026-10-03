@@ -59,6 +59,7 @@ import {
 } from '@lad/frontend-features/tasks';
 import { ChannelIcon } from '@/components/conversations/ChannelIcon';
 import { cn } from '@/lib/utils';
+import { useConnectedChannels } from '@/hooks/useConnectedChannels';
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────
 
@@ -437,10 +438,14 @@ export function MyTasks() {
   const [decisionNote, setDecisionNote] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   // ── Replies: oldest wait first — that's the one most at risk.
+  // A channel this workspace never connected is left out, so it can't show up as
+  // a red "Couldn't load" on the to-do list. 'unknown' (probe failed) stays in:
+  // an outage must still say so.
+  const { statuses: channelStatus } = useConnectedChannels();
   const replySources = [
-    { channel: 'waba' as const, q: waba },
-    { channel: 'personal' as const, q: personal },
-  ];
+    { channel: 'waba' as const, q: waba, status: channelStatus.waba },
+    { channel: 'personal' as const, q: personal, status: channelStatus.personal_whatsapp },
+  ].filter((s) => s.status !== 'disconnected');
   const repliesLoading = replySources.some((s) => s.q.isLoading);
   const repliesFailed = replySources.filter((s) => !s.q.isLoading && !s.q.isFetching && s.q.data === undefined);
   const replies: WaitingChat[] = useMemo(

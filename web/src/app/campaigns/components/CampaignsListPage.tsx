@@ -325,7 +325,7 @@ export default function CampaignsListPage() {
               ) : (
                 <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
               )}
-              <span className="truncate"><span className="hidden sm:inline">Custom </span>workflow</span>
+              <span className="truncate"><span className="sm:hidden">Workflow</span><span className="hidden sm:inline">Custom workflow</span></span>
             </Button>
           </div>
         </div>

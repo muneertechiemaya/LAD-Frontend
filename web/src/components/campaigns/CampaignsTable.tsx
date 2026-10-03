@@ -136,6 +136,12 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
       header: 'Leads',
       cell: ({ getValue }) => getValue() || 0,
     }),
+    // Whether a campaign is working is the first thing people look for here.
+    columnHelper.accessor((row) => Number(row.replied_count) || 0, {
+      id: 'replied_count',
+      header: 'Replies',
+      cell: ({ getValue }) => getValue() as number,
+    }),
     columnHelper.accessor(
       (row) => row.created_at as string,
       {
@@ -337,6 +343,10 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                         <div className="flex flex-wrap items-center gap-x-2 text-xs text-[#64748B] dark:text-slate-300">
                           <span>
                             {row.original.leads_count || 0} {(row.original.leads_count || 0) === 1 ? 'lead' : 'leads'}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span>
+                            {Number(row.original.replied_count) || 0} {Number(row.original.replied_count) === 1 ? 'reply' : 'replies'}
                           </span>
                           <span aria-hidden="true">·</span>
                           <span>Updated {render('last_activity')}</span>
