@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useQueryClient } from '@tanstack/react-query';
 import { safeStorage } from '@lad/shared/storage';
 import { Dialog, DialogTitle, DialogContent, DialogActions, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -194,6 +195,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
 }) => {
   const { toast } = useToast();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const statusOptions = useSelector(selectStatuses);
   const priorityOptions = useSelector(selectPriorities);
   const sourceOptions = useSelector(selectSources);
@@ -898,6 +900,8 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
       });
       // Use Redux action instead of direct API call
       await dispatch(updateLeadAction(lead.id, updateData as Partial<Lead>) as any);
+      // The list view renders a fetched page; refresh it so the row shows the save.
+      void queryClient.invalidateQueries({ queryKey: ['deals-pipeline', 'pipeline', 'leads'] });
       dispatch(setLeadCardEditingOverview(false));
       setNewTagInput(''); // Reset tag input on successful save
       showSnackbar('Lead updated successfully', 'success');

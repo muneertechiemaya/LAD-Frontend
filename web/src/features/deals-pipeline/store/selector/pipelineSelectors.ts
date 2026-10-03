@@ -193,9 +193,12 @@ interface PipelineActiveFilters {
 }
 
 // Get filtered leads based on UI filters and search query
-export const selectFilteredLeadsFromUI = createSelector(
-  [selectLeads, selectPipelineActiveFilters, selectPipelineSearchQuery],
-  (leads: Lead[], activeFilters: PipelineActiveFilters, searchQuery: string): Lead[] => {
+/**
+ * The pipeline's search + filter rules as a plain function, so the list view can
+ * apply the same rules to the page it fetched from the server (the selector
+ * below applies them to the board's loaded leads).
+ */
+export function filterLeadsForUI(leads: Lead[], activeFilters: PipelineActiveFilters, searchQuery: string): Lead[] {
     let filteredLeads = [...leads];
 
     const parseDateRangeBoundary = (value: string, boundary: 'start' | 'end'): Date | null => {
@@ -298,6 +301,12 @@ export const selectFilteredLeadsFromUI = createSelector(
     }
     
     return filteredLeads;
+}
+
+export const selectFilteredLeadsFromUI = createSelector(
+  [selectLeads, selectPipelineActiveFilters, selectPipelineSearchQuery],
+  (leads: Lead[], activeFilters: PipelineActiveFilters, searchQuery: string): Lead[] => {
+    return filterLeadsForUI(leads, activeFilters, searchQuery);
   }
 );
 
