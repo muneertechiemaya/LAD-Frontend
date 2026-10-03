@@ -832,8 +832,10 @@ export const MessageComposer = memo(function MessageComposer({
           <button
             onClick={()=>{ if (!disabled) setShowAttachMenu(v=>!v); }}
             disabled={disabled}
+            aria-label="Attach"
+            aria-expanded={showAttachMenu}
             className={cn(
-              'h-9 w-9 rounded-full flex items-center justify-center transition-all duration-200',
+              'h-9 w-9 max-lg:h-11 max-lg:w-11 rounded-full flex items-center justify-center transition-all duration-200',
               showAttachMenu
                 ? 'bg-emerald-600 dark:bg-emerald-500 text-white rotate-45'
                 : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'

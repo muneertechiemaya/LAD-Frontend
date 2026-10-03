@@ -67,6 +67,24 @@ function formatWhatsAppSidebarTimestamp(rawTimestamp?: string | number | Date | 
   return format(date, 'dd/MM/yyyy');
 }
 
+const STARTS_WITH_LETTER = new RegExp('^\\p{L}', 'u');
+
+/**
+ * "Naveen Dubai" → "ND", "Naveen" → "N". Only words that start with a letter
+ * count, so a contact whose name is their phone number gets "" (the caller
+ * shows a person icon) instead of "+4". The first two characters of the name
+ * read "NA" for Naveen — "not available".
+ */
+function contactInitials(name?: string | null): string {
+  return (name || '').trim().split(/\s+/).filter((w) => STARTS_WITH_LETTER.test(w))
+    .slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+}
+
+/** Enter or Space on a row that acts as a button. */
+function onActivateKey(e: React.KeyboardEvent, activate: () => void) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+}
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -1944,19 +1962,26 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              <div className="flex items-center gap-3 cursor-pointer" onClick={onTogglePanel}>
+              <div
+                className="flex items-center gap-3 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884]"
+                onClick={onTogglePanel}
+                onKeyDown={(e) => onActivateKey(e, () => onTogglePanel?.())}
+                role="button"
+                tabIndex={0}
+                aria-label={`Contact details for ${conversation.contact?.name || 'this contact'}`}
+              >
                 <Avatar className="w-10 h-10 shrink-0">
                   <AvatarImage src={conversation.contact?.avatar} />
                   <AvatarFallback 
                     style={{
                       '--av-bg-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 20%, white)`,
-                      '--av-text-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 70%, black)`,
+                      '--av-text-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 55%, black)`,
                       '--av-bg-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 30%, black)`,
                       '--av-text-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 80%, white)`,
                     } as React.CSSProperties}
                     className="bg-[var(--av-bg-light)] text-[var(--av-text-light)] dark:bg-[var(--av-bg-dark)] dark:text-[var(--av-text-dark)]"
                   >
-                    {conversation.contact?.name?.substring(0, 2).toUpperCase()}
+                    {contactInitials(conversation.contact?.name) || <User className="h-5 w-5" aria-hidden />}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -2156,6 +2181,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               <button
                 type="button"
                 onClick={() => setShowAttachMenu(v => !v)}
+                aria-label="Attach"
+                aria-expanded={showAttachMenu}
                 className={cn(
                   'w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
                   showAttachMenu ? 'text-[#00a884] rotate-45' : 'text-muted-foreground dark:text-[#8696a0] hover:text-foreground'
@@ -3742,7 +3769,7 @@ function WABASidebar({
         ) : (
           filteredConversations.map((conv) => {
             const isSelected = selectedId === conv.id;
-            const initials = conv.contact?.name?.substring(0, 2).toUpperCase();
+            const initials = contactInitials(conv.contact?.name);
             const convLastMessage = (conv as Conversation & { lastMessage?: Message }).lastMessage;
             let lastMsg = convLastMessage || conv.messages?.[conv.messages.length - 1];
             if (isSelected && activeLastMsg) {
@@ -3757,8 +3784,13 @@ function WABASidebar({
               <div
                 key={conv.id}
                 onClick={() => isSelectMode ? toggleSelectChat(conv.id) : onSelectConversation(conv.id)}
+                onKeyDown={(e) => onActivateKey(e, () => isSelectMode ? toggleSelectChat(conv.id) : onSelectConversation(conv.id))}
+                role={isSelectMode ? 'checkbox' : 'button'}
+                aria-checked={isSelectMode ? selectedChatIds.has(conv.id) : undefined}
+                aria-current={!isSelectMode && isSelected ? 'true' : undefined}
+                tabIndex={0}
                 className={cn(
-                  'flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl',
+                  'flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884]',
                   isSelectMode && selectedChatIds.has(conv.id)
                     ? 'bg-emerald-50 dark:bg-emerald-950/20'
                     : isSelected ? 'bg-[#d9fdd3] dark:bg-[#2e2f2f]' : 'hover:bg-zinc-100 dark:hover:bg-[#2e2f2f]/50'
@@ -3781,13 +3813,13 @@ function WABASidebar({
                   <AvatarFallback 
                     style={{
                       '--av-bg-light': `color-mix(in srgb, ${avatarColor} 20%, white)`,
-                      '--av-text-light': `color-mix(in srgb, ${avatarColor} 70%, black)`,
+                      '--av-text-light': `color-mix(in srgb, ${avatarColor} 55%, black)`,
                       '--av-bg-dark': `color-mix(in srgb, ${avatarColor} 30%, black)`,
                       '--av-text-dark': `color-mix(in srgb, ${avatarColor} 80%, white)`,
                     } as React.CSSProperties}
                     className="bg-[var(--av-bg-light)] text-[var(--av-text-light)] dark:bg-[var(--av-bg-dark)] dark:text-[var(--av-text-dark)]"
                   >
-                    {initials}
+                    {initials || <User className="h-5 w-5" aria-hidden />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0 py-1">
