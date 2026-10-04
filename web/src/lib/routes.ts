@@ -62,6 +62,7 @@ export const AUTH_ROUTES = [
   '/follow-ups',
   '/tasks',
   '/sales-playbook', // Discovery call script, scoring and customisation costing
+  '/content-studio', // Plan, write, schedule and measure social posts (Mr LAD's own scheduler)
   '/studio', // Tenant Studio — train the workspace: interview, ICP training, rehearsal, Tailor (admin/owner)
   '/instagram', // Instagram management (accounts, AI replies, comments, goals)
   '/admin', // Internal admin tooling (platform observability monitor, blog, submissions) - super-admin gated

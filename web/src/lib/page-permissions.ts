@@ -52,6 +52,9 @@ export const FEATURE = {
   // with underscores and feature_flags with hyphens, and which one a tenant is
   // provisioned under is decided outside this file.
   SALES_PLAYBOOK: ['sales_playbook', 'sales-playbook'],
+  // New: granted per tenant via the admin feature toggle. Both spellings for
+  // the same reason as the rows above.
+  CONTENT_STUDIO: ['content_studio', 'content-studio'],
 } as const;
 
 // `label` uses the sidebar's names (Home, Outreach, Inbox…) so an admin can
@@ -98,6 +101,7 @@ export const PAGE_PERMISSIONS: readonly PagePermission[] = [
   // today, while members already holding it keep it unrevocably.
   { key: 'view_pipeline',      label: 'Pipeline and Contacts', features: [...FEATURE.DEALS_PIPELINE, null] },
   { key: 'view_sales_playbook', label: 'Playbook', features: FEATURE.SALES_PLAYBOOK },
+  { key: 'view_content_studio', label: 'Content Studio', features: FEATURE.CONTENT_STUDIO },
 
   // UNGATED — kept, not dropped. These unlock pages with no feature gate and no
   // nav item, so no entitlement can be shown to justify hiding them. Removing a
