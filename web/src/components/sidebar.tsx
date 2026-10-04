@@ -33,6 +33,7 @@ import {
   Sparkles,
   Check,
   ListTodo,
+  CalendarRange,
 } from 'lucide-react';
 import { NavLink } from "./NavLink";
 import { MobileBottomNav } from "./layout/MobileBottomNav";
@@ -307,6 +308,16 @@ export function Sidebar() {
         "Multi-channel outreach campaigns with LinkedIn and Email automation.",
       requiredCapability: "view_campaigns",
       requiredFeature: FEATURE.CAMPAIGNS,
+    },
+    {
+      href: "/content-studio",
+      group: "grow",
+      label: "Content Studio",
+      icon: CalendarRange,
+      details:
+        "Plan, write, schedule and measure your daily social posts in one place.",
+      requiredCapability: "view_content_studio",
+      requiredFeature: FEATURE.CONTENT_STUDIO,
     },
     {
       href: "/make-call",
