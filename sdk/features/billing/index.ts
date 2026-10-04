@@ -66,6 +66,7 @@ export {
   useWalletBalanceWithTransactions,
   useCreditPackages,
   useStripeCheckout,
+  useWalletUsageAnalytics,
   // Backward compatibility aliases
   useWalletBalance,
   useWalletBalanceLegacy,
