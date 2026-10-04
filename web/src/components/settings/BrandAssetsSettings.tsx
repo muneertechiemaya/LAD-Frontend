@@ -691,7 +691,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                 <button
                   onClick={handleConnect}
                   disabled={connecting || !connectEmail.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B1957] hover:bg-[#152a7a] disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 bg-[#0B1957] hover:bg-[#152a7a] disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   <FolderOpen className="w-4 h-4" />
                   {connecting ? 'Creating your folder…' : 'Add'}
@@ -736,7 +736,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                 <button
                   onClick={handleManualSync}
                   disabled={syncing || checking}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B1957] hover:bg-[#152a7a] disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 bg-[#0B1957] hover:bg-[#152a7a] disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Syncing…' : 'Sync now'}

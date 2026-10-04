@@ -669,7 +669,7 @@ export function AgentForm({
               <MessageSquare className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <CardTitle className="text-lg">Rules</CardTitle>
+              <CardTitle className="text-lg">Boundaries</CardTitle>
               <CardDescription>What the agent must always, or never, do</CardDescription>
             </div>
           </div>
