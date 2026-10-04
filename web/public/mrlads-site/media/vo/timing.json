@@ -1,0 +1,896 @@
+{
+ "voice": "Kokoro am_michael (kokoro-v1.0 ONNX, en-us), speed 1.05, one take per phrase",
+ "encode": "mono; Opus 48k in WebM, AAC-LC 48k in M4A; peak limiter at -1.5 dBFS",
+ "gainDb": 4.82,
+ "clips": {
+  "pain.b1": {
+   "beats": [
+    "pain.b1"
+   ],
+   "dur": 4.3,
+   "speechEnd": 3.743,
+   "cues": [
+    {
+     "start": 0.4,
+     "end": 2.29,
+     "text": "Hi, I'm Mr LAD.",
+     "beat": "pain.b1"
+    },
+    {
+     "start": 2.36,
+     "end": 4.3,
+     "text": "I'd have answered that buyer.",
+     "beat": "pain.b1"
+    }
+   ]
+  },
+  "pain.b2": {
+   "beats": [
+    "pain.b2"
+   ],
+   "dur": 5.8,
+   "speechEnd": 4.08,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.75,
+     "text": "I don't forget to follow up.",
+     "beat": "pain.b2"
+    },
+    {
+     "start": 2.82,
+     "end": 4.68,
+     "text": "It's my whole job.",
+     "beat": "pain.b2"
+    }
+   ]
+  },
+  "demo.b1": {
+   "beats": [
+    "demo.b1"
+   ],
+   "dur": 5.4,
+   "speechEnd": 4.871,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 5.4,
+     "text": "Pick who you sell to, pick a city,\nand press Run it.",
+     "beat": "demo.b1"
+    }
+   ]
+  },
+  "demo.b2": {
+   "beats": [
+    "demo.b2"
+   ],
+   "dur": 4.4,
+   "speechEnd": 3.975,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.05,
+     "text": "It's only a sample.",
+     "beat": "demo.b2"
+    },
+    {
+     "start": 2.12,
+     "end": 4.4,
+     "text": "No real buyer gets a message.",
+     "beat": "demo.b2"
+    }
+   ]
+  },
+  "tour.s1": {
+   "beats": [
+    "tour.s1"
+   ],
+   "dur": 5.0,
+   "speechEnd": 3.856,
+   "cues": [
+    {
+     "start": 0.6,
+     "end": 2.26,
+     "text": "Your team's gone home.",
+     "beat": "tour.s1"
+    },
+    {
+     "start": 2.33,
+     "end": 4.456,
+     "text": "I'm finding buyers who fit.",
+     "beat": "tour.s1"
+    }
+   ]
+  },
+  "tour.s2": {
+   "beats": [
+    "tour.s2"
+   ],
+   "dur": 5.3,
+   "speechEnd": 4.872,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.6,
+     "text": "First, a short note\nto Ahmed on LinkedIn.",
+     "beat": "tour.s2"
+    },
+    {
+     "start": 3.67,
+     "end": 5.3,
+     "text": "From your own account.",
+     "beat": "tour.s2"
+    }
+   ]
+  },
+  "tour.s3": {
+   "beats": [
+    "tour.s3"
+   ],
+   "dur": 5.7,
+   "speechEnd": 4.687,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.2,
+     "text": "No reply.\nI don't take it personally.",
+     "beat": "tour.s3"
+    },
+    {
+     "start": 3.27,
+     "end": 5.287,
+     "text": "You picked WhatsApp next.",
+     "beat": "tour.s3"
+    }
+   ]
+  },
+  "tour.s4": {
+   "beats": [
+    "tour.s4"
+   ],
+   "dur": 5.6,
+   "speechEnd": 4.927,
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 1.41,
+     "text": "Ahmed's answered.",
+     "beat": "tour.s4"
+    },
+    {
+     "start": 1.48,
+     "end": 5.527,
+     "text": "Now, is he serious?\nPolite isn't the same as interested.",
+     "beat": "tour.s4"
+    }
+   ]
+  },
+  "tour.s5": {
+   "beats": [
+    "tour.s5"
+   ],
+   "dur": 7.3,
+   "speechEnd": 5.728,
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 4.37,
+     "text": "Ahmed's ready for a call.\nMy favourite part: I stop.",
+     "beat": "tour.s5"
+    },
+    {
+     "start": 4.44,
+     "end": 6.328,
+     "text": "Layla gets a summary.",
+     "beat": "tour.s5"
+    }
+   ]
+  },
+  "tour.s6": {
+   "beats": [
+    "tour.s6"
+   ],
+   "dur": 5.8,
+   "speechEnd": 4.475,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.06,
+     "text": "Morning, Layla. Ahmed's all yours.",
+     "beat": "tour.s6"
+    },
+    {
+     "start": 3.13,
+     "end": 5.075,
+     "text": "Back to my other leads.",
+     "beat": "tour.s6"
+    }
+   ]
+  },
+  "handoff.b1": {
+   "beats": [
+    "handoff.b1"
+   ],
+   "dur": 5.3,
+   "speechEnd": 4.908,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.19,
+     "text": "Noura asked for the price.",
+     "beat": "handoff.b1"
+    },
+    {
+     "start": 2.26,
+     "end": 5.3,
+     "text": "I got the details,\nthen stepped aside.",
+     "beat": "handoff.b1"
+    }
+   ]
+  },
+  "handoff.b2": {
+   "beats": [
+    "handoff.b2"
+   ],
+   "dur": 5.1,
+   "speechEnd": 4.72,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.71,
+     "text": "You decide when I stop.",
+     "beat": "handoff.b2"
+    },
+    {
+     "start": 2.78,
+     "end": 5.1,
+     "text": "A person always takes it from there.",
+     "beat": "handoff.b2"
+    }
+   ]
+  },
+  "book.b1": {
+   "beats": [
+    "book.b1"
+   ],
+   "dur": 4.8,
+   "speechEnd": 4.428,
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 1.63,
+     "text": "That was my night.",
+     "beat": "book.b1"
+    },
+    {
+     "start": 1.7,
+     "end": 4.8,
+     "text": "Found, followed up,\nqualified, handed over.",
+     "beat": "book.b1"
+    }
+   ]
+  },
+  "book.b2": {
+   "beats": [
+    "book.b2"
+   ],
+   "dur": 5.7,
+   "speechEnd": 4.373,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.77,
+     "text": "Want that on your own leads?",
+     "beat": "book.b2"
+    },
+    {
+     "start": 2.84,
+     "end": 4.973,
+     "text": "Book a 20-minute demo.",
+     "beat": "book.b2"
+    }
+   ]
+  },
+  "pain": {
+   "beats": [
+    "pain.b1",
+    "pain.b2"
+   ],
+   "dur": 10.1,
+   "speechEnd": 8.38,
+   "cues": [
+    {
+     "start": 0.4,
+     "end": 2.29,
+     "text": "Hi, I'm Mr LAD.",
+     "beat": "pain.b1"
+    },
+    {
+     "start": 2.36,
+     "end": 4.3,
+     "text": "I'd have answered that buyer.",
+     "beat": "pain.b1"
+    },
+    {
+     "start": 4.6,
+     "end": 7.05,
+     "text": "I don't forget to follow up.",
+     "beat": "pain.b2"
+    },
+    {
+     "start": 7.12,
+     "end": 8.98,
+     "text": "It's my whole job.",
+     "beat": "pain.b2"
+    }
+   ]
+  },
+  "demo": {
+   "beats": [
+    "demo.b1",
+    "demo.b2"
+   ],
+   "dur": 9.8,
+   "speechEnd": 9.375,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 5.4,
+     "text": "Pick who you sell to, pick a city,\nand press Run it.",
+     "beat": "demo.b1"
+    },
+    {
+     "start": 5.7,
+     "end": 7.45,
+     "text": "It's only a sample.",
+     "beat": "demo.b2"
+    },
+    {
+     "start": 7.52,
+     "end": 9.8,
+     "text": "No real buyer gets a message.",
+     "beat": "demo.b2"
+    }
+   ]
+  },
+  "handoff": {
+   "beats": [
+    "handoff.b1",
+    "handoff.b2"
+   ],
+   "dur": 10.4,
+   "speechEnd": 10.02,
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.19,
+     "text": "Noura asked for the price.",
+     "beat": "handoff.b1"
+    },
+    {
+     "start": 2.26,
+     "end": 5.3,
+     "text": "I got the details,\nthen stepped aside.",
+     "beat": "handoff.b1"
+    },
+    {
+     "start": 5.6,
+     "end": 8.01,
+     "text": "You decide when I stop.",
+     "beat": "handoff.b2"
+    },
+    {
+     "start": 8.08,
+     "end": 10.4,
+     "text": "A person always takes it from there.",
+     "beat": "handoff.b2"
+    }
+   ]
+  },
+  "book": {
+   "beats": [
+    "book.b1",
+    "book.b2"
+   ],
+   "dur": 10.5,
+   "speechEnd": 9.173,
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 1.63,
+     "text": "That was my night.",
+     "beat": "book.b1"
+    },
+    {
+     "start": 1.7,
+     "end": 4.8,
+     "text": "Found, followed up,\nqualified, handed over.",
+     "beat": "book.b1"
+    },
+    {
+     "start": 5.1,
+     "end": 7.57,
+     "text": "Want that on your own leads?",
+     "beat": "book.b2"
+    },
+    {
+     "start": 7.64,
+     "end": 9.773,
+     "text": "Book a 20-minute demo.",
+     "beat": "book.b2"
+    }
+   ]
+  }
+ },
+ "beats": {
+  "pain.b1": {
+   "dur": 4.3,
+   "speechEnd": 3.743,
+   "phrases": [
+    {
+     "text": "Hi, I'm Mister Lad.",
+     "on": 0.4,
+     "off": 1.709,
+     "phonemes": "hˈaɪ, aɪm mˈɪstɚ lˈæd."
+    },
+    {
+     "text": "I'd have answered that buyer.",
+     "on": 2.36,
+     "off": 3.743,
+     "phonemes": "aɪd hæv ˈænsɚd ðæt bˈaɪɚ."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.4,
+     "end": 2.29,
+     "text": "Hi, I'm Mr LAD."
+    },
+    {
+     "start": 2.36,
+     "end": 4.3,
+     "text": "I'd have answered that buyer."
+    }
+   ]
+  },
+  "pain.b2": {
+   "dur": 5.8,
+   "speechEnd": 4.08,
+   "phrases": [
+    {
+     "text": "I don't forget to follow up.",
+     "on": 0.3,
+     "off": 1.721,
+     "phonemes": "aɪ dˈoʊnt fɚɡˈɛt tə fˈɑːloʊ ˈʌp."
+    },
+    {
+     "text": "It's my whole job.",
+     "on": 2.82,
+     "off": 4.08,
+     "phonemes": "ɪts maɪ hˈoʊl dʒˈɑːb."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.75,
+     "text": "I don't forget to follow up."
+    },
+    {
+     "start": 2.82,
+     "end": 4.68,
+     "text": "It's my whole job."
+    }
+   ]
+  },
+  "demo.b1": {
+   "dur": 5.4,
+   "speechEnd": 4.871,
+   "phrases": [
+    {
+     "text": "Pick who you sell to,",
+     "on": 0.3,
+     "off": 1.374,
+     "phonemes": "pˈɪk hˌuː juː sˈɛl tuː,"
+    },
+    {
+     "text": "pick a city,",
+     "on": 1.87,
+     "off": 2.642,
+     "phonemes": "pˈɪk ɐ sˈɪɾi,"
+    },
+    {
+     "text": "and press",
+     "on": 3.2,
+     "off": 3.866,
+     "phonemes": "ænd pɹˈɛs"
+    },
+    {
+     "text": "Run it.",
+     "on": 4.26,
+     "off": 4.871,
+     "phonemes": "ɹˈʌn ɪt."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 5.4,
+     "text": "Pick who you sell to, pick a city,\nand press Run it."
+    }
+   ]
+  },
+  "demo.b2": {
+   "dur": 4.4,
+   "speechEnd": 3.975,
+   "phrases": [
+    {
+     "text": "It's only a sample.",
+     "on": 0.3,
+     "off": 1.522,
+     "phonemes": "ɪts ˈoʊnli ɐ sˈæmpəl."
+    },
+    {
+     "text": "No real buyer gets a message.",
+     "on": 2.12,
+     "off": 3.975,
+     "phonemes": "nˈoʊ ɹˈiːəl bˈaɪɚ ɡˈɛts ɐ mˈɛsɪdʒ."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.05,
+     "text": "It's only a sample."
+    },
+    {
+     "start": 2.12,
+     "end": 4.4,
+     "text": "No real buyer gets a message."
+    }
+   ]
+  },
+  "tour.s1": {
+   "dur": 5.0,
+   "speechEnd": 3.856,
+   "phrases": [
+    {
+     "text": "Your team's gone home.",
+     "on": 0.6,
+     "off": 1.829,
+     "phonemes": "jʊɹ tˈiːmz ɡɔn hˈoʊm."
+    },
+    {
+     "text": "I'm finding buyers who fit.",
+     "on": 2.33,
+     "off": 3.856,
+     "phonemes": "aɪm fˈaɪndɪŋ bˈaɪɚz hˌuː fˈɪt."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.6,
+     "end": 2.26,
+     "text": "Your team's gone home."
+    },
+    {
+     "start": 2.33,
+     "end": 4.456,
+     "text": "I'm finding buyers who fit."
+    }
+   ]
+  },
+  "tour.s2": {
+   "dur": 5.3,
+   "speechEnd": 4.872,
+   "phrases": [
+    {
+     "text": "First,",
+     "on": 0.3,
+     "off": 0.862,
+     "phonemes": "fˈɜːst,"
+    },
+    {
+     "text": "a short note to Ahmed on LinkedIn.",
+     "on": 1.16,
+     "off": 3.069,
+     "phonemes": "ɐ ʃˈɔːɹt nˈoʊt tʊ ˈɑːmɛd ˌɔn lˈɪŋkt ˈɪn."
+    },
+    {
+     "text": "From your own account.",
+     "on": 3.67,
+     "off": 4.872,
+     "phonemes": "fɹʌm jʊɹ ˈoʊn ɐkˈaʊnt."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.6,
+     "text": "First, a short note\nto Ahmed on LinkedIn."
+    },
+    {
+     "start": 3.67,
+     "end": 5.3,
+     "text": "From your own account."
+    }
+   ]
+  },
+  "tour.s3": {
+   "dur": 5.7,
+   "speechEnd": 4.687,
+   "phrases": [
+    {
+     "text": "No reply.",
+     "on": 0.3,
+     "off": 1.203,
+     "phonemes": "nˈoʊ ɹᵻplˈaɪ."
+    },
+    {
+     "text": "I don't take it personally.",
+     "on": 1.45,
+     "off": 2.862,
+     "phonemes": "aɪ dˈoʊnt tˈeɪk ɪt pˈɜːsənəli."
+    },
+    {
+     "text": "You picked WhatsApp next.",
+     "on": 3.27,
+     "off": 4.687,
+     "phonemes": "juː pˈɪkt wʌts ˈæp nˈɛkst."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.2,
+     "text": "No reply.\nI don't take it personally."
+    },
+    {
+     "start": 3.27,
+     "end": 5.287,
+     "text": "You picked WhatsApp next."
+    }
+   ]
+  },
+  "tour.s4": {
+   "dur": 5.6,
+   "speechEnd": 4.927,
+   "phrases": [
+    {
+     "text": "Ahmed's answered.",
+     "on": 0.2,
+     "off": 1.181,
+     "phonemes": "ˈɑːmɛdz ˈænsɚd."
+    },
+    {
+     "text": "Now, is he serious?",
+     "on": 1.48,
+     "off": 2.568,
+     "phonemes": "nˈaʊ, ɪz hiː sˈɪɹiəs?"
+    },
+    {
+     "text": "Polite isn't the same as interested.",
+     "on": 3.02,
+     "off": 4.927,
+     "phonemes": "pəlˈaɪt ˌɪzənt ðə sˈeɪm æz ˈɪntɹɛstᵻd."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 1.41,
+     "text": "Ahmed's answered."
+    },
+    {
+     "start": 1.48,
+     "end": 5.527,
+     "text": "Now, is he serious?\nPolite isn't the same as interested."
+    }
+   ]
+  },
+  "tour.s5": {
+   "dur": 7.3,
+   "speechEnd": 5.728,
+   "phrases": [
+    {
+     "text": "Ahmed's ready for a call.",
+     "on": 0.2,
+     "off": 1.624,
+     "phonemes": "ˈɑːmɛdz ɹˈɛdi fɚɹə kˈɔːl."
+    },
+    {
+     "text": "My favourite part:",
+     "on": 1.97,
+     "off": 3.102,
+     "phonemes": "maɪ fˈeɪvɹɪt pˈɑːɹt:"
+    },
+    {
+     "text": "I stop.",
+     "on": 3.31,
+     "off": 4.04,
+     "phonemes": "aɪ stˈɑːp."
+    },
+    {
+     "text": "Layla gets a summary.",
+     "on": 4.44,
+     "off": 5.728,
+     "phonemes": "lˈeɪlə ɡˈɛts ɐ sˈʌmɚɹi."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 4.37,
+     "text": "Ahmed's ready for a call.\nMy favourite part: I stop."
+    },
+    {
+     "start": 4.44,
+     "end": 6.328,
+     "text": "Layla gets a summary."
+    }
+   ]
+  },
+  "tour.s6": {
+   "dur": 5.8,
+   "speechEnd": 4.475,
+   "phrases": [
+    {
+     "text": "Morning, Layla.",
+     "on": 0.3,
+     "off": 1.241,
+     "phonemes": "mˈɔːɹnɪŋ, lˈeɪlə."
+    },
+    {
+     "text": "Ahmed's all yours.",
+     "on": 1.54,
+     "off": 2.783,
+     "phonemes": "ˈɑːmɛdz ˈɔːl jˈɔːɹz."
+    },
+    {
+     "text": "Back to my other leads.",
+     "on": 3.13,
+     "off": 4.475,
+     "phonemes": "bˈæk tə maɪ ˈʌðɚ lˈiːdz."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 3.06,
+     "text": "Morning, Layla. Ahmed's all yours."
+    },
+    {
+     "start": 3.13,
+     "end": 5.075,
+     "text": "Back to my other leads."
+    }
+   ]
+  },
+  "handoff.b1": {
+   "dur": 5.3,
+   "speechEnd": 4.908,
+   "phrases": [
+    {
+     "text": "Noura asked for the price.",
+     "on": 0.3,
+     "off": 1.807,
+     "phonemes": "nˈuːɹə ˈæskt fɚðə pɹˈaɪs."
+    },
+    {
+     "text": "I got the details,",
+     "on": 2.26,
+     "off": 3.442,
+     "phonemes": "aɪ ɡɑːt ðə diːtˈeɪlz,"
+    },
+    {
+     "text": "then stepped aside.",
+     "on": 3.74,
+     "off": 4.908,
+     "phonemes": "ðˈɛn stˈɛpt ɐsˈaɪd."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.19,
+     "text": "Noura asked for the price."
+    },
+    {
+     "start": 2.26,
+     "end": 5.3,
+     "text": "I got the details,\nthen stepped aside."
+    }
+   ]
+  },
+  "handoff.b2": {
+   "dur": 5.1,
+   "speechEnd": 4.72,
+   "phrases": [
+    {
+     "text": "You decide when I stop.",
+     "on": 0.3,
+     "off": 1.732,
+     "phonemes": "juː dᵻsˈaɪd wɛn aɪ stˈɑːp."
+    },
+    {
+     "text": "A person always takes it from there.",
+     "on": 2.78,
+     "off": 4.72,
+     "phonemes": "ɐ pˈɜːsən ˈɔːlweɪz tˈeɪks ɪt fɹʌm ðˈɛɹ."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.71,
+     "text": "You decide when I stop."
+    },
+    {
+     "start": 2.78,
+     "end": 5.1,
+     "text": "A person always takes it from there."
+    }
+   ]
+  },
+  "book.b1": {
+   "dur": 4.8,
+   "speechEnd": 4.428,
+   "phrases": [
+    {
+     "text": "That was my night.",
+     "on": 0.2,
+     "off": 1.304,
+     "phonemes": "ðæt wʌz maɪ nˈaɪt."
+    },
+    {
+     "text": "Found, followed up, qualified, handed over.",
+     "on": 1.7,
+     "off": 4.428,
+     "phonemes": "fˈaʊnd, fˈɑːloʊd ˈʌp, kwˈɔlᵻfˌaɪd, hˈændᵻd ˈoʊvɚ."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.2,
+     "end": 1.63,
+     "text": "That was my night."
+    },
+    {
+     "start": 1.7,
+     "end": 4.8,
+     "text": "Found, followed up,\nqualified, handed over."
+    }
+   ]
+  },
+  "book.b2": {
+   "dur": 5.7,
+   "speechEnd": 4.373,
+   "phrases": [
+    {
+     "text": "Want that on your own leads?",
+     "on": 0.3,
+     "off": 1.842,
+     "phonemes": "wˈɔnt ðæt ˌɔn jʊɹ ˈoʊn lˈiːdz?"
+    },
+    {
+     "text": "Book a twenty-minute demo.",
+     "on": 2.84,
+     "off": 4.373,
+     "phonemes": "bˈʊk ɐ twˈɛntimˈɪnɪt dˈɛmoʊ."
+    }
+   ],
+   "cues": [
+    {
+     "start": 0.3,
+     "end": 2.77,
+     "text": "Want that on your own leads?"
+    },
+    {
+     "start": 2.84,
+     "end": 4.973,
+     "text": "Book a 20-minute demo."
+    }
+   ]
+  }
+ }
+}
