@@ -486,7 +486,7 @@ export default function CampaignLeadsPage() {
                 {campaign?.name || 'Campaign Leads'}
               </h4>
               <p className="text-sm text-slate-500 dark:text-slate-300">
-                {total} {filterParams !== 'all' ? FILTER_LABELS[filterParams] ?? filterParams : ''} leads
+                {total} {filterParams !== 'all' ? FILTER_LABELS[filterParams] ?? filterParams : ''} {total === 1 ? 'lead' : 'leads'}
                 {total > filteredLeads.length && ` (showing ${filteredLeads.length})`}
               </p>
             </div>
@@ -499,9 +499,10 @@ export default function CampaignLeadsPage() {
         <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar scroll-fade-x lg:flex-wrap lg:overflow-visible">
           {[
             { key: 'all', label: 'All Leads' },
-            { key: 'sent', label: 'Connections Sent' },
+            // Every channel's first send (invite, message, email), not only LinkedIn connections.
+            { key: 'sent', label: 'Contacted' },
             { key: 'connected', label: 'Connected' },
-            { key: 'replied', label: 'Lead Contact Back' },
+            { key: 'replied', label: 'Replied' },
           ].map(tab => (
             <button
               key={tab.key}

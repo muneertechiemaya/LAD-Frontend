@@ -166,6 +166,8 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
           <button
             className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 dark:text-white rounded"
             onClick={(e) => { e.stopPropagation(); onMenuOpen(e, row.original); }}
+            aria-label={`Actions for ${row.original.name || 'this campaign'}`}
+            aria-haspopup="menu"
           >
             <MoreVertical className="h-4 w-4" />
           </button>

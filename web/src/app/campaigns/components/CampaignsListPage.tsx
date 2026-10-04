@@ -295,7 +295,7 @@ export default function CampaignsListPage() {
               {isNavigating && navigatingTo === "/conversations/templates/create" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
               Template
             </Button>
@@ -308,7 +308,7 @@ export default function CampaignsListPage() {
               {isNavigating && navigatingTo === "/onboarding/advanced-search-ai" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
               Campaign
             </Button>
@@ -323,7 +323,7 @@ export default function CampaignsListPage() {
               {isNavigating && navigatingTo === "/campaigns/workflow" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1 max-sm:hidden" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
               <span className="truncate"><span className="sm:hidden">Workflow</span><span className="hidden sm:inline">Custom workflow</span></span>
             </Button>
