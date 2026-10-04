@@ -205,7 +205,9 @@ const INTEGRATIONS: IntegrationCard[] = [
   },
 ];
 
-type ConnectionStatus = 'connected' | 'disconnected' | 'loading';
+// 'unknown' = the check itself failed. Shown as "Couldn't check", never as
+// "Disconnected": a 503 from a service is not the same as no account.
+type ConnectionStatus = 'connected' | 'disconnected' | 'loading' | 'unknown';
 
 export const IntegrationsSettings: React.FC = () => {
   const router = useRouter();
@@ -304,12 +306,17 @@ export const IntegrationsSettings: React.FC = () => {
   }, []);
 
   const refreshStatuses = useCallback(() => {
+    // The checks below run one after another; mark them all as checking now so
+    // a connected account further down never shows "Connect Now" while it waits its turn.
+    for (const id of ['whatsapp-personal', 'whatsapp-ai', 'google', 'microsoft', 'instagram', 'linkedin', 'gohighlevel', 'zoho', 'mindbody', 'routemagic']) {
+      setStatus(id, 'loading');
+    }
     const checkAll = async () => {
       // WhatsApp Personal
       setStatus('whatsapp-personal', 'loading');
       try {
         const res = await fetchWithTenant('/api/personal-whatsapp/accounts');
-        if (!res.ok) { setStatus('whatsapp-personal', 'disconnected'); }
+        if (!res.ok) { setStatus('whatsapp-personal', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
@@ -330,13 +337,13 @@ export const IntegrationsSettings: React.FC = () => {
             } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
-      } catch { setStatus('whatsapp-personal', 'disconnected'); }
+      } catch { setStatus('whatsapp-personal', 'unknown'); }
 
       // WhatsApp AI
       setStatus('whatsapp-ai', 'loading');
       try {
         const res = await fetchWithTenant('/api/whatsapp-conversations/admin/whatsapp-accounts');
-        if (!res.ok) { setStatus('whatsapp-ai', 'disconnected'); }
+        if (!res.ok) { setStatus('whatsapp-ai', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
@@ -355,29 +362,29 @@ export const IntegrationsSettings: React.FC = () => {
             } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
-      } catch { setStatus('whatsapp-ai', 'disconnected'); }
+      } catch { setStatus('whatsapp-ai', 'unknown'); }
 
       // Google
       setStatus('google', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/email/google/status', { method: 'POST' });
-        if (!res.ok) { setStatus('google', 'disconnected'); }
+        if (!res.ok) { setStatus('google', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('google', data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('google', 'disconnected'); }
+      } catch { setStatus('google', 'unknown'); }
 
       // Microsoft
       setStatus('microsoft', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/email/microsoft/status', { method: 'POST' });
-        if (!res.ok) { setStatus('microsoft', 'disconnected'); }
+        if (!res.ok) { setStatus('microsoft', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('microsoft', data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('microsoft', 'disconnected'); }
+      } catch { setStatus('microsoft', 'unknown'); }
 
       // Instagram - hits the standalone LAD-Instagram-Comms service via
       // the Next.js proxy. "Connected" = at least one active (non-deleted)
@@ -385,7 +392,7 @@ export const IntegrationsSettings: React.FC = () => {
       setStatus('instagram', 'loading');
       try {
         const res = await fetchWithTenant('/api/instagram-conversations/accounts');
-        if (!res.ok) { setStatus('instagram', 'disconnected'); }
+        if (!res.ok) { setStatus('instagram', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
@@ -394,47 +401,48 @@ export const IntegrationsSettings: React.FC = () => {
           );
           setStatus('instagram', connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('instagram', 'disconnected'); }
+      } catch { setStatus('instagram', 'unknown'); }
 
       // LinkedIn
       setStatus('linkedin', 'loading');
       try {
         const res = await fetchWithTenant('/api/campaigns/linkedin/accounts');
-        if (!res.ok) { setStatus('linkedin', 'disconnected'); }
+        if (!res.ok) { setStatus('linkedin', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
           const connected = accounts.some((a: any) => a.status === 'connected' || a.status === 'active');
           setStatus('linkedin', connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('linkedin', 'disconnected'); }
+      } catch { setStatus('linkedin', 'unknown'); }
 
       // GoHighLevel
       setStatus('gohighlevel', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/gohighlevel/status');
-        if (!res.ok) { setStatus('gohighlevel', 'disconnected'); }
+        if (!res.ok) { setStatus('gohighlevel', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('gohighlevel', data?.data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('gohighlevel', 'disconnected'); }
+      } catch { setStatus('gohighlevel', 'unknown'); }
 
       // Zoho CRM
       setStatus('zoho', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/zoho/status');
-        if (!res.ok) { setStatus('zoho', 'disconnected'); }
+        if (!res.ok) { setStatus('zoho', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('zoho', data?.data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('zoho', 'disconnected'); }
+      } catch { setStatus('zoho', 'unknown'); }
 
       // MindBody
       try {
         setStatus('mindbody', 'loading');
         const r = await fetchWithTenant('/api/social-integration/mindbody/status', { method: 'POST' });
+        if (!r.ok && r.status !== 404) throw new Error(`status ${r.status}`); // -> 'unknown' below
         const data = await r.json();
         setStatus('mindbody', data?.connected ? 'connected' : 'disconnected');
         if (data?.connected) {
@@ -445,13 +453,14 @@ export const IntegrationsSettings: React.FC = () => {
           });
         }
       } catch {
-        setStatus('mindbody', 'disconnected');
+        setStatus('mindbody', 'unknown');
       }
 
       // Route Magic
       try {
         setStatus('routemagic', 'loading');
         const r = await fetchWithTenant('/api/social-integration/routemagic/status');
+        if (!r.ok && r.status !== 404) throw new Error(`status ${r.status}`); // -> 'unknown' below
         const data = await r.json();
         setStatus('routemagic', data?.connected ? 'connected' : 'disconnected');
         if (data?.connected) {
@@ -464,7 +473,7 @@ export const IntegrationsSettings: React.FC = () => {
           });
         }
       } catch {
-        setStatus('routemagic', 'disconnected');
+        setStatus('routemagic', 'unknown');
       }
 
     };
@@ -1028,12 +1037,14 @@ export const IntegrationsSettings: React.FC = () => {
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
                         status === 'connected'
                           ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/50'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
+                          : status === 'unknown'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          status === 'connected' ? 'bg-green-500 dark:bg-emerald-400' : 'bg-gray-400 dark:bg-slate-400'
+                          status === 'connected' ? 'bg-green-500 dark:bg-emerald-400' : status === 'unknown' ? 'bg-amber-500 dark:bg-amber-400' : 'bg-gray-400 dark:bg-slate-400'
                         }`} />
-                        {status === 'connected' ? 'Connected' : 'Disconnected'}
+                        {status === 'connected' ? 'Connected' : status === 'unknown' ? "Couldn't check" : 'Disconnected'}
                       </span>
                     </div>
                   )}
@@ -1099,7 +1110,8 @@ export const IntegrationsSettings: React.FC = () => {
                             : 'bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 shadow-md'
                         }`}
                       >
-                        {status === 'connected' ? 'Manage Settings' : 'Connect Now'}
+                        {/* "Connect Now" only when we know it isn't connected — not while checking, not when the check failed. */}
+                        {status === 'connected' ? 'Manage Settings' : status === 'loading' ? 'Checking…' : status === 'unknown' ? 'Open' : 'Connect Now'}
                       </button>
                     )}
                   </div>
