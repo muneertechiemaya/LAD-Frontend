@@ -301,7 +301,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
             </p>
             <Button
               variant="outline"
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push('/campaigns/workflow')}
               className="max-w-[280px] w-full"
             >
               <Plus className="mr-2 h-4 w-4" />

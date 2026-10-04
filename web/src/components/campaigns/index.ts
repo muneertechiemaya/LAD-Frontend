@@ -9,7 +9,7 @@
  * 
  * USAGE:
  * ```typescript
- * import { CampaignsList, CampaignsTable } from '@/components/campaigns';
+ * import { CampaignsTable } from '@/components/campaigns';
  * import { useCampaigns, type Campaign } from '@lad/frontend-features/campaigns'; // SDK imports
  * ```
  */
@@ -17,7 +17,6 @@
 // ============================================================================
 // MAIN COMPONENTS
 // ============================================================================
-export { default as CampaignsList } from './CampaignsList';
 export { default as CampaignsTable } from './CampaignsTable';
 export { default as CampaignFilters } from './CampaignFilters';
 export { default as CampaignStatsCards } from './CampaignStatsCards';
