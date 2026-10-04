@@ -41,6 +41,8 @@ export function AgentBuilderGallery({
   onDeleteAssets,
   isFullHistory = false,
   onLoadFullHistory,
+  failed = false,
+  onRetry,
 }: {
   images?: ImageGroup[];
   videos?: VideoAsset[];
@@ -54,6 +56,9 @@ export function AgentBuilderGallery({
   onDeleteAssets?: (urls: string[]) => void;
   isFullHistory?: boolean;
   onLoadFullHistory?: () => void;
+  /** The last load failed: say so instead of "No assets found". */
+  failed?: boolean;
+  onRetry?: () => void;
 }) {
   const [selectedGroup, setSelectedGroup] = useState<ImageGroup | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -389,8 +394,9 @@ export function AgentBuilderGallery({
           <div className="flex items-center gap-2 pl-2">
             <button
               onClick={onBack}
-              className="p-1.5 hover:bg-slate-50 dark:hover:bg-blue-950/40 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all active:scale-95"
-              title="Back to Welcome"
+              className="p-1.5 max-lg:size-11 inline-flex items-center justify-center hover:bg-slate-50 dark:hover:bg-blue-950/40 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all active:scale-95"
+              title="Back"
+              aria-label="Back"
             >
               <ArrowLeft className="size-4" />
             </button>
@@ -402,7 +408,9 @@ export function AgentBuilderGallery({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 bg-slate-50 dark:bg-[#071131] hover:bg-slate-100 dark:hover:bg-blue-950/60 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all active:scale-95 border border-slate-100 dark:border-blue-950/40"
+              aria-label="Close"
+              title="Close"
+              className="p-1.5 max-lg:size-11 inline-flex items-center justify-center bg-slate-50 dark:bg-[#071131] hover:bg-slate-100 dark:hover:bg-blue-950/60 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all active:scale-95 border border-slate-100 dark:border-blue-950/40"
             >
               <X className="size-4" />
             </button>
@@ -422,17 +430,47 @@ export function AgentBuilderGallery({
               </p>
             </div>
           </div>
+        ) : failed && images.length === 0 && videos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">Couldn&apos;t load your media</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[260px] leading-relaxed">
+                This is not an empty gallery. Try again in a moment.
+              </p>
+            </div>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="min-h-11 px-5 py-2 text-xs font-bold text-[#0b1957] dark:text-slate-100 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all"
+              >
+                Try again
+              </button>
+            )}
+          </div>
         ) : images.length === 0 && videos.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
             <div className="size-16 bg-slate-100 dark:bg-[#071131] rounded-full flex items-center justify-center text-slate-400">
               <Sparkles className="size-8" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">No assets found</h3>
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
+                {!isFullHistory && onLoadFullHistory ? 'Nothing in the last 90 days' : 'No assets found'}
+              </h3>
               <p className="text-xs text-slate-400 max-w-[240px] leading-relaxed">
                 Start generating image concepts or videos to see them listed in your asset vault.
               </p>
             </div>
+            {/* Only the last 90 days load first. An empty window is not an empty
+                vault, and the "load older" control lived below the list, which
+                this empty state replaced - so older media was unreachable. */}
+            {!isFullHistory && onLoadFullHistory && (
+              <button
+                onClick={onLoadFullHistory}
+                className="min-h-11 px-5 py-2 text-xs font-bold text-[#0b1957] dark:text-slate-100 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all"
+              >
+                Look further back
+              </button>
+            )}
           </div>
         ) : (
           <>

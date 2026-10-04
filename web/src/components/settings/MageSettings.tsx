@@ -383,32 +383,51 @@ const ManageButton: React.FC<{ onClick: () => void; label?: string; hint: string
   </div>
 );
 
+/**
+ * Icon-only row actions (view, edit, delete, default). 16px icons with no
+ * padding were 16x16 targets; on touch screens they get a 44px box.
+ */
+const ICON_BTN =
+  'inline-flex shrink-0 items-center justify-center rounded-lg max-lg:h-11 max-lg:w-11 lg:p-1';
+
 /** Shared modal shell. */
 const Modal: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({
   title, onClose, children,
-}) => (
-  <div
-    className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto"
-    onClick={onClose}
-  >
+}) => {
+  // Escape closes it, like every other dialog in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
     <div
-      className="bg-white dark:bg-[#000724] rounded-xl w-full max-w-2xl my-8 shadow-xl"
-      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto"
+      onClick={onClose}
     >
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-blue-950/40 dark:bg-[#081331] rounded-t-xl">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        <button
-          onClick={onClose}
-          title="Close"
-          className="ml-auto text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="bg-white dark:bg-[#000724] rounded-xl w-full max-w-2xl my-8 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 px-5 py-2 border-b border-gray-200 dark:border-blue-950/40 dark:bg-[#081331] rounded-t-xl">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <button
+            onClick={onClose}
+            title="Close"
+            aria-label="Close"
+            className="ml-auto -mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 py-4">{children}</div>
       </div>
-      <div className="px-5 py-4">{children}</div>
     </div>
-  </div>
-);
+  );
+};
 
 export const MageSettings: React.FC = () => {
   const [modal, setModal] = useState<ModalId | null>(null);
@@ -427,6 +446,9 @@ export const MageSettings: React.FC = () => {
   const [showGallery, setShowGallery] = useState(false);
   const [galleryImages, setGalleryImages] = useState<React.ComponentProps<typeof AgentBuilderGallery>['images']>([]);
   const [galleryVideos, setGalleryVideos] = useState<React.ComponentProps<typeof AgentBuilderGallery>['videos']>([]);
+  // Whether the open gallery holds full history or the last 90 days. It was
+  // always passed as false, so "Load older" stayed on screen after loading it.
+  const [galleryFull, setGalleryFull] = useState(false);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [showMediaChat, setShowMediaChat] = useState(false);
 
@@ -566,6 +588,7 @@ export const MageSettings: React.FC = () => {
         setGalleryImages(data.images || []);
         setGalleryVideos(data.videos || []);
         setGalleryFailed(false);
+        setGalleryFull(full);
       } else {
         // Previously this branch did not exist, so a 401/500 fell through to
         // the viewer's own "No assets found" — telling a tenant with months of
@@ -1596,7 +1619,7 @@ export const MageSettings: React.FC = () => {
           <button
             onClick={async () => { await uploadWorkOrder(); setModal(null); }}
             disabled={!uploadFile || busy === 'upload'}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-2 max-lg:min-h-11 rounded-lg text-sm font-medium transition-colors ${
               uploadFile && busy !== 'upload'
                 ? 'bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700'
                 : 'border border-gray-200 dark:border-blue-950/40 text-gray-400 cursor-not-allowed'
@@ -1610,7 +1633,9 @@ export const MageSettings: React.FC = () => {
 
       {modal === 'brand' && (
         <Modal title="Brand profiles" onClose={() => setModal(null)}>
-          <div className="flex gap-2 mb-4">
+          {/* Wraps on phones: input, Add from URL and No website in one row
+              pushed "No website" off the right edge at 390px. */}
+          <div className="flex flex-wrap gap-2 mb-4">
             <input
               value={extractUrl}
               onChange={(e) => setExtractUrl(e.target.value)}
@@ -1620,20 +1645,21 @@ export const MageSettings: React.FC = () => {
               // cannot be started on top of the first.
               disabled={extractionRunning}
               title={extractionRunning ? 'Analysing this site. One at a time.' : undefined}
-              className="flex-1 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 disabled:cursor-not-allowed"
+              aria-label="Website address"
+              className="min-w-0 flex-1 basis-full sm:basis-0 max-lg:min-h-11 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 disabled:cursor-not-allowed"
             />
             <button
               onClick={startExtraction}
               disabled={!extractUrl.trim() || extractionRunning}
               title="Read a website and build a brand profile from it"
-              className="text-sm font-medium px-3 py-2 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+              className="max-sm:flex-1 max-lg:min-h-11 inline-flex items-center justify-center text-sm font-medium px-3 py-2 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
             >
               {extractionRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add from URL'}
             </button>
             <button
               onClick={() => { setModal(null); setShowWizard(true); }}
               title="Build a profile without a website, from material you paste or upload"
-              className="text-sm font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 whitespace-nowrap"
+              className="max-sm:flex-1 max-lg:min-h-11 text-sm font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 whitespace-nowrap"
             >
               No website
             </button>
@@ -1682,18 +1708,23 @@ export const MageSettings: React.FC = () => {
             );
           })()}
 
-          {profiles.length === 0 ? (
+          {profiles.length === 0 && overviewFailed ? (
+            // Same answer as the tile behind this popup - a failed read is not "none".
+            <Unavailable what="your brand profiles" />
+          ) : profiles.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">
               No profiles yet. Add one from a URL, or build one without a website.
             </p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-blue-950/40">
               {profiles.map((p) => (
-                <li key={p.domain} className="flex items-center gap-2 py-2.5">
+                <li key={p.domain} className="flex items-center gap-1 sm:gap-2 py-2.5">
                   <button
                     onClick={() => setDefault(p.is_default ? null : p.domain)}
                     title={p.is_default ? 'This is the default the agent uses' : 'Make this the default'}
-                    className={p.is_default ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}
+                    aria-label={p.is_default ? 'Default profile' : 'Make this the default'}
+                    aria-pressed={!!p.is_default}
+                    className={`${ICON_BTN} ${p.is_default ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}`}
                   >
                     <Star className={`w-4 h-4 ${p.is_default ? 'fill-current' : ''}`} />
                   </button>
@@ -1715,13 +1746,13 @@ export const MageSettings: React.FC = () => {
                       title={p.colors.primary}
                     />
                   )}
-                  <button onClick={() => viewProfile(p.domain)} title="View this profile" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                  <button onClick={() => viewProfile(p.domain)} title="View this profile" aria-label="View this profile" className={`${ICON_BTN} text-gray-400 hover:text-gray-700 dark:hover:text-gray-200`}>
                     {dnaLoading === p.domain ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => setChangeTarget(p.domain)} title="Ask the agent to change this profile" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                  <button onClick={() => setChangeTarget(p.domain)} title="Ask the agent to change this profile" aria-label="Ask the agent to change this profile" className={`${ICON_BTN} text-gray-400 hover:text-gray-700 dark:hover:text-gray-200`}>
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => deleteProfile(p.domain)} title="Delete this profile" className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                  <button onClick={() => deleteProfile(p.domain)} title="Delete this profile" aria-label="Delete this profile" className={`${ICON_BTN} text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors`}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </li>
@@ -1743,10 +1774,10 @@ export const MageSettings: React.FC = () => {
                 className="w-full text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2 mb-2"
               />
               <div className="flex gap-2">
-                <button onClick={submitChanges} disabled={busy === 'changes'} className="text-sm font-medium px-3 py-1.5 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50">
+                <button onClick={submitChanges} disabled={busy === 'changes'} className="max-lg:min-h-11 text-sm font-medium px-3 py-1.5 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50">
                   {busy === 'changes' ? 'Sending…' : 'Send'}
                 </button>
-                <button onClick={() => { setChangeTarget(null); setChangeText(''); }} className="text-sm px-3 py-1.5 rounded-lg text-gray-500">
+                <button onClick={() => { setChangeTarget(null); setChangeText(''); }} className="max-lg:min-h-11 text-sm px-3 py-1.5 rounded-lg text-gray-500">
                   Cancel
                 </button>
               </div>
@@ -1760,7 +1791,9 @@ export const MageSettings: React.FC = () => {
           {icp?.exists ? (
             <>
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {icp.name || 'Saved profile'}
+                {/* "AI Playground Profile" is the name the Playground saves under by
+                    default - a system label, not something the tenant chose. */}
+                {!icp.name || icp.name === 'AI Playground Profile' ? 'Your audience' : icp.name}
               </div>
 
               {/* Broken into fields rather than dumped as one block. The summary
@@ -1799,6 +1832,8 @@ export const MageSettings: React.FC = () => {
                 );
               })()}
             </>
+          ) : overviewFailed ? (
+            <Unavailable what="your audience" />
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Nothing saved yet. The agent will guess who it is talking to until you add one.
@@ -1811,7 +1846,7 @@ export const MageSettings: React.FC = () => {
               ?open_icp=true is read on mount by that page. */}
           <a
             href="/onboarding/advanced-search-ai?open_icp=true"
-            className="inline-block mt-5 text-sm font-medium px-3 py-2 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center min-h-11 mt-5 text-sm font-medium px-3 py-2 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-colors"
           >
             {icp?.exists ? 'Edit your audience' : 'Set up your audience'}
           </a>
@@ -1834,7 +1869,9 @@ export const MageSettings: React.FC = () => {
             Name a file or write a brief using a shortcut and the agent receives the full
             text it stands for.
           </p>
-          <div className="flex gap-2 mb-2">
+          {/* Stacks on phones: a fixed 160px token box next to the brief pushed
+              the brief's input off the right edge at 390px. */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-2">
             <input
               value={kwKey}
               onChange={(e) => setKwKey(e.target.value)}
@@ -1848,32 +1885,41 @@ export const MageSettings: React.FC = () => {
                   ? 'A shortcut cannot be renamed. Delete it and add a new one instead.'
                   : 'No spaces. Hyphens are fine.'
               }
-              className="w-40 text-sm font-mono rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60"
+              aria-label="Shortcut"
+              className="w-full sm:w-40 max-lg:min-h-11 text-sm font-mono rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60"
             />
             <input
               value={kwValue}
               onChange={(e) => setKwValue(e.target.value)}
               placeholder="A launch poster, 1080x1080, brand colours, headline top left"
-              className="flex-1 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2"
+              aria-label="What the shortcut stands for"
+              className="min-w-0 flex-1 max-lg:min-h-11 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2"
             />
           </div>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Colour</span>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-2 sm:gap-2 mb-4">
+            <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Colour</span>
+            {/* The dot stays 16px; the button around it is the touch target. */}
             {Object.keys(SWATCH).map((name) => (
               <button
                 key={name}
                 onClick={() => setKwColor(name)}
                 title={name}
-                className={`w-4 h-4 rounded-full transition-transform ${
-                  kwColor === name ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-offset-gray-900 scale-110' : ''
-                }`}
-                style={{ background: SWATCH[name] }}
-              />
+                aria-label={`Colour: ${name}`}
+                aria-pressed={kwColor === name}
+                className="inline-flex items-center justify-center rounded-full max-lg:h-9 max-lg:w-9"
+              >
+                <span
+                  className={`block w-4 h-4 rounded-full transition-transform ${
+                    kwColor === name ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-offset-gray-900 scale-110' : ''
+                  }`}
+                  style={{ background: SWATCH[name] }}
+                />
+              </button>
             ))}
             {editingKeyword && (
               <button
                 onClick={clearKeywordForm}
-                className="ml-auto text-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                className="ml-auto max-lg:min-h-11 text-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 Cancel
               </button>
@@ -1881,18 +1927,20 @@ export const MageSettings: React.FC = () => {
             <button
               onClick={saveKeyword}
               disabled={!kwKey.trim() || !kwValue.trim() || busy === 'keyword'}
-              className={`${editingKeyword ? '' : 'ml-auto'} text-sm font-medium px-3 py-1.5 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50`}
+              className={`${editingKeyword ? '' : 'ml-auto'} max-lg:min-h-11 text-sm font-medium px-3 py-1.5 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-50`}
             >
               {busy === 'keyword' ? 'Saving…' : editingKeyword ? 'Save changes' : 'Add'}
             </button>
           </div>
 
-          {Object.keys(keywords).length === 0 ? (
+          {Object.keys(keywords).length === 0 && overviewFailed ? (
+            <Unavailable what="your keywords" />
+          ) : Object.keys(keywords).length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">None yet.</p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-blue-950/40">
               {Object.entries(keywords).map(([token, value]) => (
-                <li key={token} className="flex items-center gap-2 py-2">
+                <li key={token} className="flex items-center gap-1 sm:gap-2 py-2">
                   <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ background: SWATCH[keywordColors[token] || 'gray'] }}
@@ -1903,7 +1951,8 @@ export const MageSettings: React.FC = () => {
                   <button
                     onClick={() => startEditKeyword(token, value)}
                     title="Edit what this shortcut expands to"
-                    className={`transition-colors ${
+                    aria-label={`Edit ${token}`}
+                    className={`${ICON_BTN} transition-colors ${
                       editingKeyword === token
                         ? 'text-[#0b1957] dark:text-blue-300'
                         : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -1914,7 +1963,8 @@ export const MageSettings: React.FC = () => {
                   <button
                     onClick={() => deleteKeyword(token)}
                     title="Delete this shortcut"
-                    className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    aria-label={`Delete ${token}`}
+                    className={`${ICON_BTN} text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1932,9 +1982,10 @@ export const MageSettings: React.FC = () => {
                 value={previewText}
                 onChange={(e) => setPreviewText(e.target.value)}
                 placeholder="launch-poster for the new release"
-                className="flex-1 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2"
+                aria-label="Brief to preview"
+                className="min-w-0 flex-1 max-lg:min-h-11 text-sm rounded-lg border border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-2"
               />
-              <button onClick={runPreview} disabled={!previewText.trim()} className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50">
+              <button onClick={runPreview} disabled={!previewText.trim()} className="max-lg:min-h-11 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                 Preview
               </button>
             </div>
@@ -1959,25 +2010,19 @@ export const MageSettings: React.FC = () => {
           around a component that already has one. */}
       {showGallery && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          {/* The gallery renders its own "No assets found" for an empty result
-              and has no error state of its own, so a failed load looked exactly
-              like an empty vault. Say which one it is, above it. */}
-          {galleryFailed && !galleryLoading && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[min(38rem,calc(100vw-2rem))] shadow-lg flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>
-                Couldn&apos;t load your media. This is not an empty gallery — try again in a moment.
-              </span>
-            </div>
-          )}
+          {/* A failed load used to look exactly like an empty vault. The gallery
+              now has a failed state of its own (with Try again) - a banner here
+              on top of its "nothing in the last 90 days" said both at once. */}
           <AgentBuilderGallery
             images={galleryImages}
             videos={galleryVideos}
             loading={galleryLoading}
             onBack={() => setShowGallery(false)}
             onClose={() => setShowGallery(false)}
-            isFullHistory={false}
+            isFullHistory={galleryFull}
             onLoadFullHistory={() => openGallery(true)}
+            failed={galleryFailed && !galleryLoading}
+            onRetry={() => openGallery(galleryFull)}
           />
         </div>
       )}
