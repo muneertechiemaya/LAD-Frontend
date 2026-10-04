@@ -65,6 +65,7 @@ import { LineFeedbackPopover } from "./voice-agent/corrections/LineFeedbackPopov
 import { downloadRecording, generateRecordingFilename } from "@/utils/recordingDownload";
 import { categorizeLead, getTagConfig, normalizeLeadCategory } from "@/utils/leadCategorization";
 import { formatDateTimeUnified } from "@/utils/dateTime";
+import { humanizeKey } from "@/utils/statusMappings";
 
 // shadcn + recharts
 import { Checkbox } from "@/components/ui/checkbox";
@@ -992,9 +993,16 @@ const CallCostTab = ({ log, analysis }: { log: any | null; analysis: any | null 
 };
 
 /* ----------------- Lead Tab ------------------ */
+/** "category:cold" → "Cold lead"; other key-like tags read as words. */
+function formatLeadTag(tag: string): string {
+  const m = /^category:(hot|warm|cold)$/i.exec(tag.trim());
+  if (m) return `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} lead`;
+  return /[_:]/.test(tag) ? humanizeKey(tag.replace(/^[a-z]+:/i, '')) : tag;
+}
+
 const LeadField = ({ label, value }: { label: string; value?: any }) => (
   <div className="bg-white/60 dark:bg-[#000724]/60 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
-    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5 font-medium uppercase tracking-wide">{label}</span>
+    <span className="text-xs text-gray-600 dark:text-gray-300 block mb-0.5 font-medium">{label}</span>
     <span className="text-gray-900 dark:text-white font-medium text-sm break-all">
       {value !== null && value !== undefined && value !== '' ? String(value) : '-'}
     </span>
@@ -1030,43 +1038,44 @@ const LeadTab = ({ leadData, isLoading }: { leadData: any | null; isLoading: boo
   }
 
 
-  const fullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || '-';
+  const fullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ');
   const phoneValue =
     lead.phone ??
     ([lead.country_code, lead.base_number].filter(Boolean).join('') || undefined);
 
+  // Only what is known, in plain words: the tab was a dump of every column —
+  // "-" for most, raw keys ("voice_agent", "category:cold"), an assigned
+  // user's id and the lead's own id.
+  const has = (f: { value?: unknown }) => f.value !== undefined && f.value !== null && f.value !== '';
   const contactFields = [
-    { label: 'Full Name', value: fullName },
+    { label: 'Name', value: fullName || undefined },
     { label: 'Phone', value: phoneValue },
     { label: 'Email', value: lead.email },
     { label: 'Company', value: lead.company_name },
     { label: 'Title', value: lead.title },
     { label: 'Location', value: lead.location },
     { label: 'LinkedIn', value: lead.linkedin_url },
-    { label: 'Source', value: lead.source },
-  ];
+    { label: 'Came from', value: lead.source ? humanizeKey(String(lead.source)) : undefined },
+  ].filter(has);
 
   const pipelineFields = [
-    { label: 'Stage', value: lead.stage },
-    { label: 'Status', value: lead.status },
-    { label: 'Priority', value: lead.priority !== undefined ? String(lead.priority) : undefined },
-    { label: 'Tags', value: Array.isArray(lead.tags) && lead.tags.length ? lead.tags.join(', ') : undefined },
-    { label: 'Estimated Value', value: lead.estimated_value !== null && lead.estimated_value !== undefined ? `${lead.currency || 'USD'} ${lead.estimated_value}` : undefined },
-    { label: 'Assigned User ID', value: lead.assigned_user_id },
-    { label: 'Assigned At', value: lead.assigned_at ? formatDateTimeUnified(lead.assigned_at) : undefined },
-    { label: 'Next Follow-up', value: lead.next_follow_up_at ? formatDateTimeUnified(lead.next_follow_up_at) : undefined },
-    { label: 'Last Contacted', value: lead.last_contacted_at ? formatDateTimeUnified(lead.last_contacted_at) : undefined },
-  ];
+    { label: 'Stage', value: lead.stage ? humanizeKey(String(lead.stage)) : undefined },
+    { label: 'Status', value: lead.status ? humanizeKey(String(lead.status)) : undefined },
+    { label: 'Priority', value: Number(lead.priority) > 0 ? String(lead.priority) : undefined },
+    { label: 'Tags', value: Array.isArray(lead.tags) && lead.tags.length ? lead.tags.map((t: string) => formatLeadTag(String(t))).join(', ') : undefined },
+    { label: 'Estimated value', value: lead.estimated_value !== null && lead.estimated_value !== undefined ? `${lead.currency || 'USD'} ${lead.estimated_value}` : undefined },
+    { label: 'Next follow-up', value: lead.next_follow_up_at ? formatDateTimeUnified(lead.next_follow_up_at) : undefined },
+    { label: 'Last contacted', value: lead.last_contacted_at ? formatDateTimeUnified(lead.last_contacted_at) : undefined },
+  ].filter(has);
 
   const metaFields = [
-    { label: 'Lead ID', value: lead.id },
-    { label: 'Created At', value: lead.created_at ? formatDateTimeUnified(lead.created_at) : undefined },
-    { label: 'Updated At', value: lead.updated_at ? formatDateTimeUnified(lead.updated_at) : undefined },
-    { label: 'Archived', value: lead.is_archived !== undefined ? (lead.is_archived ? 'Yes' : 'No') : undefined },
-  ];
+    { label: 'Added', value: lead.created_at ? formatDateTimeUnified(lead.created_at) : undefined },
+    { label: 'Last updated', value: lead.updated_at ? formatDateTimeUnified(lead.updated_at) : undefined },
+    { label: 'Archived', value: lead.is_archived ? 'Yes' : undefined },
+  ].filter(has);
 
-  const hasContact = contactFields.some(f => f.value);
-  const hasPipeline = pipelineFields.some(f => f.value);
+  const hasContact = contactFields.length > 0;
+  const hasPipeline = pipelineFields.length > 0;
 
   return (
     <ScrollArea className="h-full p-4">
@@ -1075,7 +1084,7 @@ const LeadTab = ({ leadData, isLoading }: { leadData: any | null; isLoading: boo
         {hasContact && (
           <div>
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
-              <User className="h-4 w-4 text-orange-500 dark:text-orange-400" /> Contact Information
+              <User className="h-4 w-4 text-orange-500 dark:text-orange-400" /> Contact
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {contactFields.map((f) => <LeadField key={f.label} label={f.label} value={f.value} />)}
@@ -1087,7 +1096,7 @@ const LeadTab = ({ leadData, isLoading }: { leadData: any | null; isLoading: boo
         {hasPipeline && (
           <div>
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
-              <TrendingUp className="h-4 w-4 text-orange-500 dark:text-orange-400" /> Pipeline & CRM
+              <TrendingUp className="h-4 w-4 text-orange-500 dark:text-orange-400" /> In your pipeline
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {pipelineFields.map((f) => <LeadField key={f.label} label={f.label} value={f.value} />)}
@@ -1096,14 +1105,16 @@ const LeadTab = ({ leadData, isLoading }: { leadData: any | null; isLoading: boo
         )}
 
         {/* Meta */}
+        {metaFields.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
-            <Info className="h-4 w-4 text-orange-500 dark:text-orange-400" /> Record Info
+            <Info className="h-4 w-4 text-orange-500 dark:text-orange-400" /> Record
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {metaFields.map((f) => <LeadField key={f.label} label={f.label} value={f.value} />)}
           </div>
         </div>
+        )}
       </div>
     </ScrollArea>
   );
@@ -1337,7 +1348,7 @@ export function CallLogModal({
             <div className="p-3 rounded-full bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/60 shadow-sm">
               <PhoneCall className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
-            <DialogTitle className="dark:text-white">Call Logs</DialogTitle>
+            <DialogTitle className="dark:text-white">Call details</DialogTitle>
           </div>
         </DialogHeader>
 
