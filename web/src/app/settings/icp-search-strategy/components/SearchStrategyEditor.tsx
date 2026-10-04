@@ -131,7 +131,7 @@ export function SearchStrategyEditor({
                     disabled={disabled || idx === 0}
                     onClick={() => moveBackend(b, -1)}
                     className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
-                    aria-label={`Move ${b} up`}
+                    aria-label={`Move ${BACKEND_LABEL[b]} up`}
                   >
                     ▲
                   </button>
@@ -140,7 +140,7 @@ export function SearchStrategyEditor({
                     disabled={disabled || idx === order.length - 1}
                     onClick={() => moveBackend(b, 1)}
                     className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
-                    aria-label={`Move ${b} down`}
+                    aria-label={`Move ${BACKEND_LABEL[b]} down`}
                   >
                     ▼
                   </button>
