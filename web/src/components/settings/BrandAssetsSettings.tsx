@@ -147,15 +147,17 @@ const FolderRow: React.FC<{
   copied: boolean;
   onCopy: () => void;
 }> = ({ label, caption, url, copied, onCopy }) => (
-  <div className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-blue-950/40 px-3.5 py-2.5">
-    <span className="flex-1 min-w-0">
+  <div className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-lg border border-gray-200 dark:border-blue-950/40 px-3.5 py-2.5">
+    {/* On phones the name takes its own line; beside two buttons it was
+        squeezed to ~100px and the caption truncated to a few words. */}
+    <span className="flex-1 min-w-0 basis-full sm:basis-0">
       <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">{label}</span>
       <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">{caption}</span>
     </span>
     <button
       onClick={onCopy}
       title={copied ? 'Link copied' : 'Copy the link so you can send it to someone'}
-      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 max-lg:min-h-11 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
       {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
       {copied ? 'Copied' : 'Copy link'}
@@ -165,7 +167,7 @@ const FolderRow: React.FC<{
       target="_blank"
       rel="noopener noreferrer"
       title="Open this folder in Google Drive"
-      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 max-lg:min-h-11 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
       <ExternalLink className="w-3.5 h-3.5" />
       Open
@@ -647,7 +649,9 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
               </div>
               <div>
                 <h3 className="text-gray-900 dark:text-gray-100 text-base font-semibold">
-                  Or use your shared Drive folder
+                  {/* "Or" only reads right under the upload box; the Drive popup
+                      shows this section on its own. */}
+                  {section === 'drive' ? 'Your shared Drive folder' : 'Or use your shared Drive folder'}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
                   We&apos;ll create a Google Drive folder and share it with you. Anything you
@@ -781,7 +785,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                               changeCollaboratorRole(person.email, e.target.value)
                             }
                             aria-label={`Access level for ${person.email}`}
-                            className="text-xs px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#071131] text-gray-700 dark:text-gray-200 disabled:opacity-60"
+                            className="text-xs px-2 py-1.5 max-lg:min-h-11 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#071131] text-gray-700 dark:text-gray-200 disabled:opacity-60"
                           >
                             {(status.roles || ['reader', 'commenter', 'writer']).map((r) => (
                               <option key={r} value={r}>
@@ -793,7 +797,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                             onClick={() => removeCollaborator(person.email)}
                             disabled={busyEmail === person.email}
                             aria-label={`Remove ${person.email}`}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-60 transition-colors"
+                            className="p-1.5 max-lg:size-11 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-60 transition-colors"
                           >
                             {busyEmail === person.email ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -817,13 +821,13 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                     }}
                     placeholder="teammate@example.com"
                     aria-label="Email address to give access to"
-                    className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a1027] text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 min-w-[220px] px-3 py-2 max-lg:min-h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a1027] text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <select
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value)}
                     aria-label="Access level"
-                    className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a1027] text-sm text-gray-700 dark:text-gray-200"
+                    className="px-3 py-2 max-lg:min-h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a1027] text-sm text-gray-700 dark:text-gray-200"
                   >
                     {(status.roles || ['reader', 'commenter', 'writer']).map((r) => (
                       <option key={r} value={r}>
@@ -834,7 +838,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
                   <button
                     onClick={addCollaborator}
                     disabled={inviting || !inviteEmail.trim()}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-60 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 max-lg:min-h-11 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-60 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
                   >
                     {inviting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

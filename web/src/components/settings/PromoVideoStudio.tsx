@@ -29,6 +29,7 @@ import {
   useStartPromoVideo,
   type PromoFormat,
   type PromoSeconds,
+  type PromoScene,
   type PromoStage,
   type PromoStyle,
 } from '@lad/frontend-features/promo-video';
@@ -45,6 +46,23 @@ const STAGE_LABEL: Record<PromoStage, string> = {
   rendering: 'Rendering the video',
   collecting: 'Saving it to your gallery',
 };
+
+/** Storyboard scene kinds in words - they were shown raw ("hook", "stat", "cta"). */
+const SCENE_LABEL: Record<PromoScene['kind'], string> = {
+  hook: 'Opening',
+  feature: 'Feature',
+  stat: 'Proof point',
+  quote: 'Quote',
+  cta: 'Call to action',
+};
+
+/**
+ * A video takes a few minutes. Past this, a job still "processing" has stopped
+ * (MAGe treats it as orphaned and will start a new one), but its status never
+ * changes - so without this the panel spun on "a few minutes" for days and
+ * offered no way to make another video.
+ */
+const STUCK_AFTER_MS = 30 * 60 * 1000;
 
 const JOB_KEY = 'lad.promoVideo.jobId';
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -255,6 +273,23 @@ export const PromoVideoStudio: React.FC = () => {
       );
     }
     const current = PROMO_STAGES.indexOf(data.stage);
+    // created_at is epoch seconds (time.time() in MAGe).
+    const startedMs = data.created_at ? data.created_at * 1000 : null;
+    const stuck = startedMs !== null && Date.now() - startedMs > STUCK_AFTER_MS;
+    if (stuck) {
+      return (
+        <div className="space-y-3">
+          <Banner tone="warn">
+            This video stopped while {STAGE_LABEL[data.stage]?.toLowerCase() ?? 'being made'} (started{' '}
+            {new Date(startedMs).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            ). It should have taken a few minutes. Start a new one; if it happens again, contact support.
+          </Banner>
+          <button onClick={reset} className={secondaryBtn}>
+            <RotateCcw className="w-4 h-4" /> Start a new video
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="space-y-4">
         <ol className="space-y-2" aria-label="Progress">
@@ -277,7 +312,7 @@ export const PromoVideoStudio: React.FC = () => {
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
             {data.scenes.map((scene, i) => (
               <div key={i} className="px-3 py-2">
-                <div className="text-[11px] uppercase tracking-wide text-gray-400">{scene.kind}</div>
+                <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{SCENE_LABEL[scene.kind] ?? scene.kind}</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{scene.headline.replace(/\*/g, '')}</div>
                 <div className="text-xs text-gray-500">{scene.narration}</div>
               </div>
@@ -488,9 +523,9 @@ export const PromoVideoStudio: React.FC = () => {
 };
 
 const primaryBtn =
-  'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 max-lg:min-h-11 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed';
 const secondaryBtn =
-  'inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800';
+  'inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 max-lg:min-h-11 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800';
 
 const Banner: React.FC<{ tone: 'error' | 'warn'; children: React.ReactNode }> = ({ tone, children }) => (
   <div
