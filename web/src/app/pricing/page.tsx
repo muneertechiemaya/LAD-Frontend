@@ -53,6 +53,10 @@ export default function PricingPage() {
             </div>
           </header>
 
+          {/* On a phone only the first plan fits beside the feature names; say
+              that the table scrolls, or the other plans look missing. */}
+          <p className="swipe-hint">Swipe sideways to compare all {PLAN_COLUMNS} plans →</p>
+
           {/* ===== Comparison table scroll wrapper ===== */}
           <div className="table-scroll-wrapper">
             <div className="table-scroll-inner">
@@ -523,6 +527,27 @@ export default function PricingPage() {
             .plan-card .seg, .plan-card .cta { display: none; }
             .pricing-root :global(.fname span) { display: none; }
             .pricing-root :global(.cell) { font-size: 10.5px; padding: 8px 3px; }
+          }
+
+          /* Phones: at 390px the 860px table showed the feature column and one
+             plan, and swiping took the feature names away with it. Pin the
+             feature column, narrow the plan columns (about two in view), and
+             keep each section heading in view while the rows scroll. */
+          .swipe-hint { display: none; }
+          @media (max-width: 640px) {
+            .swipe-hint { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 8px; text-align: right; }
+            .table-scroll-inner { min-width: 0; width: max-content; }
+            .grid, .pricing-root :global(.frow) { grid-template-columns: 112px repeat(${PLAN_COLUMNS}, 104px); }
+            .corner, .pricing-root :global(.fname) { position: sticky; left: 0; z-index: 3; background: var(--card); }
+            .corner { background: var(--paper); }
+            .pricing-root :global(.frow:nth-child(even) .fname) { background: #FBFCFE; }
+            :global(.dark) .pricing-root :global(.frow:nth-child(even) .fname) { background: #151f3d; }
+            .pricing-root :global(.fname) { padding: 10px 8px; box-shadow: 1px 0 0 var(--line); }
+            .pricing-root :global(.fname b) { font-size: 12px; }
+            /* overflow:hidden made each section its own scroll container, which
+               stops sticky children; clip keeps the rounded corners without it. */
+            .pricing-root :global(section.fgroup) { overflow: clip; }
+            .pricing-root :global(.fgroup > .head) { position: sticky; left: 0; width: calc(100vw - 40px); box-sizing: border-box; min-height: 44px; }
           }
           
           /* --- Dark Mode Additions --- */
