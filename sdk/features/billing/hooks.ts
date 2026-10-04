@@ -165,6 +165,18 @@ export function useCreditPackages() {
 }
 
 /**
+ * Hook to get credit usage analytics (wallet ledger, in credits) for a window.
+ * Shared query key so the billing summary and the usage card make one request.
+ */
+export function useWalletUsageAnalytics(timeRange: '7d' | '30d' | '90d' = '30d') {
+  return useQuery({
+    queryKey: ['billing', 'usage-analytics', timeRange],
+    queryFn: () => billingApi.getWalletUsageAnalytics({ timeRange }),
+    staleTime: 60000,
+  });
+}
+
+/**
  * Hook to create Stripe checkout session for credit purchase
  * Automatically redirects to Stripe checkout on success
  */
