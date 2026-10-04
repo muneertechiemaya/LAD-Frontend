@@ -394,8 +394,8 @@ function getLabel(name: string): string {
 // ── Channel tabs ─────────────────────────────────────────────────
 
 const CHANNELS = [
-  { id: 'waba', label: 'WABA', color: 'bg-green-500' },
-  { id: 'personal_whatsapp', label: 'Personal Whatsapp', color: 'bg-emerald-400' },
+  { id: 'waba', label: 'WhatsApp Business', color: 'bg-green-500' },
+  { id: 'personal_whatsapp', label: 'Personal WhatsApp', color: 'bg-emerald-400' },
   { id: 'linkedin', label: 'LinkedIn', color: 'bg-blue-600' },
   { id: 'gmail', label: 'Gmail', color: 'bg-red-500' },
   { id: 'instagram', label: 'Instagram', color: 'bg-pink-500' },
@@ -1358,10 +1358,10 @@ export function ChatSettings() {
         <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
             <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">System Prompts</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Agent instructions</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
-            Manage AI conversation prompts for each channel. Edit prompt text to customize agent behavior.
+            What each channel&apos;s agent is told to do. Edit the wording to change how it replies.
           </p>
         </div>
 
@@ -1417,8 +1417,8 @@ export function ChatSettings() {
           {filteredPrompts.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-400 dark:text-slate-300">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
-              <p className="text-xs mt-1">Create one to get started</p>
+              <p className="text-sm">No instructions for {CHANNELS.find((c) => c.id === activeChannel)?.label} yet</p>
+              <p className="text-xs mt-1">Add them so the agent knows how to reply on this channel</p>
               {activeChannel === 'linkedin' && (
                 <button
                   onClick={() => runGenerate(null)}
@@ -1628,11 +1628,9 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Shareable Assets</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
-            Files (price list, brochure, menu…) the AI agents can attach automatically
-            when the customer asks - on WhatsApp, LinkedIn, and email. The system
-            listens for the trigger keywords in the AI&apos;s reply, downloads the file
-            from the URL, and sends it as a real attachment - so customers never see
-            a raw link.
+            Files (price list, brochure, menu…) the agents send when a customer asks
+            for them - on WhatsApp, LinkedIn and email. The customer gets the file
+            itself, not a link.
           </p>
         </div>
         <div className="p-6 space-y-4">
@@ -1901,18 +1899,17 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Company Website Context</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
-            Let the AI answer customer questions using content from your website or blog pages -
-            on WhatsApp, LinkedIn, and email. URLs are scraped once when you save and the text is
-            cached - no live requests on each reply.
+            Let the agents answer questions from your website or blog pages - on WhatsApp,
+            LinkedIn and email. The pages are read once when you save; replies use that copy.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* Enable toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Website Context</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Use your website in replies</p>
               <p className="text-xs text-gray-500 dark:text-slate-300 mt-0.5">
-                When ON, scraped website content is included in AI replies on every channel
+                When on, replies on every channel can use what these pages say
               </p>
             </div>
             <button
@@ -2073,7 +2070,7 @@ export function ChatSettings() {
             <button
               onClick={() => setShowWebTestChat((v) => !v)}
               className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
-              title="Preview how the AI answers using your scraped website content"
+              title="Preview how the agent answers from your website"
             >
               <Sparkles className="h-4 w-4" />
               {showWebTestChat ? 'Hide Test Chat' : 'Test Chat'}
@@ -2084,7 +2081,7 @@ export function ChatSettings() {
               className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
             >
               {webScrapingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {webScrapingSaving ? 'Scraping & saving…' : 'Save & Scrape'}
+              {webScrapingSaving ? 'Saving and reading pages…' : 'Save and read pages'}
             </button>
           </div>
 
@@ -2113,8 +2110,8 @@ export function ChatSettings() {
                   <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-slate-300">
                     <Sparkles className="h-7 w-7 mb-2 opacity-50" />
                     <p className="text-xs text-center max-w-xs">
-                      Ask a question to see how the AI answers it using only your scraped website content.
-                      Save & Scrape first if you haven&apos;t yet.
+                      Ask a question to see how the agent answers it from your website alone.
+                      Press Save and read pages first if you haven&apos;t yet.
                     </p>
                   </div>
                 ) : (
