@@ -263,6 +263,13 @@ export const BusinessProfileSettings: React.FC = () => {
 
   const setField = (k: Key, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
+  // Edits that are not saved yet. save() merges into `profile` (and rolls it
+  // back on failure), so comparing against it stays right after a save.
+  const dirty = hydrated && (Object.keys(form) as Key[]).some((k) => {
+    const saved = (profile as Record<string, unknown>)[k];
+    return (form[k] ?? '') !== (typeof saved === 'string' ? saved : '');
+  });
+
   const handleSave = async () => {
     if (saving) return;
     try {
@@ -427,11 +434,11 @@ export const BusinessProfileSettings: React.FC = () => {
                 value={location}
                 placeholder="Dubai, UAE"
                 onChange={(e) => { setLocation(e.target.value); setLocationSavedAt(null); }}
-                className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-blue-900/40 bg-white dark:bg-slate-800/50 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                className="flex-1 min-w-0 h-10 max-lg:h-11 px-3 rounded-lg border border-slate-200 dark:border-blue-900/40 bg-white dark:bg-slate-800/50 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
               />
               <button
                 onClick={saveLocation}
-                className="h-10 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
+                className="h-10 max-lg:h-11 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
               >
                 {locationSavedAt ? 'Saved' : 'Save'}
               </button>
@@ -469,7 +476,7 @@ export const BusinessProfileSettings: React.FC = () => {
                 for fields they may never need. */}
             {section.title === 'Offer' && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {offerCompleteness.filled} / {offerCompleteness.total}
+                {offerCompleteness.filled} of {offerCompleteness.total} filled
               </span>
             )}
           </h3>
@@ -522,14 +529,25 @@ export const BusinessProfileSettings: React.FC = () => {
         </div>
       ))}
 
-      {/* Footer: status + save */}
-      <div className="bg-white dark:bg-[#071131] rounded-lg shadow-sm border border-gray-200 dark:border-blue-950/40 p-4 flex items-center justify-between">
-        <div className="text-sm">
+      {/* Footer: status + save. On a phone this form is ~6,000px tall with the
+          only Save at the very end, so while there are unsaved edits the bar
+          sticks just above the bottom nav instead. The scroll area already pads
+          its bottom by the nav's height and sticky offsets count from inside
+          that padding, so a small offset is enough (var(--bottom-nav-h) here
+          floated the bar ~110px above the nav). */}
+      <div
+        className={`bg-white dark:bg-[#071131] rounded-lg shadow-sm border border-gray-200 dark:border-blue-950/40 p-4 flex items-center justify-between gap-3 ${
+          dirty ? 'max-md:sticky max-md:bottom-2 max-md:z-20 max-md:shadow-lg' : ''
+        }`}
+      >
+        <div className="text-sm min-w-0">
           {error ? (
             <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" />
               Couldn&apos;t save: {error.message}
             </span>
+          ) : dirty ? (
+            <span className="text-amber-700 dark:text-amber-400 font-medium">Unsaved changes</span>
           ) : savedAt ? (
             <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
@@ -542,7 +560,7 @@ export const BusinessProfileSettings: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="h-10 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
+          className="h-10 max-lg:h-11 shrink-0 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving…' : 'Save'}
