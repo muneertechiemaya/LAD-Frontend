@@ -149,14 +149,16 @@ const DayRow: React.FC<DayRowProps> = ({
   }, [allMembers, member.id, generatedPartnerId]);
 
   return (
-    <div className="flex items-center gap-2">
+    // Wraps on phones: label, picker and button on one line, the status under them.
+    // In one fixed row (80 + picker + 144px status) the picker was pushed off a 390px screen.
+    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
       <span className="text-xs font-bold text-slate-500 w-20 flex-shrink-0 dark:text-slate-400">{DAY_LABEL[day]}</span>
       <select
         value={current}
         disabled={saving || locked}
         onChange={(e) => onPick(e.target.value || null)}
         title={locked ? 'Already coordinated — the members have the message' : undefined}
-        className="max-lg:min-h-11 flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed dark:bg-[#071131] dark:border-slate-700 dark:text-slate-100"
+        className="max-lg:min-h-11 min-w-0 flex-1 basis-40 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer disabled:cursor-not-allowed dark:bg-[#071131] dark:border-slate-700 dark:text-slate-100"
       >
         <option value="">— no meeting this day —</option>
         {options.map((m) => {
@@ -185,7 +187,7 @@ const DayRow: React.FC<DayRowProps> = ({
           <Send className="w-3 h-3" /> {coordinating ? 'Sending…' : selection?.status === 'failed' ? 'Retry' : 'Coordinate'}
         </button>
       ) : null}
-      <div className="w-36 flex-shrink-0 text-right"><StatusChip sel={selection} /></div>
+      <div className="w-full sm:w-36 flex-shrink-0 sm:text-right empty:hidden"><StatusChip sel={selection} /></div>
     </div>
   );
 };
@@ -206,16 +208,19 @@ export interface MemberCoordinationCardProps {
 export const MemberCoordinationCard: React.FC<MemberCoordinationCardProps> = ({
   index, member, generatedByDay, selections, takenByDay, allMembers, saving, coordinatingDay, onPick, onCoordinate,
 }) => (
-  <div className="flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all dark:bg-[#071131] dark:border-slate-800">
-    <span className="text-xs font-bold text-slate-500 w-5 flex-shrink-0 text-center pt-2 dark:text-slate-400">{index + 1}</span>
-    <div className="flex items-center gap-2 flex-shrink-0 min-w-[180px] pt-0.5">
-      <Avatar name={member.name} />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-800 truncate dark:text-slate-100">{member.name}</p>
-        <IndustryTag industry={member.industry ?? undefined} />
+  // Phones stack the member above their day rows; from sm the wrapper is `contents`, so the row layout is unchanged.
+  <div className="flex flex-col gap-3 p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all dark:bg-[#071131] dark:border-slate-800 sm:flex-row sm:items-start sm:gap-4">
+    <div className="flex items-center gap-2 sm:contents">
+      <span className="text-xs font-bold text-slate-500 w-5 flex-shrink-0 text-center sm:pt-2 dark:text-slate-400">{index + 1}</span>
+      <div className="flex items-center gap-2 min-w-0 sm:flex-shrink-0 sm:min-w-[180px] sm:pt-0.5">
+        <Avatar name={member.name} />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800 truncate dark:text-slate-100">{member.name}</p>
+          <IndustryTag industry={member.industry ?? undefined} />
+        </div>
       </div>
     </div>
-    <div className="flex-1 flex flex-col gap-2">
+    <div className="min-w-0 flex-1 flex flex-col gap-2">
       {DAY_SLOTS.map((day) => (
         <DayRow
           key={day}
