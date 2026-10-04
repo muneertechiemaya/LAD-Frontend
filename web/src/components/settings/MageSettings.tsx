@@ -1327,11 +1327,11 @@ export const MageSettings: React.FC = () => {
                           : 'Came from your Drive requests folder'
                       }
                     >
-                      {job.source === 'gcs' ? 'uploaded' : 'drive'}
+                      {job.source === 'gcs' ? 'Uploaded' : 'From Drive'}
                     </span>
                     {job.status === 'done' && job.image_count > 0 && (
                       <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
-                        {job.image_count} images
+                        {job.image_count} {job.image_count === 1 ? 'image' : 'images'}
                       </span>
                     )}
                     {job.status === 'tracked' && (

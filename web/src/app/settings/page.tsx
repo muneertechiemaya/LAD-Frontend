@@ -36,13 +36,20 @@ const SettingsPage: React.FC = () => {
   // opening ?tab=media or ?tab=billing showed a tab strip with the current tab
   // off-screen to the right. Keep the active tab in view.
   const tabStripRef = useRef<HTMLDivElement>(null);
+  // Smooth only when the tab was tapped. A tab set from the URL (page load,
+  // an "Add credits" link) jumps straight there: browsers don't run smooth
+  // scrolling in a background tab, so a page opened in one kept the strip at 0.
+  const tabPickedRef = useRef(false);
   useEffect(() => {
     const strip = tabStripRef.current;
     const btn = strip?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
     if (!strip || !btn) return;
     if (strip.scrollWidth <= strip.clientWidth) return;
     // Scroll the strip only - scrollIntoView would also move the page.
-    strip.scrollTo({ left: btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' });
+    strip.scrollTo({
+      left: btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2,
+      behavior: tabPickedRef.current ? 'smooth' : 'auto',
+    });
   }, [activeTab]);
   const [renewalDate, setRenewalDate] = useState<string>('');
   const [logoError, setLogoError] = useState(false);
@@ -168,6 +175,7 @@ const SettingsPage: React.FC = () => {
                 data-tab={tab.id}
                 aria-current={activeTab === tab.id ? 'page' : undefined}
                 onClick={() => {
+                  tabPickedRef.current = true;
                   setActiveTab(tab.id);
                   const sp = new URLSearchParams(Array.from(searchParams.entries()));
                   sp.set('tab', tab.id);

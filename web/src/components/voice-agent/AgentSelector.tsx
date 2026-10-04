@@ -113,7 +113,9 @@ export function AgentSelector({
       </div>
 
       {/* Agent List */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      {/* Capped on phones: the list sits above the form there, and with 40
+          agents it was 6,400px tall before the form even started. */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin max-lg:max-h-[60vh]">
         <div className="space-y-2 p-3 sm:p-4 md:p-5">
           {isLoading ? (
             // Loading skeletons
