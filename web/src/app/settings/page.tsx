@@ -1,7 +1,7 @@
 'use client';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCompanyName } from '../../store/slices/settingsSlice';
 import { IntegrationsSettings } from '../../components/settings/IntegrationsSettings';
@@ -32,6 +32,18 @@ const SettingsPage: React.FC = () => {
   const companyName = useSelector((state: any) => state.settings.companyName);
   const companyLogo = useSelector((state: any) => state.settings.companyLogo);
   const [activeTab, setActiveTab] = useState<ActiveTab>('integrations');
+  // On a phone the strip scrolls sideways and only the first three tabs fit, so
+  // opening ?tab=media or ?tab=billing showed a tab strip with the current tab
+  // off-screen to the right. Keep the active tab in view.
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    const btn = strip?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+    if (!strip || !btn) return;
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    // Scroll the strip only - scrollIntoView would also move the page.
+    strip.scrollTo({ left: btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' });
+  }, [activeTab]);
   const [renewalDate, setRenewalDate] = useState<string>('');
   const [logoError, setLogoError] = useState(false);
 
@@ -149,10 +161,12 @@ const SettingsPage: React.FC = () => {
         </div>
         {/* Bottom Section: Tabs Navigation */}
         <div className="border-t border-gray-200/50 dark:border-gray-800/60 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
-          <div className="flex space-x-1 overflow-x-auto p-1">
+          <div ref={tabStripRef} className="relative flex space-x-1 overflow-x-auto p-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                data-tab={tab.id}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
                 onClick={() => {
                   setActiveTab(tab.id);
                   const sp = new URLSearchParams(Array.from(searchParams.entries()));
