@@ -4,6 +4,7 @@ import { Agent, AgentStatus } from '@/types/agent';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { languageLabel } from '@/lib/locale-label';
 
 interface AgentSelectorProps {
   agents: Agent[];
@@ -135,9 +136,8 @@ export function AgentSelector({
               const agentName = agent.name || agent.agent_name || 'Unnamed Agent';
               const isSelected = selectedAgentId === agentId;
               const status = agent.status ? statusConfig[agent.status as AgentStatus] : statusConfig['active'];
-              const language = agent.accent || agent.language || agent.agent_language || 'en';
+              const language = languageLabel(agent.accent || agent.language || agent.agent_language || 'en');
               const genderIcon = agent.voice_gender === 'male' ? '♂️' : agent.voice_gender === 'female' ? '♀️' : '◉';
-              const providerDisplay = agent.provider?.replace('-', ' ').replace('google chirp', 'Google') || '';
               
               return (
                 <button
@@ -192,11 +192,13 @@ export function AgentSelector({
                       </Badge>
                     </div>
 
-                    {/* Metadata Row: Gender, Language, Provider */}
-                    <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+                    {/* Metadata Row: Gender, Language. The voice vendor (cartesia,
+                        google chirp) used to be a third chip - not something a
+                        client chooses or recognises. */}
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
                       {/* Gender */}
                       <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/40">
-                        <span className="text-sm">{genderIcon}</span>
+                        <span className="text-sm" aria-hidden="true">{genderIcon}</span>
                         <span className="text-muted-foreground capitalize truncate">
                           {agent.voice_gender || 'N/A'}
                         </span>
@@ -204,21 +206,11 @@ export function AgentSelector({
                       
                       {/* Language */}
                       <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/40">
-                        <span className="text-base">🌐</span>
-                        <span className="text-muted-foreground uppercase truncate font-mono">
+                        <span className="text-base" aria-hidden="true">🌐</span>
+                        <span className="text-muted-foreground truncate">
                           {language}
                         </span>
                       </div>
-
-                      {/* Provider */}
-                      {agent.provider && (
-                        <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/40">
-                          <span className="text-base">🔊</span>
-                          <span className="text-muted-foreground text-xs truncate capitalize">
-                            {providerDisplay}
-                          </span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Description */}

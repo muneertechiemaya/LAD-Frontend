@@ -19,6 +19,7 @@ export function VoiceAgentSettings() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedAgentVoiceSampleUrl, setSelectedAgentVoiceSampleUrl] = useState<string | undefined>(undefined);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [agentsLoadFailed, setAgentsLoadFailed] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const [isLoadingAgent, setIsLoadingAgent] = useState(false);
@@ -162,6 +163,7 @@ export function VoiceAgentSettings() {
           variant: 'destructive',
         });
         setAgents([]);
+        setAgentsLoadFailed(true);
       } finally {
         setIsLoadingAgents(false);
         setIsLoadingVoices(false);
@@ -403,7 +405,7 @@ export function VoiceAgentSettings() {
                 <Volume2 className="h-6 w-6" />
               </div>
               <h1 className="text-2xl font-bold font-display text-foreground dark:text-white">
-                Voice Agents Workspace
+                Voice agents
               </h1>
             </div>
             {/* FIXED:
@@ -417,13 +419,13 @@ export function VoiceAgentSettings() {
                 value="agents"
                 className="rounded-lg transition-all dark:text-slate-400 data-[state=active]:dark:bg-[#2563eb] data-[state=active]:dark:text-white shadow-sm"
               >
-                Agent Configuration
+                Agents
               </TabsTrigger>
               <TabsTrigger
                 value="library"
                 className="rounded-lg transition-all dark:text-slate-400 data-[state=active]:dark:bg-[#2563eb] data-[state=active]:dark:text-white shadow-sm"
               >
-                Voice Library
+                Voices
               </TabsTrigger>
             </TabsList>
           </div>
@@ -434,6 +436,12 @@ export function VoiceAgentSettings() {
               <aside className="w-full min-w-0 max-w-none lg:w-[320px] lg:flex-none lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
                 {isLoadingAgents ? (
                   <SidebarSkeleton />
+                ) : agentsLoadFailed && agents.length === 0 ? (
+                  // A failed load is not "no agents yet" - the toast disappears,
+                  // the empty list would not.
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                    Couldn&apos;t load your voice agents. Refresh the page to try again.
+                  </div>
                 ) : (
                   <AgentSelector
                     agents={agents}
