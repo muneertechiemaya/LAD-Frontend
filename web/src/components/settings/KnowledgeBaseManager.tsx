@@ -213,8 +213,8 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-[300px] text-slate-500 dark:text-slate-300">
         <Loader2 className="size-8 animate-spin text-blue-400 mb-4" />
-        <p className="text-sm font-medium animate-pulse">Waking up worker environment...</p>
-        <p className="text-xs mt-2 text-slate-400 dark:text-gray-500 max-w-[250px] text-center">This may take a few seconds if the service is starting up.</p>
+        <p className="text-sm font-medium animate-pulse">Loading your knowledge base…</p>
+        <p className="text-xs mt-2 text-slate-500 dark:text-slate-400 max-w-[250px] text-center">The first load can take a few seconds.</p>
       </div>
     );
   }
@@ -598,7 +598,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Knowledge Base</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
-            This content is injected into all AI conversations as context. Add company info, FAQs, product details, etc.
+            Mr LAD uses this in every conversation. Add company info, FAQs, product details and the like.
           </p>
         </div>
         {!selectedStore && !showCreateStore && rag.isConfigured && rag.isAwake && !rag.wakeError && (
