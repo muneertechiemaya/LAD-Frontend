@@ -63,6 +63,19 @@ import { CorrectionPopover } from "./voice-agent/corrections/CorrectionPopover";
 import { CorrectionsList } from "./voice-agent/corrections/CorrectionsList";
 import { LineFeedbackPopover } from "./voice-agent/corrections/LineFeedbackPopover";
 import { downloadRecording, generateRecordingFilename } from "@/utils/recordingDownload";
+import {
+  downloadTranscript,
+  type TranscriptFormat,
+  type TranscriptMeta,
+} from "@/utils/transcriptDownload";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { categorizeLead, getTagConfig, normalizeLeadCategory } from "@/utils/leadCategorization";
 import { formatDateTimeUnified } from "@/utils/dateTime";
 import { humanizeKey } from "@/utils/statusMappings";
@@ -150,10 +163,13 @@ const TranscriptsTab = ({
   segments,
   agentId,
   callId,
+  downloadMeta,
 }: {
   segments: Array<{ time?: string; speaker?: string; text: string }>;
   agentId?: number | string | null;
   callId?: string | null;
+  /** Everything the downloaded file's header needs; the tab itself has none of it. */
+  downloadMeta?: TranscriptMeta;
 }) => {
   const { push: notify } = useToast();
   const corrections = useAgentCorrections(agentId ?? null);
@@ -258,8 +274,55 @@ const TranscriptsTab = ({
     });
   };
 
+  const saveTranscript = (format: TranscriptFormat) => {
+    try {
+      downloadTranscript(segments, { ...(downloadMeta ?? {}), callId: callId ?? null }, format);
+    } catch (err) {
+      notify({
+        title: "Could not save the transcript",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
+      {segments.length > 0 && (
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          <span className="text-xs text-muted-foreground">
+            {segments.length} line{segments.length === 1 ? "" : "s"}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 rounded-xl"
+                aria-label="Download transcript"
+              >
+                <Download className="h-4 w-4" />
+                <span className="ml-1 text-xs">Transcript</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Download as
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => saveTranscript("txt")}>
+                <span className="font-medium">Text</span>
+                <span className="ml-auto text-xs text-muted-foreground">.txt</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => saveTranscript("doc")}>
+                <span className="font-medium">Word</span>
+                <span className="ml-auto text-xs text-muted-foreground">.doc</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
       {canTeach && (
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
           <span>
@@ -1469,7 +1532,22 @@ export function CallLogModal({
 
                 {hasTranscripts && (
                   <TabsContent value="transcripts" className="flex-1 flex flex-col overflow-hidden mt-4 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                    <TranscriptsTab segments={segments} agentId={log?.agent_id ?? null} callId={id ?? null} />
+                    <TranscriptsTab
+                      segments={segments}
+                      agentId={log?.agent_id ?? null}
+                      callId={id ?? null}
+                      downloadMeta={{
+                        leadName: [log?.lead_first_name, log?.lead_last_name].filter(Boolean).join(" ") || null,
+                        phone: log?.to_base_number
+                          ? `${log?.to_country_code ?? ""}${log?.to_base_number}`
+                          : null,
+                        agentName: log?.agent_name ?? null,
+                        agentId: log?.agent_id ?? null,
+                        startedAt: log?.started_at ?? null,
+                        durationSeconds: log?.duration_seconds ?? null,
+                        status: log?.status ?? null,
+                      }}
+                    />
                   </TabsContent>
                 )}
 
