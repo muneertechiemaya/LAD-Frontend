@@ -23,19 +23,20 @@ import {
 } from "@/components/ui/select"
 
 // ── Building blocks ──────────────────────────────────────────────────────
+// Text colours are the -700 (-800 for green) of each hue: the -500s read 2.4–3:1 on their tints (WCAG needs 4.5).
 function TypePill({ type }: { type: CrmContact['type'] }) {
   const map: Record<CrmContact['type'], { label: string; color: string; bg: string }> = {
     prospect: { label: 'Prospect', color: '#0B1957', bg: '#e8ebf7' },
-    lead:     { label: 'Lead',     color: '#0ea5e9', bg: '#e0f2fe' },
-    client:   { label: 'Client',   color: '#16a34a', bg: '#dcfce7' },
-    imported: { label: 'Imported', color: '#64748b', bg: '#f1f5f9' },
-    inbound:  { label: 'Inbound',  color: '#a16207', bg: '#fef3c7' },
+    lead:     { label: 'Lead',     color: '#0369a1', bg: '#e0f2fe' },
+    client:   { label: 'Client',   color: '#166534', bg: '#dcfce7' },
+    imported: { label: 'Imported', color: '#475569', bg: '#f1f5f9' },
+    inbound:  { label: 'Inbound',  color: '#92400e', bg: '#fef3c7' },
   };
   const m = map[type] ?? map.imported;
 
   if (type === 'prospect') {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#0B1957]/10 border border-[#0B1957]/30 dark:bg-[#2563eb]/20 dark:text-[#60a5fa] dark:border-[#3b82f6]/40">
+      <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full text-[#0B1957] bg-[#0B1957]/10 border border-[#0B1957]/30 dark:bg-[#2563eb]/20 dark:text-[#60a5fa] dark:border-[#3b82f6]/40">
         {m.label}
       </span>
     );
@@ -43,7 +44,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
       style={{ color: m.color, background: m.bg }}
     >
       {m.label}
@@ -52,7 +53,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 }
 
 function StagePill({ stage }: { stage?: string }) {
-  if (!stage) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!stage) return <span className="text-xs text-slate-400">-</span>;
   const m = ({
     new:       { label: 'New',         color: '#64748b', bg: '#f1f5f9' },
     contacted: { label: 'Contacted',   color: '#0ea5e9', bg: '#e0f2fe' },
@@ -68,7 +69,7 @@ function StagePill({ stage }: { stage?: string }) {
   };
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ color: m.color, background: m.bg }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }}></span>
@@ -83,7 +84,7 @@ function ScoreBar({ value, color = T.primary }: { value: number; color?: string 
       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: T.badgeBg }}>
         <div className="h-full" style={{ width: `${value * 100}%`, background: color }}></div>
       </div>
-      <span className="text-[11px] tabular-nums font-semibold text-[#172560] dark:text-white w-7 text-right">
+      <span className="text-xs tabular-nums font-semibold text-[#172560] dark:text-white w-7 text-right">
         {Math.round(value * 100)}
       </span>
     </div>
@@ -91,7 +92,7 @@ function ScoreBar({ value, color = T.primary }: { value: number; color?: string 
 }
 
 function EmailCell({ email, verified }: { email?: string | null; verified?: boolean }) {
-  if (!email) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!email) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] text-[#172560] dark:text-white truncate">{email}</span>
@@ -101,7 +102,7 @@ function EmailCell({ email, verified }: { email?: string | null; verified?: bool
 }
 
 function PhoneCell({ phone, verified }: { phone?: string | null; verified?: boolean }) {
-  if (!phone) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!phone) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] tabular-nums text-[#172560] dark:text-white truncate">{phone}</span>
@@ -111,9 +112,9 @@ function PhoneCell({ phone, verified }: { phone?: string | null; verified?: bool
 }
 
 function OwnerCell({ ownerId }: { ownerId?: string }) {
-  if (!ownerId) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!ownerId) return <span className="text-xs text-slate-400">-</span>;
   const o = CRM_OWNERS[ownerId];
-  if (!o) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!o) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-2">
       <CrmAvatar name={o.name} initials={o.initials} tone={o.tone} size={22} />
@@ -224,6 +225,10 @@ interface Column<R> {
   label: string;
   align?: 'left' | 'right';
   nowrap?: boolean;
+  /** Lower-priority column, hidden below 2xl (1536px). With a sidebar, the
+   *  full 12-column table needed a sideways scroll at ordinary desktop widths
+   *  to reach Last activity and the row actions. */
+  secondary?: boolean;
   sortable?: boolean;
   /** Raw value to sort by — required for sortable columns, since `render`
    *  produces JSX rather than a comparable value. */
@@ -366,24 +371,24 @@ function CrmTable<R extends CrmContact>({
               {title}
             </h3>
             <span
-              className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md tabular-nums"
+              className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md tabular-nums"
             >
               {filtered.length}{filtered.length !== count ? ` / ${count}` : ''}
             </span>
           </div>
           {subtitle && (
-            <p className="text-[12px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
+            <p className="max-md:hidden text-[12px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
+        <div className="flex items-center gap-2 flex-wrap max-md:w-full">
+          <div className="relative max-md:w-full">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="h-9 pl-8 pr-3 rounded-lg text-[12.5px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 w-48"
+              className="h-9 max-lg:h-11 pl-8 pr-3 rounded-lg text-[12.5px] max-md:text-[16px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 w-48 max-md:w-full"
             />
           </div>
           {filters?.map((f) => (
@@ -406,7 +411,7 @@ function CrmTable<R extends CrmContact>({
                   ? `Export the ${filtered.length} row${filtered.length === 1 ? '' : 's'} shown${exportIsFiltered ? ' by this filter' : ' on this page'} — not all ${pagination!.total}`
                   : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`
             }
-            className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 max-lg:h-11 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* The count is on the button itself, not only in the tooltip: a
                 hover hint does not exist on touch, and "Export" next to a
@@ -419,14 +424,54 @@ function CrmTable<R extends CrmContact>({
           <button
             disabled
             title="Not available yet"
-            className="h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed"
+            className="max-md:hidden h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" /> New
           </button>
         </div>
       </header>
 
-      <div className="overflow-x-auto">
+      {/* Phones: one card per contact instead of a 10-column table that only
+          scrolls sideways. Same rows, same sort/filter, same open action. */}
+      <ul className="md:hidden divide-y divide-slate-100 dark:divide-[#262831]">
+        {sorted.map((r) => {
+          const sub = [r.title, r.company].filter((v) => v && String(v).trim()).join(' · ');
+          return (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => onRowClick?.(r)}
+                disabled={!onRowClick}
+                aria-label={`Open ${r.name}`}
+                className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] disabled:cursor-default"
+              >
+                <CrmAvatar name={r.name} initials={r.initials} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[14px] font-semibold text-[#172560] dark:text-white">{r.name}</span>
+                    <span className="shrink-0">
+                      <TypePill type={r.type} />
+                    </span>
+                  </span>
+                  {sub && <span className="mt-0.5 block truncate text-[13px] text-slate-600 dark:text-slate-300">{sub}</span>}
+                  <span className="mt-1 flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-400">
+                    {r.channels && r.channels.length > 0 && <ChannelChips channels={r.channels} />}
+                    {r.lastActivityAt && <span className="tabular-nums">{rel(r.lastActivityAt)} ago</span>}
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="py-14 text-center text-[13px] text-slate-500 dark:text-[#7a8ba3]">
+            <Inbox className="mx-auto mb-2 h-6 w-6 opacity-50" />
+            No matches.
+          </li>
+        )}
+      </ul>
+
+      <div className="overflow-x-auto max-md:hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/70 dark:bg-[#071131] border-b border-slate-100 dark:border-[#262831]">
@@ -472,7 +517,7 @@ function CrmTable<R extends CrmContact>({
                           : 'none'
                         : undefined
                     }
-                    className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
+                    className={`px-3 py-2.5 text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${c.secondary ? 'max-2xl:hidden ' : ''}${
                       c.align === 'right' ? 'text-right' : 'text-left'
                     } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]' : ''}`}
                   >
@@ -538,7 +583,7 @@ function CrmTable<R extends CrmContact>({
                     key={j}
                     className={`px-3 py-3 align-middle ${c.align === 'right' ? 'text-right' : ''} ${
                       c.nowrap ? 'whitespace-nowrap' : ''
-                    }`}
+                    } ${c.secondary ? 'max-2xl:hidden' : ''}`}
                   >
                     {c.render(r)}
                   </td>
@@ -630,7 +675,7 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
       <div className="min-w-0 max-w-[260px] sm:max-w-[320px]">
         <p className="text-[12.5px] font-semibold text-[#172560] dark:text-white truncate">{row.name}</p>
         {/* Kept rendered even when empty so row heights stay aligned. */}
-        <p className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate" title={subtitle}>
+        <p className="text-xs text-slate-500 dark:text-[#7a8ba3] truncate" title={subtitle}>
           {subtitle}
         </p>
       </div>
@@ -645,17 +690,17 @@ export function AllContactsTable({
   const columns: Column<CrmContact>[] = [
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
-    { label: 'Source',  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source', secondary: true,  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
     {
       label: 'Company',
       render: (r) => r.company
         ? <span className="text-[12px] text-[#172560] dark:text-white">{r.company}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
     { label: 'Email',   render: (r) => <EmailCell email={r.email} verified={r.emailVerified} /> },
     { label: 'Phone',   render: (r) => <PhoneCell phone={r.phone} verified={r.phoneVerified} /> },
     { label: 'Channels',render: (r) => <ChannelChips channels={r.channels} /> },
-    { label: 'Owner',   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Owner', secondary: true,   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
@@ -666,7 +711,7 @@ export function AllContactsTable({
       ),
     },
     {
-      label: 'Created', sortable: true, nowrap: true,
+      label: 'Created', secondary: true, sortable: true, nowrap: true,
       sortKey: (r) => r.createdAt, serverSortKey: 'created_at',
       render: (r) => (
         <span className="text-[12px] text-slate-500 dark:text-[#7a8ba3] tabular-nums">
@@ -731,15 +776,15 @@ export function ProspectsTable({
       label: 'Industry',
       render: (r) => r.industry
         ? <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
     {
       label: 'Geo',
       render: (r) => r.geo
         ? <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span>
-        : <span className="text-[11.5px] text-slate-400">-</span>,
+        : <span className="text-xs text-slate-400">-</span>,
     },
-    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, serverSortKey: 'fit_score', render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
+    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, serverSortKey: 'fit_score', render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-xs text-slate-400">-</span>) },
     {
       label: 'Intent',
       render: (r) => {
@@ -749,11 +794,11 @@ export function ProspectsTable({
         // real data, not a genuine 0. `?? 0` was rendering every prospect
         // as "0 signals" in a colored badge indistinguishable from a real
         // "checked and found none" result.
-        if (r.intentSignals == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.intentSignals == null) return <span className="text-xs text-slate-400">-</span>;
         const n = r.intentSignals;
         return (
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{
               background: n > 0 ? '#fef3c7' : '#f1f5f9',
               color: n > 0 ? '#a16207' : '#64748b',
@@ -776,12 +821,12 @@ export function ProspectsTable({
             {r.warmPath}
           </span>
         ) : (
-          <span className="text-[11.5px] text-slate-400">-</span>
+          <span className="text-xs text-slate-400">-</span>
         ),
     },
     { label: 'Channels', render: (r) => <ChannelChips channels={r.channels} /> },
-    { label: 'Source',   render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
-    { label: 'Owner',    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Source', secondary: true,   render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Owner', secondary: true,    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last touch', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
@@ -849,13 +894,13 @@ export function LeadsTable({
       // a deal genuinely assessed at zero value/probability.
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {r.value != null ? fmtCurrency(r.value) : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
+          {r.value != null ? fmtCurrency(r.value) : <span className="text-xs text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
     {
       label: 'Probability', sortable: true, sortKey: (r) => r.probability,
-      render: (r) => (r.probability != null ? <ScoreBar value={r.probability} color="#16a34a" /> : <span className="text-[11.5px] text-slate-400">-</span>),
+      render: (r) => (r.probability != null ? <ScoreBar value={r.probability} color="#16a34a" /> : <span className="text-xs text-slate-400">-</span>),
     },
     {
       label: 'Weighted', align: 'right', nowrap: true,
@@ -865,7 +910,7 @@ export function LeadsTable({
         </span>
       ),
     },
-    { label: 'Source',    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source', secondary: true,    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
     { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '-'}</span> },
     {
       label: 'Expected close', sortable: true, nowrap: true,
@@ -876,7 +921,7 @@ export function LeadsTable({
         </span>
       ),
     },
-    { label: 'Owner', nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
+    { label: 'Owner', secondary: true, nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
       sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
@@ -949,10 +994,10 @@ export function ClientsTable({
       // "else" branch, text empty) instead of the same "-" every other
       // unset field in this table already uses.
       render: (r) => {
-        if (!r.plan) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (!r.plan) return <span className="text-xs text-slate-400">-</span>;
         return (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold"
+            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
             style={{
               background: r.plan === 'Enterprise' ? '#e8ebf7' : r.plan === 'Growth' ? '#dbeafe' : '#f1f5f9',
               color: r.plan === 'Enterprise' ? '#0B1957' : r.plan === 'Growth' ? '#1d4ed8' : '#475569',
@@ -972,7 +1017,7 @@ export function ClientsTable({
       // it, the same).
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {r.mrr != null ? fmtCurrency(r.mrr, 'USD') : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
+          {r.mrr != null ? fmtCurrency(r.mrr, 'USD') : <span className="text-xs text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
@@ -992,7 +1037,7 @@ export function ClientsTable({
         // health score to 0 would paint every unscored client red/critical,
         // which is a worse-than-worst-case reading rather than an honest
         // "no data yet."
-        if (r.health == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.health == null) return <span className="text-xs text-slate-400">-</span>;
         const h = r.health;
         return (
           <ScoreBar
@@ -1005,11 +1050,11 @@ export function ClientsTable({
     {
       label: 'NPS', align: 'right',
       render: (r) => {
-        if (r.nps == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (r.nps == null) return <span className="text-xs text-slate-400">-</span>;
         const n = r.nps;
         return (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
             style={{
               color: n >= 9 ? '#16a34a' : n >= 7 ? '#0ea5e9' : '#dc2626',
               background: n >= 9 ? '#dcfce7' : n >= 7 ? '#e0f2fe' : '#fee2e2',
@@ -1026,7 +1071,7 @@ export function ClientsTable({
       label: 'Renewal', sortable: true, nowrap: true,
       sortKey: (r) => r.renewalDate,
       render: (r) => {
-        if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">-</span>;
+        if (!r.renewalDate) return <span className="text-xs text-slate-400">-</span>;
         // Real current time — NOT the frozen `NOW` (2026-05-27) that the mock
         // fixtures use. Days-until-renewal and the <60d "urgent" highlight must
         // be measured from today; against the frozen date every real renewal
@@ -1042,7 +1087,7 @@ export function ClientsTable({
               {fmtDate(r.renewalDate)}
             </span>
             <span
-              className="text-[10.5px] font-medium"
+              className="text-xs font-medium"
               style={{ color: isClose ? '#dc2626' : '#64748b' }}
             >
               · {days}d

@@ -22,18 +22,18 @@ import { TargetAccountsEditor, type TargetAccount } from './TargetAccountsEditor
 const ALL_BACKENDS: DiscoveryBackend[] = ['apollo', 'sales_navigator', 'abm'];
 
 const BACKEND_LABEL: Record<DiscoveryBackend, string> = {
-  apollo: 'Apollo',
-  sales_navigator: 'Sales Navigator',
-  abm: 'ABM (named accounts)',
+  apollo: 'Apollo (business directory)',
+  sales_navigator: 'LinkedIn Sales Navigator',
+  abm: 'Your named companies only',
 };
 
 const BACKEND_DESCRIPTION: Record<DiscoveryBackend, string> = {
   apollo:
-    'Apollo.io people search. Strong firmographics, broad coverage, pay-per-result.',
+    'A large business directory. Good company details and wide reach; each result costs credits.',
   sales_navigator:
-    'LinkedIn Sales Navigator via Unipile. Authoritative job-title data; emails not exposed (filled later by enrichment).',
+    'Searches LinkedIn. Most accurate job titles; emails are found afterwards.',
   abm:
-    'Account-based: discover people only at the company list defined below. Use when sales has named the target accounts.',
+    'Only finds people at the companies you list below. Use when you already know which companies to go after.',
 };
 
 const CROSS_BACKEND_MERGE_OPTIONS: Array<{
@@ -43,18 +43,18 @@ const CROSS_BACKEND_MERGE_OPTIONS: Array<{
 }> = [
   {
     value: 'highest_confidence',
-    label: 'Highest confidence',
-    hint: 'Keep the backend that reports the strongest match confidence.',
+    label: 'Keep the best match',
+    hint: 'Keep the copy from whichever source is most sure it is the right person.',
   },
   {
     value: 'first_match',
     label: 'First match wins',
-    hint: 'Honour discovery order - keep whichever backend surfaced the candidate first.',
+    hint: 'Keep the copy from whichever source found the person first.',
   },
   {
     value: 'merge_fields',
-    label: 'Merge fields',
-    hint: 'Field-level merge with backend-specific overrides (e.g. Sales Nav job titles win).',
+    label: 'Combine details',
+    hint: 'Combine both copies into one (LinkedIn job titles win).',
   },
 ];
 
@@ -112,11 +112,11 @@ export function SearchStrategyEditor({
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Backends &amp; discovery order
+            Where to search, and in what order
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            The dispatcher tries enabled backends top-to-bottom. Disabled
-            backends are skipped entirely.
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+            Mr LAD tries the sources that are on, top to bottom. Sources that
+            are off are skipped.
           </p>
         </header>
         <ul className="divide-y divide-gray-100 dark:divide-[#262831]">
@@ -130,8 +130,8 @@ export function SearchStrategyEditor({
                     type="button"
                     disabled={disabled || idx === 0}
                     onClick={() => moveBackend(b, -1)}
-                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                    aria-label={`Move ${b} up`}
+                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
+                    aria-label={`Move ${BACKEND_LABEL[b]} up`}
                   >
                     ▲
                   </button>
@@ -139,8 +139,8 @@ export function SearchStrategyEditor({
                     type="button"
                     disabled={disabled || idx === order.length - 1}
                     onClick={() => moveBackend(b, 1)}
-                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                    aria-label={`Move ${b} down`}
+                    className="text-gray-500 hover:text-gray-800 disabled:opacity-30 max-lg:inline-flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center dark:text-slate-400"
+                    aria-label={`Move ${BACKEND_LABEL[b]} down`}
                   >
                     ▼
                   </button>
@@ -153,19 +153,19 @@ export function SearchStrategyEditor({
                       checked={enabled}
                       disabled={disabled}
                       onChange={(e) => toggleBackend(b, e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 max-lg:h-6 max-lg:w-6 dark:text-blue-400"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {BACKEND_LABEL[b]}
                     </span>
                   </label>
-                  <p className="ml-7 text-xs text-gray-500">
+                  <p className="ml-7 text-xs text-gray-500 dark:text-slate-400">
                     {BACKEND_DESCRIPTION[b]}
                   </p>
                 </div>
 
-                <label className="flex items-center gap-2 text-xs text-gray-600">
-                  <span>Max per run</span>
+                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
+                  <span>Most people per search</span>
                   <input
                     type="number"
                     min={1}
@@ -177,7 +177,7 @@ export function SearchStrategyEditor({
                     }
                     onChange={(e) => setBackendCap(b, Number(e.target.value))}
                     disabled={disabled || !enabled}
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:opacity-50"
+                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
                   />
                 </label>
               </li>
@@ -206,36 +206,36 @@ export function SearchStrategyEditor({
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Fallback rules
+            If a search comes back empty
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            What the dispatcher does when a backend returns zero or a special
-            condition is met.
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+            What Mr LAD does when a source finds nobody, or when you have a
+            list of named companies.
           </p>
         </header>
         <div className="space-y-3 px-5 py-4 text-sm">
           <RuleRow
-            label="If Apollo returns zero results"
+            label="If the main search finds nobody"
             value={fb.if_apollo_returns_zero || 'try_sales_navigator'}
             disabled={disabled}
             onChange={(v) =>
               set({ fallback_rules: { ...fb, if_apollo_returns_zero: v as 'try_sales_navigator' | 'stop' } })
             }
             options={[
-              { value: 'try_sales_navigator', label: 'Try Sales Navigator next' },
+              { value: 'try_sales_navigator', label: 'Try LinkedIn next' },
               { value: 'stop', label: 'Stop the run' },
             ]}
           />
           <RuleRow
-            label="If the ICP has named target accounts (ABM)"
+            label="If you have a list of named companies to target"
             value={fb.if_company_has_named_target || 'use_abm_only'}
             disabled={disabled}
             onChange={(v) =>
               set({ fallback_rules: { ...fb, if_company_has_named_target: v as 'use_abm_only' | 'mix_with_apollo' } })
             }
             options={[
-              { value: 'use_abm_only', label: 'Use ABM only (skip Apollo + Sales Nav)' },
-              { value: 'mix_with_apollo', label: 'Mix ABM results with Apollo + Sales Nav' },
+              { value: 'use_abm_only', label: 'Only search my named companies' },
+              { value: 'mix_with_apollo', label: 'Search my named companies and everywhere else' },
             ]}
           />
         </div>
@@ -244,15 +244,15 @@ export function SearchStrategyEditor({
       {/* ── Deduplication ──────────────────────────────────────────────── */}
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Deduplication</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            How to collapse the same person when multiple backends return them.
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Duplicates</h3>
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+            What to do when the same person is found in more than one place.
           </p>
         </header>
         <div className="space-y-3 px-5 py-4 text-sm">
           <fieldset>
             <legend className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-              Cross-backend merge strategy
+              Which copy to keep
             </legend>
             <div className="space-y-1.5">
               {CROSS_BACKEND_MERGE_OPTIONS.map((opt) => (
@@ -273,11 +273,11 @@ export function SearchStrategyEditor({
                         deduplication: { ...dd, cross_backend_merge: opt.value },
                       })
                     }
-                    className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500 max-lg:h-6 max-lg:w-6 dark:text-blue-400"
                   />
                   <span>
                     <span className="font-medium">{opt.label}</span>
-                    <span className="ml-2 text-xs text-gray-500">{opt.hint}</span>
+                    <span className="ml-2 text-xs text-gray-500 dark:text-slate-400">{opt.hint}</span>
                   </span>
                 </label>
               ))}
@@ -289,16 +289,16 @@ export function SearchStrategyEditor({
       {/* ── Total caps ──────────────────────────────────────────────────── */}
       <section className="rounded-lg border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <header className="border-b border-gray-200 dark:border-[#262831] px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Run caps</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Safety nets that cap how many candidates the dispatcher will
-            collect across all backends.
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Limits per search</h3>
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+            Upper limits on how many people one search can bring back, so a
+            single search can&apos;t use up your credits.
           </p>
         </header>
         <div className="grid grid-cols-1 gap-4 px-5 py-4 text-sm sm:grid-cols-2">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Total cap per run
+              Most people per search, all sources together
             </span>
             <input
               type="number"
@@ -310,10 +310,10 @@ export function SearchStrategyEditor({
                 set({ total_cap_per_run: Number(e.target.value) })
               }
               disabled={disabled}
-              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
             />
-            <span className="text-xs text-gray-500">
-              Default 800. Per-backend caps are still enforced within this.
+            <span className="text-xs text-gray-500 dark:text-slate-400">
+              Default 800. Each source&apos;s own limit above still applies.
             </span>
           </label>
           <label className="flex flex-col gap-1">
@@ -330,9 +330,9 @@ export function SearchStrategyEditor({
                 set({ total_cap_per_day: Number(e.target.value) })
               }
               disabled={disabled}
-              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
             />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-slate-400">
               Default 2,000. Rolls over at midnight UTC.
             </span>
           </label>
@@ -364,7 +364,7 @@ function RuleRow({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm disabled:opacity-50"
+        className="rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

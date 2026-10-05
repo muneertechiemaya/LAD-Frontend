@@ -30,6 +30,22 @@
       "types": "./features/call-logs/index.ts",
       "default": "./features/call-logs/index.ts"
     },
+    "./calendar": {
+      "types": "./features/calendar/index.ts",
+      "default": "./features/calendar/index.ts"
+    },
+    "./promo-video": {
+      "types": "./features/promo-video/index.ts",
+      "default": "./features/promo-video/index.ts"
+    },
+    "./notifications": {
+      "types": "./features/notifications/index.ts",
+      "default": "./features/notifications/index.ts"
+    },
+    "./tasks": {
+      "types": "./features/tasks/index.ts",
+      "default": "./features/tasks/index.ts"
+    },
     "./campaigns": {
       "types": "./features/campaigns/index.ts",
       "default": "./features/campaigns/index.ts"
@@ -41,7 +57,7 @@
     "./community-roi/types": {
       "types": "./features/community-roi/types.ts",
       "default": "./features/community-roi/types.ts"
-    },    
+    },
     "./conversations": {
       "types": "./features/conversations/index.ts",
       "default": "./features/conversations/index.ts"
@@ -86,6 +102,18 @@
       "types": "./features/overview/index.ts",
       "default": "./features/overview/index.ts"
     },
+    "./sales-playbook": {
+      "types": "./features/sales-playbook/index.ts",
+      "default": "./features/sales-playbook/index.ts"
+    },
+    "./team": {
+      "types": "./features/team/index.ts",
+      "default": "./features/team/index.ts"
+    },
+    "./tenant-studio": {
+      "types": "./features/tenant-studio/index.ts",
+      "default": "./features/tenant-studio/index.ts"
+    },
     "./prospects": {
       "types": "./features/prospects/index.ts",
       "default": "./features/prospects/index.ts"
@@ -101,6 +129,10 @@
     "./voice-agent": {
       "types": "./features/voice-agent/index.ts",
       "default": "./features/voice-agent/index.ts"
+    },
+    "./content-studio": {
+      "types": "./features/content-studio/index.ts",
+      "default": "./features/content-studio/index.ts"
     }
   },
   "scripts": {

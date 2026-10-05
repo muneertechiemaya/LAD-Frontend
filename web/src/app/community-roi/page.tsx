@@ -57,14 +57,33 @@ export default function CommunityROIDashboard() {
     return localStorage.getItem('sidebar-pinned') !== 'false'
   })
 
+  // Below md the 320px member list can't sit beside the dashboard - on a 390px
+  // phone it left the whole dashboard 70px wide. There it becomes a slide-over
+  // drawer, closed by default; pinning is a desktop-only idea.
+  const [isPhone, setIsPhone] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => {
+      setIsPhone(mq.matches)
+      if (mq.matches) setSidebarVisible(false)
+    }
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  const pinned = sidebarPinned && !isPhone
+
   // Immediate auto-hide sidebar logic
   useEffect(() => {
     const handleMainContentInteraction = (e: Event) => {
       // Don't hide if sidebar is pinned
-      if (sidebarPinned) return
+      if (pinned) return
 
       // Check if the click/interaction is outside the sidebar
       const target = e.target as HTMLElement
+      // The toggle's own click must not be read as "clicked outside" - this
+      // window listener runs after its onClick and would close it again.
+      if (target?.closest?.('[data-sidebar-toggle="true"]')) return
       const sidebar = document.querySelector('[data-sidebar="true"]')
 
       if (sidebar && !sidebar.contains(target)) {
@@ -91,7 +110,7 @@ export default function CommunityROIDashboard() {
       window.removeEventListener('click', handleMainContentInteraction)
       window.removeEventListener('scroll', handleMainContentInteraction)
     }
-  }, [sidebarPinned])
+  }, [pinned])
 
   // Handle sidebar pin toggle
   const handleTogglePin = () => {
@@ -111,9 +130,9 @@ export default function CommunityROIDashboard() {
   })
 
   const communities = [
-    { id: 'BNI', name: 'BNI Rising Phoenix', icon: Building2, logo: '/assets/community-logos/bni-logo.svg', color: 'text-red-600', bg: 'bg-red-50' },
-    // { id: 'WhatsApp', name: 'WhatsApp Group', icon: Phone, color: 'text-green-600', bg: 'bg-green-50' },
-    // { id: 'LinkedIn', name: 'LinkedIn Network', icon: Linkedin, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'BNI', name: 'BNI Rising Phoenix', icon: Building2, logo: '/assets/community-logos/bni-logo.svg', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/10' },
+    // { id: 'WhatsApp', name: 'WhatsApp Group', icon: Phone, color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/10' },
+    // { id: 'LinkedIn', name: 'LinkedIn Network', icon: Linkedin, color: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-500/10' },
   ]
 
   // Server now returns only the matching subset - no client-side filter needed.
@@ -121,14 +140,17 @@ export default function CommunityROIDashboard() {
 
   return (
     <>
-    <div className="flex h-screen bg-slate-50 overflow-hidden relative">
+    <div className="flex h-screen bg-slate-50 overflow-hidden relative dark:bg-[#000724]">
       {/* Member Sidebar */}
       <div
         data-sidebar="true"
-        className={`${sidebarVisible ? 'w-80' : 'w-0'} border-r bg-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden shadow-lg ${!sidebarVisible && !sidebarPinned ? 'fixed left-0 top-0 bottom-0 z-50 w-80' : ''}`}
+        className={isPhone
+          ? `fixed inset-y-0 left-0 z-[70] w-[85vw] max-w-80 border-r bg-white flex flex-col overflow-hidden shadow-2xl transition-transform duration-300 dark:bg-[#071131] dark:border-slate-800 ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}`
+          : `${sidebarVisible ? 'w-80' : 'w-0'} border-r bg-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden shadow-lg dark:bg-[#071131] dark:border-slate-800 ${!sidebarVisible && !sidebarPinned ? 'fixed left-0 top-0 bottom-0 z-50 w-80' : ''}`}
+        aria-hidden={isPhone && !sidebarVisible ? true : undefined}
       >
         {/* Channel Selection */}
-        <div className="p-4 flex gap-3 border-b overflow-x-auto no-scrollbar bg-slate-50/50">
+        <div className="p-4 flex gap-3 border-b overflow-x-auto no-scrollbar bg-slate-50/50 dark:border-slate-800">
           {communities.map((community) => (
             <button
               key={community.id}
@@ -138,8 +160,8 @@ export default function CommunityROIDashboard() {
               }}
               className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
                 selectedCommunity === community.id 
-                  ? 'bg-slate-900 text-white shadow-lg ring-4 ring-slate-900/10' 
-                  : 'bg-white text-slate-400 hover:bg-slate-100 border border-slate-200'
+                  ? 'bg-slate-900 text-white shadow-lg ring-4 ring-slate-900/10 dark:bg-blue-600 dark:ring-blue-500/20' 
+                  : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 dark:bg-[#071131] dark:text-slate-400 dark:hover:bg-white/10 dark:border-slate-700'
               }`}
               title={community.name}
             >
@@ -148,28 +170,29 @@ export default function CommunityROIDashboard() {
           ))}
         </div>
 
-        <div className="p-4 border-b space-y-4">
+        <div className="p-4 border-b space-y-4 dark:border-slate-800">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold text-lg text-slate-800">Members</h2>
+            <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100">Members</h2>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wider">
+              <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wider">
                 {filteredMembers.length} Total
               </Badge>
               <button
                 onClick={handleTogglePin}
-                className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                className="max-md:hidden max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                 title={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
               >
                 {sidebarPinned ? (
-                  <Pin className="w-4 h-4 fill-slate-600 text-slate-600" />
+                  <Pin className="w-4 h-4 fill-slate-600 text-slate-600 dark:text-slate-300" />
                 ) : (
                   <PinOff className="w-4 h-4" />
                 )}
               </button>
-              {!sidebarPinned && (
+              {!pinned && (
                 <button
                   onClick={() => setSidebarVisible(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                  aria-label="Close members"
+                  className="max-lg:min-h-11 max-lg:min-w-11 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-600 dark:hover:bg-white/10 dark:text-slate-400"
                   title="Close sidebar"
                 >
                   <X className="w-4 h-4" />
@@ -178,10 +201,10 @@ export default function CommunityROIDashboard() {
             </div>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 dark:text-slate-400" />
             <Input 
               placeholder="Search members..." 
-              className="pl-10 bg-slate-50 border-slate-200"
+              className="pl-10 bg-slate-50 border-slate-200 dark:bg-white/5 dark:border-slate-700"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -192,35 +215,35 @@ export default function CommunityROIDashboard() {
           {membersLoading ? (
             <div className="p-8 text-center space-y-2">
               <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
-              <p className="text-xs text-slate-500 font-medium">Loading network...</p>
+              <p className="text-xs text-slate-500 font-medium dark:text-slate-400">Loading network...</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
               {filteredMembers.map((member: any) => (
                 <button
                   key={member.id}
-                  onClick={() => setSelectedMemberId(member.id)}
-                  className={`w-full p-4 text-left transition-all group flex items-center justify-between ${
+                  onClick={() => { setSelectedMemberId(member.id); if (isPhone) setSidebarVisible(false) }}
+                  className={`max-lg:min-h-11 w-full p-4 text-left transition-all group flex items-center justify-between ${
                     selectedMemberId === member.id 
-                      ? 'bg-blue-50 border-r-4 border-blue-600' 
+                      ? 'bg-blue-50 border-r-4 border-blue-600 dark:bg-blue-500/10' 
                       : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                      selectedMemberId === member.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                      selectedMemberId === member.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
                     }`}>
                       {(member.name || 'M').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className={`font-semibold text-sm truncate ${selectedMemberId === member.id ? 'text-blue-900' : 'text-slate-800'}`}>
+                      <p className={`font-semibold text-sm truncate ${selectedMemberId === member.id ? 'text-blue-900 dark:text-blue-100' : 'text-slate-800 dark:text-slate-100'}`}>
                         {member.name}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">{member.email || 'No email'}</p>
+                      <p className="text-xs text-slate-600 truncate dark:text-slate-400">{member.email || 'No email'}</p>
                     </div>
                   </div>
                   <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${
-                    selectedMemberId === member.id ? 'text-blue-600 translate-x-1' : 'text-slate-300 group-hover:translate-x-1'
+                    selectedMemberId === member.id ? 'text-blue-600 translate-x-1 dark:text-blue-300' : 'text-slate-300 group-hover:translate-x-1'
                   }`} />
                 </button>
               ))}
@@ -231,7 +254,18 @@ export default function CommunityROIDashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
+          {isPhone && !sidebarVisible && (
+            <button
+              type="button"
+              data-sidebar-toggle="true"
+              onClick={() => setSidebarVisible(true)}
+              className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/15"
+            >
+              <Users className="w-4 h-4" aria-hidden="true" />
+              Members
+            </button>
+          )}
           {selectedMemberId ? (
             <MemberProfileView memberId={selectedMemberId} onBack={() => setSelectedMemberId(null)} />
           ) : (activeView as ActiveView) === 'calendar' ? (
@@ -239,12 +273,12 @@ export default function CommunityROIDashboard() {
           ) : (
             <div className="space-y-8">
               {/* Community Header */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-4 dark:bg-[#071131] dark:border-slate-700">
                 <div className="flex items-center gap-4">
                   {(() => {
                     const community = communities.find(c => c.id === selectedCommunity)
                     return (
-                      <div className="w-28 h-28 rounded-2xl overflow-hidden flex items-center justify-center bg-white border-2 border-slate-100 shadow-sm">
+                      <div className="w-28 h-28 rounded-2xl overflow-hidden flex items-center justify-center bg-white border-2 border-slate-100 shadow-sm dark:bg-[#071131] dark:border-slate-800">
                         {community?.logo ? (
                           <img 
                             src={community.logo} 
@@ -259,7 +293,7 @@ export default function CommunityROIDashboard() {
                           <div className={`p-4 flex items-center justify-center ${community?.bg}`}>
                             {(() => {
                               const Icon = community?.icon || Building2
-                              const color = community?.color || 'text-slate-600'
+                              const color = community?.color || 'text-slate-600 dark:text-slate-300'
                               return <Icon className={`w-8 h-8 ${color}`} />
                             })()}
                           </div>
@@ -268,12 +302,12 @@ export default function CommunityROIDashboard() {
                     )
                   })()}
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-900">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                       {communities.find(c => c.id === selectedCommunity)?.name}
                     </h1>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-[10px] uppercase">Active Community</Badge>
-                      <span className="text-sm text-slate-500 font-medium flex items-center gap-1">
+                      <Badge variant="outline" className="text-xs uppercase">Active Community</Badge>
+                      <span className="text-sm text-slate-500 font-medium flex items-center gap-1 dark:text-slate-400">
                         <Users className="w-3 h-3" /> {filteredMembers.length} Members
                       </span>
                     </div>
@@ -281,23 +315,23 @@ export default function CommunityROIDashboard() {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {/* View Toggle */}
-                  <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-1">
+                  <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-1 dark:bg-white/10">
                     <button
                       onClick={() => { setActiveView('dashboard'); setSelectedMemberId(null) }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      className={`max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         activeView === 'dashboard'
-                          ? 'bg-white text-slate-800 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-white text-slate-800 shadow-sm dark:bg-[#071131] dark:text-slate-100'
+                          : 'text-slate-600 hover:text-slate-800 dark:text-slate-400'
                       }`}
                     >
                       <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
                     </button>
                     <button
                       onClick={() => { setActiveView('calendar'); setSelectedMemberId(null) }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      className={`max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         activeView === 'calendar'
-                          ? 'bg-white text-slate-800 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-white text-slate-800 shadow-sm dark:bg-[#071131] dark:text-slate-100'
+                          : 'text-slate-600 hover:text-slate-800 dark:text-slate-400'
                       }`}
                     >
                       <CalendarDays className="w-3.5 h-3.5" /> Calendar
@@ -323,7 +357,7 @@ export default function CommunityROIDashboard() {
 
               {/* Stats Panel */}
               <div className='flex flex-col'>
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 dark:text-slate-100">
                   <Trophy className="w-5 h-5 text-amber-500" />
                   Community Performance
                 </h2>
@@ -358,7 +392,7 @@ export default function CommunityROIDashboard() {
                 <CardContent className="p-8">
                   <div className="max-w-xl">
                     <h3 className="text-xl font-bold text-white mb-2">Grow your network ROI</h3>
-                    <p className="text-slate-400 mb-6">
+                    <p className="text-slate-500 mb-6 dark:text-slate-400">
                       Track your 1-to-1 meetings and referrals to see the real impact of your community involvement.
                     </p>
                     
@@ -379,13 +413,23 @@ export default function CommunityROIDashboard() {
       </div>
     </div>
 
+    {/* Phone drawer backdrop */}
+    {isPhone && sidebarVisible && (
+      <div
+        aria-hidden="true"
+        onClick={() => setSidebarVisible(false)}
+        className="fixed inset-0 z-[65] bg-black/40"
+      />
+    )}
+
     {/* Floating button to show sidebar when hidden */}
-    {!sidebarVisible && !sidebarPinned && (
+    {!sidebarVisible && !isPhone && !sidebarPinned && (
       <button
         data-sidebar-toggle="true"
         onClick={() => setSidebarVisible(true)}
-        className="fixed left-4 top-4 p-3 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800 transition-all z-40"
+        className="max-lg:min-h-11 fixed left-4 top-4 p-3 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800 transition-all z-40"
         title="Show members sidebar"
+        aria-label="Show members"
       >
         <Users className="w-5 h-5" />
       </button>

@@ -80,11 +80,11 @@ interface CalendarSettings {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200',   dot: 'bg-amber-400',   icon: AlertCircle  },
-  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200',      dot: 'bg-blue-500',    icon: CheckCircle2 },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200',   dot: 'bg-green-500',   icon: CheckCircle2 },
-  cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-500 border-slate-200',   dot: 'bg-slate-400',   icon: XCircle      },
-  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-600 border-red-200',         dot: 'bg-red-400',     icon: XCircle      },
+  pending:   { label: 'Pending',   color: 'bg-amber-100 text-amber-700 border-amber-200 dark:text-amber-300 dark:bg-amber-500/15',   dot: 'bg-amber-400',   icon: AlertCircle  },
+  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:text-blue-300 dark:bg-blue-500/15',      dot: 'bg-blue-500',    icon: CheckCircle2 },
+  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200 dark:text-green-300 dark:bg-green-500/15',   dot: 'bg-green-500',   icon: CheckCircle2 },
+  cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-white/10 dark:text-slate-400 dark:border-slate-700',   dot: 'bg-slate-400',   icon: XCircle      },
+  no_show:   { label: 'No Show',   color: 'bg-red-100 text-red-700 border-red-200 dark:text-red-300 dark:bg-red-500/15',         dot: 'bg-red-400',     icon: XCircle      },
 }
 
 const TYPE_ICON = {
@@ -99,8 +99,9 @@ function initials(name: string) {
 
 function avatarColor(name: string) {
   const colors = [
-    'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-amber-500',
-    'bg-pink-500',  'bg-teal-500',  'bg-indigo-500','bg-rose-500',
+    // 600/700: white initials need >= 4.5:1
+    'bg-blue-600', 'bg-purple-600', 'bg-green-700', 'bg-amber-700',
+    'bg-pink-600',  'bg-teal-700',  'bg-indigo-600','bg-rose-600',
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -296,20 +297,20 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
           ${isSelected
             ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-100'
             : isCurrentDay
-              ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+              ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 dark:bg-blue-500/10 dark:border-blue-800/60 dark:hover:bg-blue-500/20'
               : inMonth
-                ? 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200'
-                : 'bg-slate-50/50 border-transparent'
+                ? 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200 dark:bg-[#071131] dark:border-slate-800 dark:hover:bg-white/5'
+                : 'bg-slate-50/50 border-transparent dark:bg-white/[0.02]'
           }
         `}
       >
         <span className={`
           text-sm font-semibold block mb-1
-          ${isSelected ? 'text-white' : isCurrentDay ? 'text-blue-600' : inMonth ? 'text-slate-800' : 'text-slate-300'}
+          ${isSelected ? 'text-white' : isCurrentDay ? 'text-blue-600 dark:text-blue-300' : inMonth ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}
         `}>
           {format(day, 'd')}
           {isCurrentDay && !isSelected && (
-            <span className="ml-1 text-[9px] font-bold uppercase tracking-wide text-blue-500">Today</span>
+            <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-300">Today</span>
           )}
         </span>
 
@@ -326,7 +327,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               />
             ))}
             {dayMeetings.length > 3 && (
-              <span className={`text-[10px] font-bold ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-bold ${isSelected ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
                 +{dayMeetings.length - 3}
               </span>
             )}
@@ -336,7 +337,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         {dayMeetings.length > 0 && (
           <span className={`
             absolute top-2 right-2 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center
-            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'}
+            ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600 dark:text-blue-300 dark:bg-blue-500/15'}
           `}>
             {dayMeetings.length}
           </span>
@@ -352,14 +353,14 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
     const isUpdating = updatingMeetingId === meeting.id
 
     return (
-      <div className={`rounded-2xl border bg-white p-4 space-y-3 transition-all hover:shadow-md ${compact ? '' : ''}`}>
+      <div className={`rounded-2xl border bg-white p-4 space-y-3 transition-all hover:shadow-md  dark:bg-[#071131] ${compact ? '' : ''}`}>
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <TypeIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-xs font-medium text-slate-500 capitalize">{meeting.meeting_type.replace('_', ' ')}</span>
+            <TypeIcon className="w-3.5 h-3.5 text-slate-500 shrink-0 dark:text-slate-400" />
+            <span className="text-xs font-medium text-slate-500 capitalize dark:text-slate-400">{meeting.meeting_type.replace('_', ' ')}</span>
             <span className="text-slate-300">·</span>
-            <span className="text-xs font-medium text-slate-500">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {meeting.start_time} - {meeting.end_time}
             </span>
           </div>
@@ -379,11 +380,11 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">
-              {meeting.member_a_name} <span className="text-slate-400 font-normal">×</span> {meeting.member_b_name}
+            <p className="text-sm font-semibold text-slate-800 truncate dark:text-slate-100">
+              {meeting.member_a_name} <span className="text-slate-500 font-normal dark:text-slate-400">×</span> {meeting.member_b_name}
             </p>
             {(meeting.member_a_company || meeting.member_b_company) && (
-              <p className="text-xs text-slate-400 truncate">
+              <p className="text-xs text-slate-500 truncate dark:text-slate-400">
                 {meeting.member_a_company} · {meeting.member_b_company}
               </p>
             )}
@@ -393,10 +394,10 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         {/* Confirmation badges */}
         {meeting.status === 'confirmed' && (
           <div className="flex gap-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_a_confirmed ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_a_confirmed ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
               {meeting.member_a_name.split(' ')[0]} {meeting.member_a_confirmed ? '✓' : '...'}
             </span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_b_confirmed ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meeting.member_b_confirmed ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
               {meeting.member_b_name.split(' ')[0]} {meeting.member_b_confirmed ? '✓' : '...'}
             </span>
           </div>
@@ -404,7 +405,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
 
         {/* Agenda notes */}
         {meeting.agenda_notes && !compact && (
-          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-2 line-clamp-2">
+          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-2 line-clamp-2 dark:text-slate-400 dark:bg-white/5">
             {meeting.agenda_notes}
           </p>
         )}
@@ -415,7 +416,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 flex-1"
+              className="h-7 text-xs gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 flex-1 dark:text-blue-300"
               disabled={isUpdating}
               onClick={() => updateMeetingStatus(meeting.id, 'confirmed')}
             >
@@ -425,7 +426,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs gap-1.5 text-slate-400 hover:text-red-500"
+              className="h-7 text-xs gap-1.5 text-slate-500 hover:text-red-500 dark:text-slate-400"
               disabled={isUpdating}
               onClick={() => updateMeetingStatus(meeting.id, 'cancelled')}
             >
@@ -448,7 +449,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs gap-1.5 text-slate-400 hover:text-red-500"
+              className="h-7 text-xs gap-1.5 text-slate-500 hover:text-red-500 dark:text-slate-400"
               disabled={isUpdating}
               onClick={() => updateMeetingStatus(meeting.id, 'cancelled')}
             >
@@ -466,35 +467,35 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
     <div className="space-y-6">
 
       {/* ── Top Bar ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm dark:bg-[#071131] dark:border-slate-700">
         <div className="flex items-center gap-3 w-full md:w-auto">
           {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-slate-600 hover:text-slate-900 group md:hidden">
+            <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-slate-600 hover:text-slate-900 group md:hidden dark:text-slate-300">
               <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             </Button>
           )}
-          <div className="p-3 bg-blue-50 rounded-xl">
-            <CalendarDays className="w-6 h-6 text-blue-600" />
+          <div className="p-3 bg-blue-50 rounded-xl dark:bg-blue-500/10">
+            <CalendarDays className="w-6 h-6 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">1-2-1 Calendar</h2>
-            <p className="text-sm text-slate-500">Schedule and manage member meetings · Conflict-aware booking</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">1-2-1 Calendar</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Schedule and manage member meetings · Conflict-aware booking</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Stats pills */}
           <div className="hidden lg:flex items-center gap-2">
-            <span className="text-xs bg-slate-100 text-slate-600 font-medium px-3 py-1.5 rounded-full">
+            <span className="text-xs bg-slate-100 text-slate-600 font-medium px-3 py-1.5 rounded-full dark:bg-white/10 dark:text-slate-300">
               {activeMeetingsThisMonth} this month
             </span>
             {confirmedCount > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full">
+              <span className="text-xs bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-full dark:text-blue-300 dark:bg-blue-500/15">
                 {confirmedCount} confirmed
               </span>
             )}
             {pendingCount > 0 && (
-              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full">
+              <span className="text-xs bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-full dark:text-amber-300 dark:bg-amber-500/15">
                 {pendingCount} pending
               </span>
             )}
@@ -504,11 +505,11 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
           <button
             onClick={toggleEnabled}
             disabled={loadingSettings || togglingEnabled}
-            className={`
+            className={`max-lg:min-h-11 
               flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all
               ${settings?.is_enabled
-                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-300 dark:border-green-800/50'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:border-slate-700'
               }
             `}
             title={settings?.is_enabled ? 'Click to disable calendar' : 'Click to enable calendar'}
@@ -516,8 +517,8 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             {togglingEnabled
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : settings?.is_enabled
-                ? <ToggleRight className="w-5 h-5 text-green-600" />
-                : <ToggleLeft  className="w-5 h-5 text-slate-400" />
+                ? <ToggleRight className="w-5 h-5 text-green-600 dark:text-green-300" />
+                : <ToggleLeft  className="w-5 h-5 text-slate-500 dark:text-slate-400" />
             }
             {settings?.is_enabled ? 'Calendar On' : 'Calendar Off'}
           </button>
@@ -536,7 +537,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               variant="outline"
               size="sm"
               onClick={onBack}
-              className="gap-2 rounded-xl hidden md:flex text-slate-600 hover:text-slate-900"
+              className="gap-2 rounded-xl hidden md:flex text-slate-600 hover:text-slate-900 dark:text-slate-300"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Dashboard
             </Button>
@@ -548,11 +549,11 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
 
         {/* Left: Calendar Grid */}
-        <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
-          <CardHeader className="pb-4 border-b border-slate-100">
+        <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden dark:border-slate-700">
+          <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
             {/* Month navigation */}
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-bold text-slate-800">
+              <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100">
                 {format(currentMonth, 'MMMM yyyy')}
               </CardTitle>
               <div className="flex items-center gap-1">
@@ -574,7 +575,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             {/* Day headers */}
             <div className="grid grid-cols-7 gap-1 mt-4">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                <div key={d} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wide py-1">
+                <div key={d} className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wide py-1 dark:text-slate-400">
                   {d}
                 </div>
               ))}
@@ -583,7 +584,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
 
           <CardContent className="p-4">
             {loadingMeetings ? (
-              <div className="h-64 flex items-center justify-center gap-2 text-slate-400">
+              <div className="h-64 flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="text-sm">Loading meetings...</span>
               </div>
@@ -596,12 +597,12 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             )}
 
             {/* Legend */}
-            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {(Object.entries(STATUS_CONFIG) as [string, typeof STATUS_CONFIG['pending']][]).map(([key, cfg]) => (
                 key !== 'no_show' && (
                   <div key={key} className="flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                    <span className="text-[11px] text-slate-500 font-medium">{cfg.label}</span>
+                    <span className="text-xs text-slate-500 font-medium dark:text-slate-400">{cfg.label}</span>
                   </div>
                 )
               ))}
@@ -613,10 +614,10 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
         <div className="space-y-4">
 
           {/* Selected Day Meetings */}
-          <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 border-b border-slate-100">
+          <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden dark:border-slate-700">
+            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2 dark:text-slate-100">
                   <Clock className="w-4 h-4 text-blue-500" />
                   {isToday(selectedDay) ? 'Today' : format(selectedDay, 'EEEE, MMM d')}
                 </CardTitle>
@@ -628,10 +629,10 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <CardContent className="p-3">
               {selectedDayMeetings.length === 0 ? (
                 <div className="text-center py-8 space-y-3">
-                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto dark:bg-white/10">
                     <Calendar className="w-6 h-6 text-slate-300" />
                   </div>
-                  <p className="text-sm text-slate-400 font-medium">No meetings scheduled</p>
+                  <p className="text-sm text-slate-500 font-medium dark:text-slate-400">No meetings scheduled</p>
                   <Button
                     size="sm"
                     variant="outline"
@@ -651,9 +652,9 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
           </Card>
 
           {/* Upcoming Meetings */}
-          <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 border-b border-slate-100">
-              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+          <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden dark:border-slate-700">
+            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2 dark:text-slate-100">
                 <Handshake className="w-4 h-4 text-amber-500" />
                 Upcoming 1-2-1s
               </CardTitle>
@@ -661,7 +662,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
             <CardContent className="p-3">
               {upcomingMeetings.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-sm text-slate-400">No upcoming meetings</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No upcoming meetings</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -669,9 +670,9 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDay(parseISO(m.meeting_date)) }}
-                      className="w-full text-left"
+                      className="max-lg:min-h-11 w-full text-left"
                     >
-                      <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                      <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 dark:hover:bg-white/5">
                         {/* Date badge */}
                         <div className={`
                           w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 text-white
@@ -686,10 +687,10 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-slate-700 truncate">
+                          <p className="text-xs font-semibold text-slate-700 truncate dark:text-slate-200">
                             {m.member_a_name} × {m.member_b_name}
                           </p>
-                          <p className="text-[11px] text-slate-400">{m.start_time} · {m.duration_mins}min</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{m.start_time} · {m.duration_mins}min</p>
                         </div>
 
                         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_CONFIG[m.status]?.dot}`} />
@@ -703,15 +704,15 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
 
           {/* ── Suggested 1-2-1s (AI Recommendations) ── */}
           <Card className="rounded-2xl border-violet-100 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 border-b border-violet-50 bg-gradient-to-r from-violet-50 to-white">
+            <CardHeader className="pb-3 border-b border-violet-50 bg-gradient-to-r from-violet-50 to-white dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2 dark:text-slate-100">
                   <Sparkles className="w-4 h-4 text-violet-500" />
                   Suggested 1-2-1s
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {recommendations.filter(r => r.status === 'pending').length > 0 && (
-                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200">
+                    <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border-violet-200 dark:text-violet-300 dark:bg-violet-500/15">
                       {recommendations.filter(r => r.status === 'pending').length}
                     </Badge>
                   )}
@@ -723,20 +724,20 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
               {loadingRecs && recommendations.length === 0 ? (
                 <div className="space-y-2 animate-pulse py-2">
                   {[1,2,3].map(i => (
-                    <div key={i} className="h-16 bg-violet-50 rounded-xl" />
+                    <div key={i} className="h-16 bg-violet-50 rounded-xl dark:bg-violet-500/10" />
                   ))}
                 </div>
               ) : recommendations.filter(r => r.status === 'pending').length === 0 ? (
                 <div className="text-center py-6 space-y-1">
-                  <p className="text-sm text-slate-400">No suggestions yet</p>
-                  <p className="text-xs text-slate-300">Run member intel research to generate recommendations</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No suggestions yet</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Run member intel research to generate recommendations</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                   {recommendations
                     .filter(r => r.status === 'pending')
                     .map(rec => (
-                      <div key={rec.id} className="rounded-xl border border-slate-100 bg-white p-3 space-y-2 hover:border-violet-200 hover:shadow-sm transition-all">
+                      <div key={rec.id} className="rounded-xl border border-slate-100 bg-white p-3 space-y-2 hover:border-violet-200 hover:shadow-sm transition-all dark:border-slate-800 dark:bg-[#071131]">
                         {/* Member pair */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -749,27 +750,27 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                               </div>
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-slate-800 truncate">
+                              <p className="text-xs font-semibold text-slate-800 truncate dark:text-slate-100">
                                 {rec.member_name} × {rec.rec_member_name}
                               </p>
                               {rec.rec_member_company && (
-                                <p className="text-[10px] text-slate-400 truncate">{rec.rec_member_company}</p>
+                                <p className="text-[10px] text-slate-500 truncate dark:text-slate-400">{rec.rec_member_company}</p>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             {rec.score > 0 && (
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
-                                rec.score >= 80 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                rec.score >= 60 ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                 'bg-slate-50 text-slate-500 border-slate-100'
+                                rec.score >= 80 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300' :
+                                rec.score >= 60 ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-300' :
+                                                 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-white/5 dark:text-slate-400 dark:border-slate-800'
                               }`}>
                                 {Math.round(rec.score)}
                               </span>
                             )}
                             <button
                               onClick={() => dismissRecommendation(rec.id)}
-                              className="text-slate-300 hover:text-red-400 transition-colors"
+                              className="max-lg:min-h-11 text-slate-300 hover:text-red-400 transition-colors"
                               title="Dismiss"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -779,7 +780,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
 
                         {/* Reason */}
                         {rec.reason && (
-                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 dark:text-slate-400">
                             {rec.reason}
                           </p>
                         )}
@@ -788,7 +789,7 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
                         {rec.talking_points?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {rec.talking_points.slice(0, 2).map((tp, i) => (
-                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full">
+                              <span key={i} className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 px-2 py-0.5 rounded-full dark:text-violet-300 dark:bg-violet-500/10">
                                 {String(tp).slice(0, 40)}
                               </span>
                             ))}
@@ -817,21 +818,21 @@ export default function CommunityCalendar({ tenantId, onBack }: CommunityCalenda
 
           {/* Settings card */}
           {settings && (
-            <Card className="rounded-2xl border-slate-100 bg-slate-50 shadow-none">
+            <Card className="rounded-2xl border-slate-100 bg-slate-50 shadow-none dark:border-slate-800 dark:bg-white/5">
               <CardContent className="p-4 space-y-2">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 dark:text-slate-400">
                   <Settings className="w-3.5 h-3.5" /> Calendar Settings
                 </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-600">
-                  <span className="text-slate-400">Duration</span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-500 dark:text-slate-400">Duration</span>
                   <span className="font-medium">{settings.default_meeting_duration_mins} min</span>
-                  <span className="text-slate-400">Booking window</span>
+                  <span className="text-slate-500 dark:text-slate-400">Booking window</span>
                   <span className="font-medium">{settings.booking_window_days} days ahead</span>
-                  <span className="text-slate-400">Min notice</span>
+                  <span className="text-slate-500 dark:text-slate-400">Min notice</span>
                   <span className="font-medium">{settings.min_notice_hours}h before</span>
-                  <span className="text-slate-400">Working hours</span>
+                  <span className="text-slate-500 dark:text-slate-400">Working hours</span>
                   <span className="font-medium">{settings.working_hours_start} - {settings.working_hours_end}</span>
-                  <span className="text-slate-400">Timezone</span>
+                  <span className="text-slate-500 dark:text-slate-400">Timezone</span>
                   <span className="font-medium">{settings.timezone}</span>
                 </div>
               </CardContent>

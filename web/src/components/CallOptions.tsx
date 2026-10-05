@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogActions } from "@/components/ui/dialog";
 import ExcelJS from "exceljs";
 // LAD Architecture Compliance: Use SDK hooks instead of direct API calls
-import { useMakeCall, useTriggerBatchCall, useUpdateSummary } from '@lad/frontend-features/voice-agent';
+import { useMakeCall, useTriggerBatchCall, useUpdateSummary, getFullPhoneNumber, callErrorMessage } from '@lad/frontend-features/voice-agent';
 import { logger } from "@/lib/logger";
 import {
   saveBatchUpload,
@@ -232,20 +232,6 @@ const COUNTRIES = [
   { code: "GU", name: "Guam", dialCode: "+1-671", flag: "🇬🇺" },
 ];
 
-// Helper function to get full phone number with country code
-function getFullPhoneNumber(phoneNumber: string, countryDialCode: string): string {
-  const cleanPhone = phoneNumber.replace(/\s+/g, "").trim();
-  // If phone already starts with +, assume it has country code
-  if (cleanPhone.startsWith("+")) {
-    return cleanPhone;
-  }
-  // If phone starts with the dial code digits (without +), don't add it again
-  if (cleanPhone.startsWith(countryDialCode.replace("+", ""))) {
-    return `+${cleanPhone}`;
-  }
-  return `${countryDialCode}${cleanPhone}`;
-}
-
 type BulkEntry = BatchUploadEntry;
 
 interface CallOptionsProps {
@@ -413,7 +399,21 @@ export function CallOptions(props: CallOptionsProps) {
         voiceAgentId: agentId,
         phoneNumber: fullPhoneNumber,
         context: additionalInstructions || "Call initiated from dashboard",
-        fromNumber: fromNumber // Pass from number from call configuration
+        fromNumber: fromNumber, // Pass from number from call configuration
+        // The "Lead name (optional)" field was collected, cleared on submit and
+        // never sent, so the agent opened by asking for a name that was already
+        // on screen (call 6933a237).
+        //
+        // cleanLeadName falls back to the PHONE NUMBER for an empty or
+        // placeholder name, which is a sane display default for the batch table
+        // but must never travel as a lead name: the agent greets the lead by it,
+        // and "9133500099 గారండి" is worse than asking. So the fallback is
+        // dropped here and the name is simply absent, which is what the agent
+        // is built to handle.
+        leadName: (() => {
+          const cleaned = cleanLeadName(clientName, fullPhoneNumber);
+          return cleaned && cleaned !== fullPhoneNumber ? cleaned : undefined;
+        })()
       });
       push({ title: "Success", description: "Call initiated successfully!" });
       onDialChange("");
@@ -421,7 +421,7 @@ export function CallOptions(props: CallOptionsProps) {
       router.push("/call-logs");
     } catch (e: any) {
       logger.error("Failed to initiate call", { error: e?.message || 'Unknown error' });
-      push({ variant: "error", title: "Error", description: e?.message || "Failed to initiate call. Please try again." });
+      push({ variant: "error", title: "Error", description: callErrorMessage(e) });
     } finally {
       onLoadingChange?.(false);
     }
@@ -1096,7 +1096,7 @@ export function CallOptions(props: CallOptionsProps) {
             </>
           ) : (
             <>
-              <Phone className="w-5 h-5 mr-2" /> Initiate Call
+              <Phone className="w-5 h-5 mr-2" /> Call now
             </>
           )}
         </Button>

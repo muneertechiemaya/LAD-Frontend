@@ -17,7 +17,15 @@ export {
   getWalletStats,
   getAvailableNumbers,
   getAvailableAgents,
+  getLeadJourneyCounts,
+  getLinkedInSummary,
+  getEmailBroadcastSummary,
+  getInstagramSummary,
+  getHomeLayout,
+  saveHomeLayout,
+  resetHomeLayout,
 } from './api';
+export type { LeadJourneyCounts, LinkedInSummary, EmailBroadcastSummary, InstagramSummary, HomeLayout, HomeLayoutSection, SavedHomeLayout } from './api';
 
 // Hooks
 export { useLeadBookings } from './hooks/useLeadBookings';
@@ -29,3 +37,15 @@ export { useDashboardCalls } from './hooks/useDashboardCalls';
 export { useWalletStats } from './hooks/useWalletStats';
 export { useAvailableNumbers } from './hooks/useAvailableNumbers';
 export { useAvailableAgents } from './hooks/useAvailableAgents';
+export {
+  homeKeys,
+  usePipelineCounts,
+  useLinkedInSummary,
+  useEmailBroadcastSummary,
+  useInstagramSummary,
+  useHomeLayout,
+  useSaveHomeLayout,
+  useResetHomeLayout,
+  type PipelinePeriod,
+  type PipelineWindow,
+} from './hooks/useHomeData';

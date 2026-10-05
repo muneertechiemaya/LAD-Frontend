@@ -110,10 +110,11 @@ export default function SubmissionsPage() {
             boxShadow: '0 10px 30px rgba(11, 25, 87, 0.1)',
           }}
         >
-          <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>
+          {/* The card is always white: pin text colours so dark mode's inherited white doesn't vanish on it. */}
+          <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px', color: '#0b1957' }}>
             Admin Access
           </h1>
-          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+          <p style={{ color: '#4b5563', marginBottom: '24px' }}>
             Enter your admin token to view submissions
           </p>
 
@@ -123,12 +124,15 @@ export default function SubmissionsPage() {
               placeholder="Admin Token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
+              className="bg-white! text-gray-900! placeholder:text-slate-500!"
               style={{
                 width: '100%',
                 padding: '12px',
                 border: '1.5px solid #e5e7eb',
                 borderRadius: '10px',
-                fontSize: '14px',
+                fontSize: '16px',
+                color: '#111827',
+                background: '#ffffff',
                 marginBottom: '16px',
                 boxSizing: 'border-box',
               }}

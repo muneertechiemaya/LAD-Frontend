@@ -35,14 +35,19 @@ export function NavbarDemo() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // /register, not /onboarding: onboarding is an auth-only route, so for an
+  // anonymous visitor "Get Started" used to bounce to the login page with no
+  // way to sign up. A signed-in visitor is redirected from /register into the
+  // app by the middleware, so this is right for both.
   const handleGetStarted = () => {
-    router.push('/onboarding');
+    router.push('/register');
   };
 
   const login = () => {
     router.push('/login');
   };
   const isLoginPage = pathname === '/login';
+  const isRegisterPage = pathname === '/register' || pathname.startsWith('/register/');
   return (
     <div className="relative w-full">
       <Navbar>
@@ -55,7 +60,9 @@ export function NavbarDemo() {
             {!isLoginPage ? (
               <NavbarButton variant="secondary" onClick={login}>Login</NavbarButton>
             ) : ''}
-            <NavbarButton variant="primary" onClick={handleGetStarted}>Get Started</NavbarButton>
+            {!isRegisterPage ? (
+              <NavbarButton variant="primary" onClick={handleGetStarted}>Get Started</NavbarButton>
+            ) : ''}
           </div>
         </NavBody>
 
@@ -64,14 +71,14 @@ export function NavbarDemo() {
           <MobileNavHeader>
             <NavbarLogo />
             {isLoginPage ? (
-              <div className="flex items-center gap-3 pr-2">
+              <div className="flex items-center gap-1 pr-2">
                 {navItems.map((item, idx) => (
                   <motion.a
                     key={`header-link-${idx}`}
                     href={item.link}
                     whileTap={{ scale: 0.9 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                    className="text-[12px] font-semibold text-[#0b1957] dark:text-slate-200 hover:opacity-80 transition-opacity select-none"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center px-1 text-[12px] font-semibold text-[#0b1957] dark:text-slate-200 hover:opacity-80 transition-opacity select-none"
                   >
                     {item.name}
                   </motion.a>
@@ -103,7 +110,7 @@ export function NavbarDemo() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 whileTap={{ scale: 0.92 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className={`relative text-neutral-600 dark:text-neutral-300 select-none ${pathname === item.link ? 'font-bold text-[#0b1957] dark:text-[#0b1957]' : ''}`}
+                className={`relative flex min-h-11 w-full items-center text-neutral-600 dark:text-neutral-300 select-none ${pathname === item.link ? 'font-bold text-[#0b1957] dark:text-white' : ''}`}
               >
                 <span className="block">{item.name}</span>
               </motion.a>

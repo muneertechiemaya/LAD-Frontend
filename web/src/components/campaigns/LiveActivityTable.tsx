@@ -982,10 +982,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
       {/* Merged: develop's sortable-header / sticky / overflow scaffold
           + HEAD's dark-mode classes + HEAD's wider State column (150px)
           so the Retry button has room to render. */}
-      <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-blue-950/40 relative">
-        <div className="min-w-[1000px] w-full">
-          <Table containerClassName="overflow-visible" className="border-separate border-spacing-0">
-          <TableHeader className="sticky top-0 z-40 bg-[#F8FAFC] dark:bg-[#000724] shadow-sm">
+      <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] max-md:max-h-none max-md:overflow-visible border-b border-[#E2E8F0] dark:border-blue-950/40 relative">
+        {/* Phones: the same table restacks into one card per lead (CSS only, so every
+            cell keeps its behaviour) instead of a 1000px strip scrolled sideways. */}
+        <div className="md:min-w-[1000px] w-full">
+          <Table containerClassName="overflow-visible" className="border-separate border-spacing-0 max-md:block">
+          <TableHeader className="max-md:hidden sticky top-0 z-40 bg-[#F8FAFC] dark:bg-[#000724] shadow-sm">
             <TableRow className="bg-[#F8FAFC] dark:!bg-[#000724] hover:bg-transparent">
               <TableHead className="font-semibold text-[#1E293B] dark:!text-white whitespace-nowrap w-[110px] sticky top-0 z-40 bg-[#F8FAFC] dark:bg-[#000724]">
                 <div className="flex items-center gap-1 cursor-pointer select-none">
@@ -1019,7 +1021,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="max-md:block max-md:space-y-3 max-md:p-3">
             {isLoading && paginatedLeads?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8">
@@ -1038,19 +1040,19 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
               paginatedLeads?.map((lead, index) => (
                 <React.Fragment key={lead.leadId || index}>
                 <TableRow
-                  className="hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors max-md:grid max-md:grid-cols-2 max-md:gap-x-3 max-md:gap-y-2 max-md:rounded-xl max-md:border max-md:border-[#E2E8F0] max-md:bg-white max-md:p-3 dark:max-md:border-blue-950/40 dark:max-md:bg-[#071131]"
                 >
-                  <TableCell className="w-[110px]">
+                  <TableCell className="w-[110px] max-md:block max-md:w-auto max-md:border-0 max-md:p-0 max-md:order-2">
                     <p className="text-sm text-[#64748B] dark:text-slate-300">
                       {formatDateTimeUnified(lead.latestTimestamp)}
                     </p>
                   </TableCell>
-                  <TableCell className="w-[140px]">
+                  <TableCell className="w-[140px] max-md:block max-md:w-auto max-md:border-0 max-md:p-0 max-md:order-1 max-md:col-span-2">
                     <div>
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/campaigns/${campaignId}/analytics/leads`}
-                          className="text-sm font-medium text-cyan-700 hover:text-cyan-800 hover:underline transition-colors dark:text-cyan-400 dark:hover:text-cyan-300 dark:hover:underline"
+                          className="text-sm font-medium text-cyan-700 hover:text-cyan-800 hover:underline transition-colors max-lg:inline-flex max-lg:min-h-11 max-lg:items-center dark:text-cyan-400 dark:hover:text-cyan-300 dark:hover:underline"
                           title={`View ${lead.leadName}'s profile`}
                         >
                           {lead.leadName || 'Unknown'}
@@ -1124,7 +1126,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[150px]">
+                  <TableCell className="w-[150px] max-md:block max-md:w-auto max-md:border-0 max-md:p-0 max-md:order-3">
                     <div className="flex flex-col items-start gap-1.5">
                       <LiveActivityStatusBadge status={lead.latestStatus} currentStep={calculateCurrentStep(lead)} />
                       {/* Retry button - appears when this lead had a failed connection
@@ -1254,13 +1256,13 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                       })()}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[150px]">
+                  <TableCell className="w-[150px] max-md:block max-md:w-auto max-md:border-0 max-md:p-0 max-md:order-4 max-md:col-span-2">
                     <div className="flex flex-col gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <p
-                              className="text-sm text-[#64748B] max-w-[170px] overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="text-sm text-[#64748B] dark:text-slate-300 max-w-[170px] overflow-hidden text-ellipsis whitespace-nowrap"
                             >
                               {lead.latestMessage || '-'}
                             </p>
@@ -1297,7 +1299,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[240px]">
+                  <TableCell className="w-[240px] max-md:block max-md:w-auto max-md:border-0 max-md:p-0 max-md:order-5 max-md:col-span-2">
                     {workflowSteps.length > 0 ? (
                       <div className="flex items-center gap-2 flex-wrap">
                         {workflowSteps.map((step, stepIdx) => {
@@ -1385,8 +1387,8 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                     SHOW_AGENT_INSIGHT_SOURCES flag at the top of this file
                     so it can never appear while the toggle is hidden. */}
                 {SHOW_AGENT_INSIGHT_SOURCES && expandedLeadId === lead.leadId && (
-                  <TableRow className="bg-[#F8FAFC] dark:bg-[#000724]">
-                    <TableCell colSpan={5} className="p-0">
+                  <TableRow className="bg-[#F8FAFC] dark:bg-[#000724] max-md:block max-md:rounded-xl">
+                    <TableCell colSpan={5} className="p-0 max-md:block">
                       <LeadInsightsPanel
                         sources={lead.enrichmentSources || []}
                         counts={lead.enrichmentCounts}

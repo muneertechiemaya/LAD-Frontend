@@ -1,5 +1,6 @@
 "use client";
 import React, { JSX, useCallback, useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { PipelineBoard } from '@/components/deals-pipeline';
 import { useAuth } from '@/contexts/AuthContext';
 import { GraduationCap, TrendingUp } from 'lucide-react';
@@ -100,13 +101,14 @@ export default function PipelinePage(): JSX.Element {
   // Fetch real-time statistics using the SDK hook
   // passing current filters ensures stats stay in sync with board filtering
   const { data: stats, isLoading } = usePipelineStats(activeFilters as any);
+  const statsFailed = !isLoading && stats === undefined;
   // Determine if this is education vertical (only after user is loaded)
   const isEducation = isAuthenticated && user ? hasFeature('education_vertical') : false;
 
   // Dynamic labels based on vertical
   const labels = {
     title: isEducation ? 'Students Pipeline' : 'Deals Pipeline',
-    subtitle: isEducation ? 'Manage student admissions and counseling' : 'Manage your leads and deals',
+    subtitle: isEducation ? 'Every student and where they stand' : 'Every lead and where it stands',
     icon: isEducation ? GraduationCap : TrendingUp
   };
 
@@ -130,12 +132,18 @@ export default function PipelinePage(): JSX.Element {
           <labels.icon className="w-8 h-8 text-[#1e293b] dark:text-white" />
           <div>
             <h1 className="text-3xl font-bold text-[#1e293b] dark:text-white">{labels.title}</h1>
-            <p className="text-[#6b7280] dark:text-slate-300">{labels.subtitle}</p>
+            <p className="text-[#6b7280] dark:text-slate-300">
+              {labels.subtitle}.{' '}
+              <Link href="/tasks" className="font-medium text-blue-700 hover:underline dark:text-blue-300 max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
+                See who needs you today →
+              </Link>
+            </p>
           </div>
         </div>
 
         <PipelineStatsCards
           loading={isLoading}
+          failed={statsFailed}
           totalLeads={totalLeads}
           connectionSentCount={connectionSentCount}
           contacted={contactedCount}

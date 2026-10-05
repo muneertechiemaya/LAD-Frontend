@@ -2,13 +2,16 @@
 /**
  * Business Profile settings tab.
  *
- * Renders all 14 (+3 optional) fields stored in
+ * Renders the fields of the TENANT's profile contract (their industry pack:
+ * 14 required in the platform baseline; a vertical such as staffing asks
+ * more, in its own order, with its own labels) stored in
  * ai_icp_profiles.icp_data and persisted via /api/ai-playground.
  * Reads/writes through `useBusinessProfile()` so the wizard's Company step,
  * the ICP Discovery chat, and this tab all stay in sync.
  *
- * Field set + completeness math come from the shared SDK module - do not
- * duplicate that vocabulary here.
+ * Field set + completeness math come from the contract via the shared SDK
+ * hook - the copy below is the FALLBACK label/hint per key, used when the
+ * pack gives none; the pack's `label` / `help` win when present.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -17,12 +20,12 @@ import { Target, Save, CheckCircle2, AlertTriangle, Building2, MapPin, Clock, Up
 import {
   useBusinessProfile,
   uploadCompanyLogo,
-  BUSINESS_PROFILE_COMPANY_HALF,
-  BUSINESS_PROFILE_ICP_HALF,
-  BUSINESS_PROFILE_OFFER_HALF,
-  BUSINESS_PROFILE_OPTIONAL_FIELDS,
-  computeOfferCompleteness,
+  BUSINESS_PROFILE_BASICS_FIELDS,
+  computeOfferCompletenessFor,
+  humaniseFieldKey,
   type BusinessProfile,
+  type ProfileContract,
+  type ProfileContractField,
 } from '@lad/frontend-features/ai-icp-assistant';
 import { useBusinessHours, useUpdateBusinessHours } from '@lad/frontend-features/settings';
 import type { BusinessHoursPayload, BusinessHoursRecord } from '@lad/frontend-features/settings';
@@ -94,35 +97,64 @@ const FIELD_COPY: Record<string, { label: string; hint?: string; multiline?: boo
   guarantee:          { label: 'Guarantee / risk reversal', multiline: true, hint: 'Any trial, pilot or guarantee that lowers the risk of saying yes. Leave blank if none.' },
 };
 
-const SECTIONS: { title: string; subtitle: string; keys: ReadonlyArray<Key> }[] = [
-  {
-    title: 'Company',
-    subtitle: "Who you are. The wizard's Company step writes these.",
-    keys: BUSINESS_PROFILE_COMPANY_HALF.filter((k) => !BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k)),
-  },
-  {
-    title: 'Ideal Customer',
-    subtitle: 'Who you sell to. The ICP chat writes these.',
-    keys: BUSINESS_PROFILE_ICP_HALF.filter((k) => !BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k)),
-  },
-  {
-    title: 'Optional',
-    subtitle: 'Not required for the core flow, but help the AI personalise.',
-    keys: [
-      ...BUSINESS_PROFILE_COMPANY_HALF.filter((k) => BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k)),
-      ...BUSINESS_PROFILE_ICP_HALF.filter((k) => BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k)),
-    ],
-  },
-  {
-    title: 'Offer',
-    subtitle:
-      'Only needed if you generate landing pages or client reports. Each answer adds a section to those pages; anything left blank is simply left out. Counted separately from the profile above.',
-    keys: BUSINESS_PROFILE_OFFER_HALF,
-  },
-];
+interface Section { title: string; subtitle: string; fields: ProfileContractField[] }
+
+const GROUP_COPY: Record<string, { title: string; subtitle: string }> = {
+  company:    { title: 'Company',        subtitle: "Who you are. The wizard's Company step writes these." },
+  icp:        { title: 'Ideal Customer', subtitle: 'Who you sell to. Mr LAD fills these in from your ideal-customer chat.' },
+  candidates: { title: 'Candidates',     subtitle: 'Who you place. The interview asks these for staffing and recruiting workspaces.' },
+  custom:     { title: 'Your fields',    subtitle: 'Added for your workspace.' },
+};
+
+/**
+ * Sections in the contract's order: required fields grouped by pack group,
+ * then everything optional, then the offer half (separate counter). A group
+ * the copy above does not know still renders, under a humanised title.
+ */
+function sectionsFor(contract: ProfileContract): Section[] {
+  // Logo + location have their own block above the form.
+  const basics = new Set<string>(BUSINESS_PROFILE_BASICS_FIELDS as ReadonlyArray<string>);
+  const fields = contract.fields.filter((f) => !basics.has(f.key));
+  const required = fields.filter((f) => f.required && f.group !== 'offer');
+  const optional = fields.filter((f) => !f.required && f.group !== 'offer' && !contract.offer.includes(f.key));
+  const offer = fields.filter((f) => f.group === 'offer' || contract.offer.includes(f.key));
+  const byGroup = new Map<string, ProfileContractField[]>();
+  for (const f of required) {
+    if (!byGroup.has(f.group)) byGroup.set(f.group, []);
+    byGroup.get(f.group)!.push(f);
+  }
+  const out: Section[] = [...byGroup.entries()].map(([group, fields]) => ({
+    title: GROUP_COPY[group]?.title ?? humaniseFieldKey(group),
+    subtitle: GROUP_COPY[group]?.subtitle ?? '',
+    fields,
+  }));
+  if (optional.length) out.push({ title: 'Optional', subtitle: 'Not required for the core flow, but help the AI personalise.', fields: optional });
+  if (offer.length) {
+    out.push({
+      title: 'Offer',
+      subtitle: 'Only needed if you generate landing pages or client reports. Each answer adds a section to those pages; anything left blank is simply left out. Counted separately from the profile above.',
+      fields: offer,
+    });
+  }
+  return out;
+}
+
+/** Copy for one field: the pack's label/help first, the app's fallback copy second, a humanised key last. */
+function copyFor(f: ProfileContractField): FieldSpec {
+  const fallback = FIELD_COPY[f.key] || {};
+  return {
+    key: f.key as Key,
+    label: f.label || fallback.label || humaniseFieldKey(f.key),
+    hint: f.help || fallback.hint,
+    // A field with its own interview question is a long answer.
+    multiline: fallback.multiline ?? Boolean(f.ask),
+    placeholder: fallback.placeholder,
+  };
+}
 
 export const BusinessProfileSettings: React.FC = () => {
-  const { profile, loading, saving, save, error, completeness } = useBusinessProfile();
+  const { profile, loading, saving, save, error, completeness, contract } = useBusinessProfile();
+  const sections = sectionsFor(contract);
   const [form, setForm] = useState<Partial<BusinessProfile>>({});
   const [hydrated, setHydrated] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -198,21 +230,45 @@ export const BusinessProfileSettings: React.FC = () => {
       // Non-canonical extras like `linkedinAudit` stay in `profile` and survive
       // the round-trip because `save()` merges into the latest profile state.
       const next: Partial<BusinessProfile> = {};
-      for (const section of SECTIONS) {
-        for (const k of section.keys) {
-          const v = (profile as Record<string, unknown>)[k as string];
-          next[k] = typeof v === 'string' ? (v as string) : '';
-        }
+      for (const k of contract.all) {
+        const v = (profile as Record<string, unknown>)[k];
+        next[k as Key] = typeof v === 'string' ? (v as string) : '';
       }
       setForm(next);
       setHydrated(true);
     }
-  }, [loading, hydrated, profile]);
+  }, [loading, hydrated, profile, contract]);
+
+  // The contract can arrive after the first hydration (two independent
+  // fetches). Seed any key it adds from the saved profile — never touch a key
+  // already in the form, which may hold what the user is typing.
+  useEffect(() => {
+    if (!hydrated) return;
+    setForm((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const k of contract.all) {
+        if (!(k in next)) {
+          const v = (profile as Record<string, unknown>)[k];
+          next[k as Key] = typeof v === 'string' ? (v as string) : '';
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [contract, hydrated, profile]);
 
   // Live off the form, not the saved profile, so the count moves as they type.
-  const offerCompleteness = computeOfferCompleteness(form as BusinessProfile);
+  const offerCompleteness = computeOfferCompletenessFor(form as BusinessProfile, contract);
 
   const setField = (k: Key, v: string) => setForm((p) => ({ ...p, [k]: v }));
+
+  // Edits that are not saved yet. save() merges into `profile` (and rolls it
+  // back on failure), so comparing against it stays right after a save.
+  const dirty = hydrated && (Object.keys(form) as Key[]).some((k) => {
+    const saved = (profile as Record<string, unknown>)[k];
+    return (form[k] ?? '') !== (typeof saved === 'string' ? saved : '');
+  });
 
   const handleSave = async () => {
     if (saving) return;
@@ -244,7 +300,7 @@ export const BusinessProfileSettings: React.FC = () => {
           <div className="flex-1">
             <h2 className="text-gray-900 dark:text-slate-100 text-xl font-semibold">Business Profile</h2>
             <p className="text-gray-600 dark:text-slate-300 text-sm mt-1">
-              The 14 fields that power ICP Discovery, lead scoring, and message personalisation.
+              {`The ${contract.required.length} answers Mr LAD uses to find leads`}, judge how well they fit, and write messages that sound like you.
               The wizard fills these in; edit anything here whenever your positioning changes.
             </p>
           </div>
@@ -289,7 +345,7 @@ export const BusinessProfileSettings: React.FC = () => {
         </span>
             </div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
-              The 14 fields that power ICP Discovery, lead scoring, and outbound message personalization. The strategic AI wizard references these inputs directly; updates apply globally.
+              {`The ${contract.required.length} answers Mr LAD uses to find leads`}, judge how well they fit, and write messages that sound like you. Changes apply everywhere straight away.
             </p>
           </div>
         </div>
@@ -378,11 +434,11 @@ export const BusinessProfileSettings: React.FC = () => {
                 value={location}
                 placeholder="Dubai, UAE"
                 onChange={(e) => { setLocation(e.target.value); setLocationSavedAt(null); }}
-                className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-blue-900/40 bg-white dark:bg-slate-800/50 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                className="flex-1 min-w-0 h-10 max-lg:h-11 px-3 rounded-lg border border-slate-200 dark:border-blue-900/40 bg-white dark:bg-slate-800/50 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
               />
               <button
                 onClick={saveLocation}
-                className="h-10 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
+                className="h-10 max-lg:h-11 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
               >
                 {locationSavedAt ? 'Saved' : 'Save'}
               </button>
@@ -402,7 +458,7 @@ export const BusinessProfileSettings: React.FC = () => {
             </div>
             <button
               onClick={() => { setHoursError(null); setHoursOpen(true); }}
-              className="h-9 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
+              className="h-9 max-lg:h-11 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
             >
               {savedBH ? 'Edit' : 'Set hours'}
             </button>
@@ -411,7 +467,7 @@ export const BusinessProfileSettings: React.FC = () => {
       </div>
 
       {/* Sections */}
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <div key={section.title} className="bg-white dark:bg-[#071131] rounded-lg shadow-sm border border-gray-200 dark:border-blue-950/40 p-6">
           <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold inline-flex items-center gap-2">
             {section.title}
@@ -420,16 +476,17 @@ export const BusinessProfileSettings: React.FC = () => {
                 for fields they may never need. */}
             {section.title === 'Offer' && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {offerCompleteness.filled} / {offerCompleteness.total}
+                {offerCompleteness.filled} of {offerCompleteness.total} filled
               </span>
             )}
           </h3>
           <p className="text-gray-500 dark:text-slate-300 text-xs mt-0.5 mb-4">{section.subtitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {section.keys.map((k) => {
-              const copy: FieldSpec = { key: k, ...FIELD_COPY[k as string] } as FieldSpec;
+            {section.fields.map((f) => {
+              const copy = copyFor(f);
+              const k = copy.key;
               const value = typeof form[k] === 'string' ? (form[k] as string) : '';
-              const isOptional = BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k);
+              const isOptional = !f.required && section.title !== 'Offer';
               return (
                 <label key={k as string} className={`flex flex-col h-full ${copy.multiline ? 'sm:col-span-2' : ''}`}>
                   <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 inline-flex items-center gap-1.5">
@@ -472,14 +529,25 @@ export const BusinessProfileSettings: React.FC = () => {
         </div>
       ))}
 
-      {/* Footer: status + save */}
-      <div className="bg-white dark:bg-[#071131] rounded-lg shadow-sm border border-gray-200 dark:border-blue-950/40 p-4 flex items-center justify-between">
-        <div className="text-sm">
+      {/* Footer: status + save. On a phone this form is ~6,000px tall with the
+          only Save at the very end, so while there are unsaved edits the bar
+          sticks just above the bottom nav instead. The scroll area already pads
+          its bottom by the nav's height and sticky offsets count from inside
+          that padding, so a small offset is enough (var(--bottom-nav-h) here
+          floated the bar ~110px above the nav). */}
+      <div
+        className={`bg-white dark:bg-[#071131] rounded-lg shadow-sm border border-gray-200 dark:border-blue-950/40 p-4 flex items-center justify-between gap-3 ${
+          dirty ? 'max-md:sticky max-md:bottom-2 max-md:z-20 max-md:shadow-lg' : ''
+        }`}
+      >
+        <div className="text-sm min-w-0">
           {error ? (
             <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" />
               Couldn&apos;t save: {error.message}
             </span>
+          ) : dirty ? (
+            <span className="text-amber-700 dark:text-amber-400 font-medium">Unsaved changes</span>
           ) : savedAt ? (
             <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
@@ -492,7 +560,7 @@ export const BusinessProfileSettings: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="h-10 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
+          className="h-10 max-lg:h-11 shrink-0 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving…' : 'Save'}

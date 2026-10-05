@@ -14,6 +14,9 @@ const eslintConfig = [
       // Stale backup of the deals-pipeline store - superseded by src/features/deals-pipeline/store/.
       // Not imported anywhere; kept on disk only as a reference snapshot.
       '**/store.backup/**',
+      // The www.mrlads.com homepage: a static build from the mrlads-site repo (bundled GSAP and all),
+      // served at "/" by the rewrite in next.config.mjs. Not this app's source, so not linted here.
+      'public/mrlads-site/**',
     ],
   },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),

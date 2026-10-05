@@ -84,20 +84,31 @@ const nextConfig = {
       process.env.NEXT_PUBLIC_BACKEND_URL || '';
     const playgroundWorkerUrl =
       process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
-    return [
-      {
-        source: '/api/social-integration/email/google/callback',
-        destination: `${backendUrl}/api/social-integration/email/google/callback`,
-      },
-      {
-        source: '/api/social-integration/email/microsoft/callback',
-        destination: `${backendUrl}/api/social-integration/email/microsoft/callback`,
-      },
-      {
-        source: '/playground-media/media/:path*',
-        destination: `${playgroundWorkerUrl}/playground-media/media/:path*`,
-      },
-    ];
+    // Media generation is its own service (LAD-MAGe) since 2026-09; falls back to
+    // the playground worker where the variable is not set yet. See lib/serviceUrls.ts.
+    const mediaGenUrl = process.env.NEXT_PUBLIC_MEDIA_GEN_URL || playgroundWorkerUrl;
+    return {
+      // The homepage is the static www.mrlads.com site (built in the mrlads-site repo and copied
+      // into public/mrlads-site/). It has to be a beforeFiles rewrite: app/page.tsx also owns "/",
+      // and filesystem routes win over afterFiles rewrites. app/page.tsx stays (the sidebar imports
+      // it), shadowed for "/", so removing this one entry brings the old landing page back.
+      beforeFiles: [{ source: '/', destination: '/mrlads-site/index.html' }],
+      afterFiles: [
+        {
+          source: '/api/social-integration/email/google/callback',
+          destination: `${backendUrl}/api/social-integration/email/google/callback`,
+        },
+        {
+          source: '/api/social-integration/email/microsoft/callback',
+          destination: `${backendUrl}/api/social-integration/email/microsoft/callback`,
+        },
+        {
+          source: '/playground-media/media/:path*',
+          destination: `${mediaGenUrl}/playground-media/media/:path*`,
+        },
+      ],
+      fallback: [],
+    };
   },
 
   // Templates moved from /campaigns/templates → /conversations/templates
@@ -122,6 +133,19 @@ const nextConfig = {
         source: '/landing',
         destination: '/',
         permanent: true,
+      },
+      // The homepage's files live under /mrlads-site/, but the page itself is "/": keep its folder
+      // and index from showing up as a second homepage. Redirects match the incoming URL only, so
+      // the "/" rewrite to /mrlads-site/index.html is not caught by these.
+      {
+        source: '/mrlads-site',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/mrlads-site/index.html',
+        destination: '/',
+        permanent: false,
       },
     ];
   },
@@ -151,6 +175,29 @@ const nextConfig = {
             value: "public, max-age=86400, stale-while-revalidate=604800",
           },
         ],
+      },
+      // The homepage's build (public/mrlads-site/): its _assets are content-hashed, so they never
+      // change under the same name; its media is not hashed, so it gets the same day as other media
+      // (including the voiceover .m4a/.vtt/.json the extension rule above leaves on no-store). The
+      // page itself ("/") keeps the blanket no-store, so a deploy shows at once.
+      {
+        source: "/mrlads-site/_assets/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/mrlads-site/media/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/mrlads-site/:path*",
+        headers: [{ key: "X-Content-Type-Options", value: "nosniff" }],
       },
       // CORS headers for contact form embed
       {

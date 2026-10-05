@@ -29,11 +29,11 @@ export interface ViewPillsProps {
 export default function ViewPills({ view, onChange }: ViewPillsProps) {
   return (
     <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-300">
+      <div className="flex min-w-0 max-w-full items-center gap-2">
+        <span className="max-md:hidden text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-300">
           View
         </span>
-        <div className="flex items-center gap-1 rounded-full p-0.5 border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724]">
+        <div className="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-full p-0.5 border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724]">
           {PILLS.map((v) => {
             const Icon = v.Icon;
             const active = view === v.k;
@@ -41,19 +41,20 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
               <button
                 key={v.k}
                 onClick={() => onChange(v.k)}
-                className={`h-7 px-2.5 rounded-full text-[11.5px] font-medium inline-flex items-center gap-1 transition-colors ${
+                aria-pressed={active}
+                className={`h-7 max-lg:h-11 max-lg:min-w-11 shrink-0 px-2.5 max-md:px-3 rounded-full text-xs max-md:text-[13px] font-medium inline-flex items-center gap-1 transition-colors ${
                   active
                     ? 'text-white bg-[#0B1957] dark:bg-[#2563eb]'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#0e1d4d]'
                 }`}
               >
-                <Icon className="w-3 h-3" /> {v.label}
+                <Icon className="w-3 h-3 max-md:hidden" aria-hidden="true" /> {v.label}
               </button>
             );
           })}
         </div>
       </div>
-      <p className="text-[12px] text-slate-500 dark:text-slate-300">
+      <p className="max-md:hidden text-[12px] text-slate-500 dark:text-slate-300">
         Click any row to open the contact&apos;s profile
       </p>
     </div>

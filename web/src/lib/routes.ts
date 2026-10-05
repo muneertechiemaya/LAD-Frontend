@@ -12,14 +12,22 @@ export const OPEN_ROUTES = {
   static: ['/_next', '/public'],
   
   // Auth pages & endpoints
-  auth: ['/login', '/register', '/forgot-password', '/api/auth', '/api/webhooks'],
+  auth: ['/login', '/register', '/forgot-password', '/api/auth', '/api/webhooks',
+    // Verified-signup applications: the applicant holds a signup token, not a
+    // session. The backend gates every method on this prefix itself
+    // (signup token for the applicant pair, JWT + super-admin for the queue).
+    '/api/signup/applications'],
   
   // Public pages
   public: ['/', '/pricing', '/favicon.ico', '/api/recording-proxy', '/landing', '/contact', '/privacy-policy', '/terms-of-service', '/cookies-policy', '/account-deletion-policy',
     // Founding-group landing page, its short /apply entry point, and the route
     // handler the form posts to. All must be open: the whole point is that a
     // stranger clicking a link in an InMail can reach them.
-    '/community', '/apply', '/api/community-signup'],
+    '/community', '/apply', '/api/community-signup',
+    // Installable app: the "get the app" page and what the browser fetches to
+    // install it and receive push (manifest, service worker, icons). The
+    // browser fetches these without the user's cookie.
+    '/install', '/manifest.webmanifest', '/sw.js', '/icons'],
   
   // Health checks & public APIs
   health: ['/api/health'],
@@ -52,6 +60,10 @@ export const AUTH_ROUTES = [
   '/onboarding',
   '/community-roi',
   '/follow-ups',
+  '/tasks',
+  '/sales-playbook', // Discovery call script, scoring and customisation costing
+  '/content-studio', // Plan, write, schedule and measure social posts (Mr LAD's own scheduler)
+  '/studio', // Tenant Studio — train the workspace: interview, ICP training, rehearsal, Tailor (admin/owner)
   '/instagram', // Instagram management (accounts, AI replies, comments, goals)
   '/admin', // Internal admin tooling (platform observability monitor, blog, submissions) - super-admin gated
   '/api/protected', // Mark all protected API routes with /api/protected prefix

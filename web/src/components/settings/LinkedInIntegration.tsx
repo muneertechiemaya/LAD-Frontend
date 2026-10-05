@@ -1324,7 +1324,7 @@ function AiToggleChip({
       type="button"
       onClick={onToggle}
       disabled={disabled}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 max-lg:min-h-11 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
         enabled
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
           : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'

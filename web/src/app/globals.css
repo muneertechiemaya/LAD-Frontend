@@ -14,13 +14,20 @@
     @apply border-border;
   }
 
+  /* Indic (and Urdu) glyph fallback, loaded in layout.tsx. Inter and Space
+     Grotesk stop at Latin; a browser walks this list per glyph, so a Telugu
+     transcript picks up Noto Sans Telugu and everything else stays in Inter. */
+  :root {
+    --font-indic-fallback: 'Noto Sans Telugu', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gujarati', 'Noto Sans Bengali', 'Noto Sans Gurmukhi', 'Noto Sans Oriya', 'Noto Sans Arabic';
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', var(--font-indic-fallback), system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: 'Space Grotesk', var(--font-indic-fallback), system-ui, sans-serif;
   }
 }
 
@@ -272,7 +279,7 @@
 
   /* ── Chat message typography (WhatsApp-style) ──────────────────────────── */
   .wa-msg-text {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, var(--font-indic-fallback), sans-serif;
     font-size: 14.2px;
     line-height: 1.45;
     letter-spacing: 0.01em;
@@ -281,7 +288,7 @@
   }
 
   .wa-msg-time {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, var(--font-indic-fallback), sans-serif;
     font-size: 11px;
     line-height: 1.2;
     letter-spacing: 0.01em;
@@ -481,8 +488,8 @@
   }
 
   /* Light mode input focus override */
-  :root input:focus-visible,
-  :root textarea:focus-visible,
+  :root input:focus-visible:not(.media-builder-prompt),
+  :root textarea:focus-visible:not(.adv-chat-ta):not(.workflow-ai-prompt),
   :root select:focus-visible,
   :root [contenteditable="true"]:focus-visible {
     outline: none;
@@ -580,7 +587,10 @@
 
   /* Secondary */
   --secondary: oklch(98% 0.003 247.858);
-  --secondary-foreground: oklch(98% 0.016 73.684);
+  /* Was oklch(98% 0.016 73.684) - near-white on the near-white --secondary,
+     so every variant="secondary" Badge / Button / Chip read 1:1 in light mode.
+     Same navy as --muted-foreground / --color-base-content. */
+  --secondary-foreground: oklch(20% 0.042 265.755);
 
   /* Accent */
   --accent: #0B1957;
@@ -653,8 +663,10 @@
   --color-base-300: oklch(20% 0.016 258);
   --color-base-content: oklch(95% 0.01 260);
 
-  /* Primary - Electric Blue (CTA) */
-  --primary: #2B7CFF;
+  /* Primary - Electric Blue (CTA). #2563EB, not #2B7CFF: white on the fill must
+     clear 4.5:1 (5.17 vs 3.87). No single blue can also clear 4.5:1 as text on
+     the #000724 background, so .text-primary gets a lighter ink below. */
+  --primary: #2563EB;
   --primary-foreground: #FFFFFF;
 
   /* Secondary */
@@ -757,6 +769,26 @@ body {
       opacity: 0.5;
     }
   }
+
+  /* Horizontal chip/tab rows: used across the app but never defined, so
+     desktop showed a scrollbar under every one of them. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A row that scrolls sideways on a phone fades out at its right edge, so a
+     cut-off chip reads as "there is more" rather than as broken layout. */
+  @media (max-width: 1023.98px) {
+    .scroll-fade-x {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+      padding-right: 28px;
+    }
+  }
 }
 
 /* Dashboard Widget Styles */
@@ -832,19 +864,22 @@ body {
     color: #ffffff;
   }
 
-  /* Baseline dark mode styles for inputs, textareas, and comboboxes */
-  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]),
-  .dark textarea,
-  .dark [data-slot="input"],
-  .dark [data-slot="textarea"],
+
+  /* Baseline dark mode styles for inputs, textareas, and comboboxes.
+     `.field-bare` opts out: a field drawn inside its own styled container (the
+     chat composer pill) would otherwise show a second box inside it. */
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.media-builder-prompt):not(.field-bare),
+  .dark textarea:not(.field-bare),
+  .dark [data-slot="input"]:not(.field-bare),
+  .dark [data-slot="textarea"]:not(.field-bare),
   .dark [data-slot="select-trigger"],
   .dark [role="combobox"],
   .dark button[role="combobox"],
-  .dark [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.media-builder-prompt),
   .dark [role="dialog"] textarea,
   .dark [role="dialog"] select,
   .dark [role="dialog"] [role="combobox"],
-  .dark [data-slot="dialog-content"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark [data-slot="dialog-content"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.media-builder-prompt),
   .dark [data-slot="dialog-content"] textarea,
   .dark [data-slot="dialog-content"] select,
   .dark [data-slot="dialog-content"] [role="combobox"] {
@@ -853,33 +888,28 @@ body {
     color: #ffffff;
   }
 
-  /* Focus rings */
-  .dark input:focus,
-  .dark input:focus-visible,
-  .dark textarea:focus,
-  .dark textarea:focus-visible,
+  /* Focus rings. The composer prompts below draw their own focus state. */
+  .dark input:focus:not(.media-builder-prompt),
+  .dark input:focus-visible:not(.media-builder-prompt),
+  .dark textarea:focus:not(.adv-chat-ta):not(.workflow-ai-prompt),
+  .dark textarea:focus-visible:not(.adv-chat-ta):not(.workflow-ai-prompt),
   .dark select:focus,
   .dark select:focus-visible,
   .dark [data-slot="input"]:focus,
   .dark [data-slot="input"]:focus-visible,
-  .dark [data-slot="textarea"]:focus,
-  .dark [data-slot="textarea"]:focus-visible,
+  .dark [data-slot="textarea"]:focus:not(.adv-chat-ta),
+  .dark [data-slot="textarea"]:focus-visible:not(.adv-chat-ta),
   .dark [data-slot="select-trigger"]:focus,
   .dark [data-slot="select-trigger"]:focus-visible,
   .dark [role="combobox"]:focus,
   .dark button[role="combobox"]:focus,
-  .dark [role="dialog"] input:focus,
-  .dark [role="dialog"] textarea:focus,
+  .dark [role="dialog"] input:focus:not(.media-builder-prompt),
+  .dark [role="dialog"] textarea:focus:not(.workflow-ai-prompt),
   .dark [role="dialog"] select:focus,
   .dark [role="dialog"] [role="combobox"]:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(43, 124, 255, 0.25);
     outline: none;
-  }
-
-  .dark input::placeholder,
-  .dark textarea::placeholder {
-    color: #64748b;
   }
 
   /* Invert number input spin buttons in dark mode */
@@ -894,6 +924,31 @@ body {
   }
 }
 
+/* Placeholder text must clear 4.5:1 like any text. #64748b was ~3.9:1 on the
+   dark inputs; #94a3b8 is 5.8:1+ on every dark field background in the app. */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+/* Light mode: unlayered, so it wins over the placeholder:text-slate-400 /
+   gray-400 utilities (2.6:1) used across the app. #5B6780 is 5.1:1+ on every
+   light field background (white through slate-100). */
+input::placeholder,
+textarea::placeholder {
+  color: #5b6780;
+}
+
+/* iOS Safari zooms into any focused field whose text is under 16px, which
+   leaves the page zoomed after the keyboard closes. Below the desktop
+   breakpoint every text-entry field renders at 16px; desktop is unchanged. */
+@media (max-width: 1023.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* ── ReactFlow Controls Dark Mode Styling ── */
 .dark .react-flow__controls {
   background-color: rgba(7, 17, 49, 0.95);
@@ -903,6 +958,37 @@ body {
   overflow: hidden;
 }
 
+/* Workflow Builder > Build with AI composer keeps its resting border on focus. */
+.dark textarea.workflow-ai-prompt {
+  background-color: #050d28 !important;
+}
+
+textarea.workflow-ai-prompt:focus,
+textarea.workflow-ai-prompt:focus-visible,
+.dark textarea.workflow-ai-prompt:focus,
+.dark textarea.workflow-ai-prompt:focus-visible {
+  border-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+/* Media Studio prompt is nested inside its own bordered composer shell. */
+input.media-builder-prompt:focus,
+input.media-builder-prompt:focus-visible,
+.dark input.media-builder-prompt:focus,
+.dark input.media-builder-prompt:focus-visible {
+  border-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
 .dark .react-flow__controls-button {
   background-color: transparent;
   border-bottom-color: rgba(30, 58, 138, 0.4);
@@ -918,4 +1004,25 @@ body {
 
 .dark .react-flow__controls-button svg {
   fill: currentColor;
+}
+
+/* Dark-mode primary as TEXT: --primary is tuned as a fill (white on it = 5.17:1)
+   and is only 3.85:1 as text on the #000724 background. Unlayered, so it wins
+   over the text-primary utility. */
+.dark .text-primary:not([class*="dark:text-"]) {
+  color: #60A5FA;
+}
+
+/* -------------------------------------------------------------
+   Muted text contrast (light mode). text-gray-400 (#9ca3af) and
+   text-slate-400 (#94a3b8) are used as secondary/body text in ~240 files
+   and read 2.5-2.6:1 on white - under WCAG's 4.5:1. In light mode they
+   render one step darker (gray-500 4.8:1, slate-500 4.8:1), which still
+   reads as "muted". Dark mode is untouched (html.dark doesn't match).
+   :where() keeps this at plain-utility specificity and it sits after the
+   generated utilities, so hover:/focus:/group-hover: variants still win.
+----------------------------------------------------------------- */
+@layer utilities {
+  :where(html:not(.dark)) .text-gray-400 { color: #6b7280; }
+  :where(html:not(.dark)) .text-slate-400 { color: #64748b; }
 }

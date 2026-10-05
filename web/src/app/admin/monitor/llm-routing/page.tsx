@@ -69,7 +69,7 @@ export default function MonitorLlmRoutingPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">LLM Routing</h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Pin a model per feature for a tenant, with ordered fallbacks. No rule = platform default.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function MonitorLlmRoutingPage() {
               setTenantId(e.target.value || null);
               setEditing(null);
             }}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+            className="max-lg:min-h-11 max-md:text-[16px] rounded-lg border border-gray-200 px-3 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
           >
             <option value="">{tenantsLoading ? 'Loading tenants…' : 'Select a tenant…'}</option>
             {tenantList.map((t: { id: string; name: string }) => (
@@ -90,7 +90,7 @@ export default function MonitorLlmRoutingPage() {
           <button
             onClick={() => refetch()}
             disabled={!tenantId}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -108,7 +108,7 @@ export default function MonitorLlmRoutingPage() {
       </div>
 
       {!tenantId && (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700">
+        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
           Select a tenant to view or change its model routing.
         </div>
       )}
@@ -145,7 +145,7 @@ export default function MonitorLlmRoutingPage() {
                       </span>
                       {(locked || notWired) && <Lock className="h-3 w-3 text-gray-400" />}
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                       {locked
                         || (notWired
                           ? `${f.hint} - not yet wired to routing; a rule here would be ignored.`
@@ -157,7 +157,7 @@ export default function MonitorLlmRoutingPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => startEdit(f.key)}
-                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                        className="max-lg:min-h-11 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         {rule ? 'Edit' : 'Set model'}
                       </button>
@@ -166,7 +166,7 @@ export default function MonitorLlmRoutingPage() {
                           onClick={() => clearChain(f.key)}
                           disabled={saving}
                           title="Revert to the platform default"
-                          className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:hover:bg-gray-800"
+                          className="max-lg:min-h-11 rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-400"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -181,7 +181,7 @@ export default function MonitorLlmRoutingPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         {rule.chain.map((c, i) => (
                           <React.Fragment key={`${c.provider}-${c.model}-${i}`}>
-                            {i > 0 && <span className="text-gray-400">→</span>}
+                            {i > 0 && <span className="text-gray-600 dark:text-gray-400">→</span>}
                             <span
                               className={`rounded-md px-2 py-0.5 font-mono ${
                                 i === 0
@@ -194,11 +194,11 @@ export default function MonitorLlmRoutingPage() {
                           </React.Fragment>
                         ))}
                         {rule.updatedBy && (
-                          <span className="text-gray-400">· set by {rule.updatedBy}</span>
+                          <span className="text-gray-600 dark:text-gray-400">· set by {rule.updatedBy}</span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-gray-400">Platform default</span>
+                      <span className="text-gray-600 dark:text-gray-400">Platform default</span>
                     )}
                   </div>
                 )}
@@ -207,7 +207,7 @@ export default function MonitorLlmRoutingPage() {
                   <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
                     {draft.map((entry, i) => (
                       <div key={i} className="flex flex-wrap items-center gap-2">
-                        <span className="w-16 shrink-0 text-xs text-gray-500">
+                        <span className="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">
                           {i === 0 ? 'Primary' : `Fallback ${i}`}
                         </span>
                         <select
@@ -223,7 +223,7 @@ export default function MonitorLlmRoutingPage() {
                             next[i] = { provider, model: stillValid ? next[i].model : '' };
                             setDraft(next);
                           }}
-                          className="rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                          className="max-lg:min-h-11 max-md:text-[16px] rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                         >
                           {(meta?.providers ?? []).map((p) => (
                             <option key={p} value={p}>{PROVIDER_LABEL[p] ?? p}</option>
@@ -236,7 +236,7 @@ export default function MonitorLlmRoutingPage() {
                             next[i] = { ...next[i], model: e.target.value };
                             setDraft(next);
                           }}
-                          className="min-w-[260px] flex-1 rounded-lg border border-gray-200 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                          className="max-lg:min-h-11 max-md:text-[16px] min-w-[260px] flex-1 rounded-lg border border-gray-200 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                         >
                           <option value="">Select a model…</option>
                           {(meta?.models?.[entry.provider] ?? []).map((m) => (
@@ -251,7 +251,7 @@ export default function MonitorLlmRoutingPage() {
                         <button
                           onClick={() => setDraft(draft.filter((_, j) => j !== i))}
                           disabled={draft.length === 1}
-                          className="rounded-lg border border-gray-200 px-2 py-1 text-gray-400 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-700 dark:hover:bg-gray-800"
+                          className="max-lg:min-h-11 rounded-lg border border-gray-200 px-2 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -269,21 +269,21 @@ export default function MonitorLlmRoutingPage() {
                         onClick={() => setDraft([...draft, { provider: 'gemini', model: '' }])}
                         disabled={draft.length >= 4}
                         title={draft.length >= 4 ? 'Maximum 4 entries' : 'Add a fallback'}
-                        className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                        className="max-lg:min-h-11 flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         <Plus className="h-3 w-3" /> Fallback
                       </button>
                       <div className="flex-1" />
                       <button
                         onClick={() => { setEditing(null); setSaveError(null); }}
-                        className="rounded-lg px-2.5 py-1 text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                        className="max-lg:min-h-11 rounded-lg px-2.5 py-1 text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-400"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => commit(f.key)}
                         disabled={saving || !draft.some((d) => d.model.trim())}
-                        className="flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-40"
+                        className="max-lg:min-h-11 flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-40"
                       >
                         <Save className="h-3 w-3" /> {saving ? 'Saving…' : 'Save'}
                       </button>

@@ -243,7 +243,7 @@ export function DataImportModal() {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetState(); }}>
       <DialogTrigger asChild>
-        <Button variant="default" size="sm" className="gap-2 bg-amber-600 hover:bg-amber-700">
+        <Button variant="default" size="sm" className="gap-2 bg-amber-700 hover:bg-amber-800">
           <FileUp className="h-4 w-4" />
           Import Data
         </Button>
@@ -295,14 +295,14 @@ export function DataImportModal() {
 
                 {/* Description for selected type */}
                 {memberMode && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-gray-600 mt-1 dark:text-slate-300">
                     Select a folder containing individual member .xlsx files (e.g.
                     BNI_Rising_Phoenix/). Each file&apos;s &quot;Cohesion&quot; sheet is read and mapped to:
                     interactions (type 1), referrals (type 2), and relationship scores (type 3).
                   </p>
                 )}
                 {!memberMode && options.find((o: ImportOption) => o.id === selectedSheet) && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-gray-600 mt-1 dark:text-slate-300">
                     {options.find((o: ImportOption) => o.id === selectedSheet)?.description}
                   </p>
                 )}
@@ -321,7 +321,7 @@ export function DataImportModal() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Tag this upload with the month the meetings took place - used to populate the Network Growth Graph.
                 </p>
               </div>
@@ -350,25 +350,25 @@ export function DataImportModal() {
                     <FolderOpen className="h-8 w-8 text-amber-400" />
                     {selectedFiles.length > 0 ? (
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedFiles.length} member file{selectedFiles.length !== 1 ? 's' : ''} selected
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
                           Click to change selection
                         </p>
-                        <div className="mt-2 max-h-24 overflow-y-auto text-xs text-gray-400 text-left space-y-0.5">
+                        <div className="mt-2 max-h-24 overflow-y-auto text-xs text-gray-500 text-left space-y-0.5 dark:text-slate-400">
                           {selectedFiles.slice(0, 8).map(f => (
                             <div key={f.name}>{f.name}</div>
                           ))}
                           {selectedFiles.length > 8 && (
-                            <div className="text-gray-400">…and {selectedFiles.length - 8} more</div>
+                            <div className="text-gray-500 dark:text-slate-400">…and {selectedFiles.length - 8} more</div>
                           )}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <p className="font-medium text-gray-900">Click to select folder</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="font-medium text-gray-900 dark:text-white">Click to select folder</p>
+                        <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
                           Select the BNI_Rising_Phoenix folder - all .xlsx files will be read
                         </p>
                       </div>
@@ -394,19 +394,19 @@ export function DataImportModal() {
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Upload className="h-8 w-8 text-gray-400" />
+                    <Upload className="h-8 w-8 text-gray-500 dark:text-slate-400" />
                     <div className="text-center">
                       {selectedFile ? (
                         <>
-                          <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
+                          <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
                             {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </>
                       ) : (
                         <>
-                          <p className="font-medium text-gray-900">Click to upload or drag and drop</p>
-                          <p className="text-xs text-gray-500 mt-1">Excel (.xlsx, .xls) or CSV files</p>
+                          <p className="font-medium text-gray-900 dark:text-white">Click to upload or drag and drop</p>
+                          <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">Excel (.xlsx, .xls) or CSV files</p>
                         </>
                       )}
                     </div>
@@ -415,9 +415,9 @@ export function DataImportModal() {
               )}
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{error}</p>
+                <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
+                  <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5 dark:text-red-300" />
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               )}
 
@@ -443,21 +443,21 @@ export function DataImportModal() {
           {/* ── Step: Extract (loading) ── */}
           {step === 'extract' && !extractedData && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <p className="text-sm font-medium">
                 {memberMode ? 'Processing member report files...' : 'Extracting data from Excel...'}
               </p>
-              <p className="text-xs text-gray-500">This may take a moment</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">This may take a moment</p>
             </div>
           )}
 
           {/* ── Step: Execute (loading) ── */}
           {step === 'execute' && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <p className="text-sm font-medium">Importing data to database...</p>
               {extractedData?.recordCounts && (
-                <div className="text-xs text-gray-600 space-y-1 text-center">
+                <div className="text-xs text-gray-600 space-y-1 text-center dark:text-slate-300">
                   <p>Interactions: {extractedData.recordCounts.interactions ?? 0}</p>
                   <p>Referrals: {extractedData.recordCounts.referrals ?? 0}</p>
                   <p>Relationship scores: {extractedData.recordCounts.relationship_scores ?? extractedData.recordCounts.combination ?? 0}</p>
@@ -469,9 +469,9 @@ export function DataImportModal() {
           {/* ── Step: Complete ── */}
           {step === 'complete' && (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-300" />
               <p className="text-sm font-medium">Import completed successfully!</p>
-              <p className="text-xs text-gray-600 text-center">
+              <p className="text-xs text-gray-600 text-center dark:text-slate-300">
                 The modal will close in a few seconds.
               </p>
             </div>
@@ -479,7 +479,7 @@ export function DataImportModal() {
 
           {/* ── Extraction summary (shown after extract, before execute) ── */}
           {extractedData && step === 'extract' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 space-y-2">
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 space-y-2 dark:bg-blue-500/10">
               <h4 className="text-sm font-semibold text-blue-900">
                 {memberMode
                   ? `Processed ${extractedData.filesProcessed ?? selectedFiles.length} member files`
@@ -504,9 +504,9 @@ export function DataImportModal() {
 
           {/* ── Non-select errors ── */}
           {error && step !== 'select' && (
-            <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-red-700">
+            <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-2 dark:bg-red-500/10">
+              <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5 dark:text-red-300" />
+              <div className="text-sm text-red-700 dark:text-red-300">
                 <p className="font-medium">Import failed</p>
                 <p className="text-xs mt-1">{error}</p>
               </div>
@@ -516,7 +516,7 @@ export function DataImportModal() {
 
         {/* ── Execute / Back buttons ── */}
         {step === 'extract' && extractedData && (
-          <div className="flex gap-2 pt-4 border-t">
+          <div className="flex gap-2 pt-4 border-t dark:border-slate-800">
             <Button
               variant="outline"
               onClick={() => { setStep('select'); setExtractedData(null); }}

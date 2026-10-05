@@ -147,7 +147,7 @@ export default function EmployeeCard({
         ${employeeViewMode === 'grid' ? 'hover:-translate-y-1' : 'hover:-translate-y-0.5'}
       `}
     >
-      <CardContent className={employeeViewMode === 'grid' ? 'p-6' : 'p-5'}>
+      <CardContent className={employeeViewMode === 'grid' ? 'p-6 max-sm:p-4' : 'p-5 max-sm:p-4'}>
         <div
           className={`
             flex items-center w-full
@@ -159,11 +159,12 @@ export default function EmployeeCard({
         >
           {/* Avatar - Top (for grid view) */}
           {employeeViewMode === 'grid' && (
-            <div className="flex justify-center mb-4 w-full">
-              <Avatar className="w-[90px] h-[90px] border-4 shadow-md flex-shrink-0">
+            <div className="flex justify-center mb-4 max-sm:mb-2 w-full">
+              {/* Phones: 56px avatar - at 90px each card was nearly a screen tall. */}
+              <Avatar className="w-[90px] h-[90px] max-sm:w-14 max-sm:h-14 max-sm:border-2 border-4 shadow-md flex-shrink-0">
                 <AvatarImage src={employee.photo_url} alt={employeeName} />
                 <AvatarFallback className="bg-gray-200 dark:bg-[#253456]">
-                  <User className="w-12 h-12 text-gray-500 dark:text-[#7a8ba3]" />
+                  <User className="w-12 h-12 max-sm:w-7 max-sm:h-7 text-gray-500 dark:text-[#7a8ba3]" />
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -392,6 +393,7 @@ export default function EmployeeCard({
                   </Tooltip>
                 </TooltipProvider>
                 <span
+                  aria-hidden="true"
                   className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500 tracking-wide blur-[3px] select-none"
                 >
                   official@company.com
@@ -444,8 +446,8 @@ export default function EmployeeCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`
-                    text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap
-                    text-[#0077b5] font-semibold select-text cursor-pointer
+                    text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap max-lg:min-h-11 max-lg:leading-[44px]
+                    text-[#0077b5] dark:text-sky-400 font-semibold select-text cursor-pointer
                     no-underline hover:underline
                   `}
                 >
@@ -455,6 +457,7 @@ export default function EmployeeCard({
                 </a>
               ) : (
                 <span
+                  aria-hidden="true"
                   className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-300 tracking-wide blur-[3px] select-none"
                 >
                   linkedin.com/in/...
@@ -507,7 +510,7 @@ export default function EmployeeCard({
                   setSummaryExpanded(!summaryExpanded);
                 }}
                 className={`
-                  w-full border-[#0b1957] dark:border-[#4a6cf7] text-[#0b1957] dark:text-[#4a6cf7] font-semibold text-sm py-2
+                  w-full border-[#0b1957] dark:border-[#4a6cf7] text-[#0b1957] dark:text-[#8aa0fb] font-semibold text-sm py-2
                   hover:border-[#0b1957] hover:text-[#0b1957] dark:hover:border-[#4a6cf7] hover:bg-[#0b1957]/5 dark:hover:bg-[#4a6cf7]/10 dark:hover:text-white
                   ${summaryExpanded ? 'mb-2' : ''}
                 `}
@@ -543,7 +546,7 @@ export default function EmployeeCard({
                   e.stopPropagation();
                   onViewSummary(employee);
                 }}
-                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#2b7cff] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
+                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#5b9bf5] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Generate Summary

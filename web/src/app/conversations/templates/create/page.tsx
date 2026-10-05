@@ -22,7 +22,7 @@ export default function CreateTemplatePage() {
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
           <button
             onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors cursor-pointer"
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors cursor-pointer max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
           >
             ← Back
           </button>

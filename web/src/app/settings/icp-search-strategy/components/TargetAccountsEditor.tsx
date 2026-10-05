@@ -121,7 +121,7 @@ export function TargetAccountsEditor({
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-slate-800 px-5 py-3">
         <div>
           <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Named target accounts</h4>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             ABM searches only fire when this list is non-empty.{' '}
             <strong>{value.length}</strong> account{value.length === 1 ? '' : 's'} configured.
             {noDomainCount > 0 && (
@@ -139,7 +139,7 @@ export function TargetAccountsEditor({
             type="button"
             onClick={() => setBulkOpen((v) => !v)}
             disabled={disabled}
-            className="rounded border border-gray-300 bg-white dark:bg-slate-900 dark:border-slate-700 px-3 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
+            className="rounded border border-gray-300 bg-white dark:bg-slate-900 dark:border-slate-700 px-3 py-1 text-xs hover:bg-gray-50 disabled:opacity-50 max-lg:min-h-11 max-md:text-sm"
           >
             {bulkOpen ? 'Cancel bulk' : 'Bulk paste'}
           </button>
@@ -148,7 +148,7 @@ export function TargetAccountsEditor({
               type="button"
               onClick={clearAll}
               disabled={disabled}
-              className="rounded border border-rose-200 bg-white px-3 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+              className="rounded border border-rose-200 bg-white px-3 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50 max-lg:min-h-11 max-md:text-sm"
             >
               Clear all
             </button>
@@ -158,7 +158,7 @@ export function TargetAccountsEditor({
 
       {bulkOpen && (
         <div className="space-y-2 border-b border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-800 px-5 py-3">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-gray-700 dark:text-slate-200">
             One account per line, comma-separated: <code>Company Name, domain.com</code>
           </label>
           <textarea
@@ -167,14 +167,14 @@ export function TargetAccountsEditor({
             disabled={disabled}
             rows={6}
             placeholder={'Acme, acme.com\nBeta, beta.io\nGamma'}
-            className="w-full rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm font-mono disabled:opacity-50"
+            className="w-full rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm font-mono disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
           />
           <div className="flex justify-end">
             <button
               type="button"
               onClick={applyBulk}
               disabled={disabled || !bulkText.trim()}
-              className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 max-lg:min-h-11 max-md:text-sm"
             >
               Append {parseBulk(bulkText).length || ''} account
               {parseBulk(bulkText).length === 1 ? '' : 's'}
@@ -195,7 +195,7 @@ export function TargetAccountsEditor({
                 value={a.company_name || ''}
                 onChange={(e) => updateAt(idx, { company_name: e.target.value })}
                 disabled={disabled}
-                className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm disabled:opacity-50"
+                className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
                 aria-label="Company name"
               />
               <input
@@ -204,12 +204,12 @@ export function TargetAccountsEditor({
                 onChange={(e) => updateAt(idx, { domain: e.target.value })}
                 disabled={disabled}
                 placeholder="domain.com (optional)"
-                className="w-48 rounded border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50"
+                className="w-48 rounded border border-gray-200 px-2 py-1 text-sm text-gray-700 disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px] dark:text-slate-200"
                 aria-label="Domain"
               />
               {!a.domain && !a.apollo_company_id && (
                 <span
-                  title="Without a domain or Apollo company id, this account is skipped at search time."
+                  title="Add the company website, or this company is skipped when searching."
                   className="text-xs text-amber-700"
                 >
                   no domain
@@ -219,7 +219,7 @@ export function TargetAccountsEditor({
                 type="button"
                 onClick={() => removeAt(idx)}
                 disabled={disabled}
-                className="text-gray-400 hover:text-rose-600 disabled:opacity-30"
+                className="text-gray-400 hover:text-rose-600 disabled:opacity-30 dark:text-slate-400"
                 aria-label="Remove account"
               >
                 ✕
@@ -228,7 +228,7 @@ export function TargetAccountsEditor({
           ))}
         </ul>
       ) : (
-        <p className="px-5 py-6 text-center text-sm text-gray-500">
+        <p className="px-5 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
           No target accounts yet. Add one below, or use Bulk paste.
         </p>
       )}
@@ -240,7 +240,7 @@ export function TargetAccountsEditor({
           onChange={(e) => setNewCompany(e.target.value)}
           disabled={disabled}
           placeholder="Company name"
-          className="flex-1 min-w-0 rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+          className="flex-1 min-w-0 rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -254,7 +254,7 @@ export function TargetAccountsEditor({
           onChange={(e) => setNewDomain(e.target.value)}
           disabled={disabled}
           placeholder="domain.com (optional)"
-          className="w-48 rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50"
+          className="w-48 rounded border border-gray-300 dark:border-slate-700 px-2 py-1.5 text-sm disabled:opacity-50 max-lg:min-h-11 max-md:text-[16px]"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();

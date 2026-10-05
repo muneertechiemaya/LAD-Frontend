@@ -190,24 +190,26 @@ export const WalletBalance: React.FC = () => {
     );
   }
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 max-sm:px-0 max-sm:py-4 sm:px-6 lg:px-8 py-8">
       {/* Wallet Balance Card */}
-      <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-8 text-primary-foreground shadow-xl mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-8 max-sm:p-5 text-primary-foreground shadow-xl mb-8 max-sm:mb-5">
+        {/* Phones: "Add Credits" drops under the title at full width; side by
+            side, both the title and the button wrapped to two lines. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 max-sm:mb-4">
           <div className="flex items-center">
-            <Wallet className="h-8 w-8 mr-3" />
-            <h2 className="text-2xl font-bold">Wallet Balance</h2>
+            <Wallet className="h-8 w-8 max-sm:h-6 max-sm:w-6 mr-3" />
+            <h2 className="text-2xl max-sm:text-xl font-bold whitespace-nowrap">Wallet Balance</h2>
           </div>
           <button
             onClick={() => setShowRechargeModal(true)}
-            className="bg-white text-primary px-6 py-2 rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center"
+            className="bg-white text-primary dark:text-[#0b1957] px-6 py-2 max-lg:min-h-11 max-sm:w-full max-sm:justify-center whitespace-nowrap rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Credits
           </button>
         </div>
         <div className="flex items-baseline">
-          <span className="text-5xl font-bold">{wallet.balance.toLocaleString()}</span>
+          <span className="text-5xl max-sm:text-4xl font-bold">{wallet.balance.toLocaleString()}</span>
           <span className="text-xl ml-3 opacity-80">{wallet.currency}</span>
         </div>
         <p className="text-primary-foreground/70 mt-2">
@@ -239,7 +241,7 @@ export const WalletBalance: React.FC = () => {
               <button
                 onClick={() => handleCancelRecurring('monthly')}
                 disabled={cancellingKind === 'monthly'}
-                className="mt-3 text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                className="mt-3 max-lg:min-h-11 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
               >
                 {cancellingKind === 'monthly' ? 'Cancelling…' : 'Cancel subscription'}
               </button>
@@ -267,7 +269,7 @@ export const WalletBalance: React.FC = () => {
               <button
                 onClick={() => handleCancelRecurring('auto_recharge')}
                 disabled={cancellingKind === 'auto_recharge'}
-                className="mt-3 text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                className="mt-3 max-lg:min-h-11 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
               >
                 {cancellingKind === 'auto_recharge' ? 'Disabling…' : 'Disable auto-recharge'}
               </button>

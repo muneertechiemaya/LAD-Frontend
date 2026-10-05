@@ -39,14 +39,19 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { AgentFormData, LANGUAGES, GENDERS, Voice } from '@/types/agent';
+import { useToast } from '../../hooks/use-toast';
+import { safeStorage } from '@lad/shared/storage';
 import { PromptEditor } from './PromptEditor';
 import { VoicePreview } from './VoicePreview';
-import { CharacterCounter } from './CharacterCounter';
+import { CorrectionsCard } from './corrections/CorrectionsCard';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { languageLabel } from '@/lib/locale-label';
 
 interface AgentFormProps {
+  /** Saved agent id; null for a new, unsaved agent. Drives the Corrections card. */
+  agentId?: number | string | null;
   formData: AgentFormData;
   errors: Partial<Record<keyof AgentFormData, string>>;
   
@@ -89,6 +94,7 @@ Remember to collect:
 };
 
 export function AgentForm({
+  agentId = null,
   formData,
   errors,
   isDirty,
@@ -101,14 +107,78 @@ export function AgentForm({
   onUpdateField,
   onSave,
   onReset,
-  getCharCount,
 }: AgentFormProps) {
   // Filter voices by selected gender
   const filteredVoices = voices.filter((v: Voice) => v.gender === formData.gender);
 
   // Local state for Universal Agent Settings (Voice Dynamics and Background Ambiance)
+  const { toast } = useToast();
   const [speed, setSpeed] = React.useState<number>(1.0);
   const [pitch, setPitch] = React.useState<number>(0.0);
+  const [isSavingDynamics, setIsSavingDynamics] = React.useState(false);
+
+  // The voice these dynamics belong to. speed/pitch/volume are stored on
+  // voice_agent_voices.provider_config, which is the only place resolve_voice()
+  // reads them from — voice_agents.configs is not consulted for TTS at all.
+  const selectedVoiceForDynamics = React.useMemo(
+    () => voices.find((v) => v.id === formData.voice_id),
+    [voices, formData.voice_id],
+  );
+
+  // Hydrate the sliders from the selected voice so they show what is actually
+  // stored. Previously they always rendered their defaults, which made an
+  // unsaved 1.00x look identical to a saved 1.00x.
+  React.useEffect(() => {
+    const cfg = selectedVoiceForDynamics?.provider_config;
+    setSpeed(typeof cfg?.speed === 'number' ? cfg.speed : 1.0);
+    setPitch(typeof cfg?.pitch === 'number' ? cfg.pitch : 0.0);
+    setVolume(typeof cfg?.volume === 'number' ? cfg.volume : 1.0);
+  }, [selectedVoiceForDynamics]);
+
+  /**
+   * Persist voice dynamics onto the selected voice.
+   *
+   * These sliders were previously local state only — never added to formData,
+   * never sent on save — so nothing the user changed here had any effect.
+   *
+   * Saved per VOICE rather than per agent because that is the column the engine
+   * reads; the card notes that it is shared by agents using the same voice.
+   */
+  const saveVoiceDynamics = React.useCallback(
+    async (patch: { speed?: number; pitch?: number; volume?: number }) => {
+      const voice = selectedVoiceForDynamics;
+      if (!voice) return;
+
+      const nextConfig = { ...(voice.provider_config ?? {}), ...patch };
+      setIsSavingDynamics(true);
+      try {
+        const token = safeStorage.getItem('token');
+        const response = await fetch(`/api/voice-agent/settings/voices/${voice.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({ provider_config: nextConfig }),
+        });
+        if (!response.ok) {
+          throw new Error((await response.text()) || 'Failed to save voice dynamics');
+        }
+        // Keep the in-memory voice in step so a re-render does not revert the slider.
+        voice.provider_config = nextConfig;
+      } catch (error) {
+        toast({
+          title: 'Could not save voice dynamics',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSavingDynamics(false);
+      }
+    },
+    [selectedVoiceForDynamics, toast],
+  );
   const [volume, setVolume] = React.useState<number>(1.0);
   const [bgSoundOn, setBgSoundOn] = React.useState<boolean>(false);
   const [bgSoundUrl, setBgSoundUrl] = React.useState<string>('/office_chatter_loud.mp3');
@@ -200,12 +270,10 @@ export function AgentForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Agent Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center justify-between">
+              {/* No character counter: useAgentForm has no limit for the name
+                  (max 0), so it read "0 / 0" and went red on the first letter. */}
+              <Label htmlFor="name">
                 <span>Agent Name <span className="text-destructive">*</span></span>
-                <CharacterCounter 
-                  current={getCharCount('name').current} 
-                  max={getCharCount('name').max} 
-                />
               </Label>
               <Input
                 id="name"
@@ -303,14 +371,14 @@ export function AgentForm({
                           {voice.gender}
                         </span>
                         <span>{voice.description}</span>
-                        <span className="text-muted-foreground dark:text-slate-400">({voice.accent})</span>
+                        <span className="text-muted-foreground dark:text-slate-400">({languageLabel(voice.accent)})</span>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {filteredVoices.length} voice{filteredVoices.length !== 1 ? 's' : ''} available for {formData.gender} gender
+                {filteredVoices.length} {formData.gender} voice{filteredVoices.length !== 1 ? 's' : ''} available
               </p>
             </div>
 
@@ -361,8 +429,8 @@ export function AgentForm({
               <Sliders className="h-5 w-5 text-blue" />
             </div>
             <div>
-              <CardTitle className="text-lg">Universal Agent Settings</CardTitle>
-              <CardDescription>Configure provider-independent voice dynamics and ambiance masking</CardDescription>
+              <CardTitle className="text-lg">How the agent sounds</CardTitle>
+              <CardDescription>Speed, pitch and loudness of the voice, and background sound on calls</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -371,8 +439,20 @@ export function AgentForm({
             {/* Left Column: Voice Dynamics */}
             <div className="space-y-6 md:pr-4">
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">Voice Dynamics</h3>
-                <p className="text-xs text-muted-foreground">Standardized, provider-independent settings for pitch, speed, and volume.</p>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Voice</h3>
+                <p className="text-xs text-muted-foreground">
+                  Saved on the selected voice, so they apply to every agent using it.
+                </p>
+                {!selectedVoiceForDynamics && (
+                  <p className="text-xs text-amber-800 dark:text-amber-400">
+                    Pick a voice above to change these.
+                  </p>
+                )}
+                {selectedVoiceForDynamics?.provider === 'cartesia' && (
+                  <p className="text-[10px] text-muted-foreground">
+                    This voice can change speed and loudness. Pitch has no effect on it.
+                  </p>
+                )}
               </div>
 
               {/* Speed */}
@@ -380,7 +460,7 @@ export function AgentForm({
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Gauge className="h-4 w-4 text-muted-foreground" />
-                    <span>Speaking Rate (Speed)</span>
+                    <span>Speed</span>
                   </Label>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                     {speed.toFixed(2)}x
@@ -388,7 +468,10 @@ export function AgentForm({
                 </div>
                 <Slider 
                   value={speed} 
-                  onValueChange={setSpeed} 
+                  onValueChange={setSpeed}
+                  onMouseUp={() => saveVoiceDynamics({ speed: speed })}
+                  onTouchEnd={() => saveVoiceDynamics({ speed: speed })}
+                  disabled={isSavingDynamics || !selectedVoiceForDynamics} 
                   min={0.5} 
                   max={2.0} 
                   step={0.05} 
@@ -405,7 +488,7 @@ export function AgentForm({
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Sliders className="h-4 w-4 text-muted-foreground" />
-                    <span>Voice Pitch</span>
+                    <span>Pitch</span>
                   </Label>
                   <span className={cn(
                     "text-xs font-semibold px-2 py-0.5 rounded-full",
@@ -416,15 +499,18 @@ export function AgentForm({
                 </div>
                 <Slider 
                   value={pitch} 
-                  onValueChange={setPitch} 
+                  onValueChange={setPitch}
+                  onMouseUp={() => saveVoiceDynamics({ pitch: pitch })}
+                  onTouchEnd={() => saveVoiceDynamics({ pitch: pitch })}
+                  disabled={isSavingDynamics || !selectedVoiceForDynamics} 
                   min={-1.0} 
                   max={1.0} 
                   step={0.1} 
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Lowest (-1.0)</span>
-                  <span>Native (0.0)</span>
-                  <span>Highest (1.0)</span>
+                  <span>Lower</span>
+                  <span>Natural</span>
+                  <span>Higher</span>
                 </div>
               </div>
 
@@ -433,7 +519,7 @@ export function AgentForm({
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Volume2 className="h-4 w-4 text-muted-foreground" />
-                    <span>Loudness (Volume)</span>
+                    <span>Loudness</span>
                   </Label>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                     {volume.toFixed(2)}x
@@ -441,15 +527,18 @@ export function AgentForm({
                 </div>
                 <Slider 
                   value={volume} 
-                  onValueChange={setVolume} 
+                  onValueChange={setVolume}
+                  onMouseUp={() => saveVoiceDynamics({ volume: volume })}
+                  onTouchEnd={() => saveVoiceDynamics({ volume: volume })}
+                  disabled={isSavingDynamics || !selectedVoiceForDynamics} 
                   min={0.5} 
                   max={2.0} 
                   step={0.05} 
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Soft (0.5x)</span>
-                  <span>Native (1.0x)</span>
-                  <span>Loud (2.0x)</span>
+                  <span>Softer</span>
+                  <span>Normal</span>
+                  <span>Louder</span>
                 </div>
               </div>
             </div>
@@ -457,17 +546,36 @@ export function AgentForm({
             {/* Right Column: Background Ambiance */}
             <div className="space-y-6 pt-6 md:pt-0 md:pl-8">
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">Background Ambiance</h3>
-                <p className="text-xs text-muted-foreground">Standardized control for enabling background ambient masking audio.</p>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Background sound</h3>
+                <p className="text-xs text-muted-foreground">What the person hears around the agent&apos;s voice.</p>
+              </div>
+
+              {/* Spoken fillers — saved with the agent (voice_agents.configs.fillers) */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-4 bg-muted/40">
+                <div className="space-y-0.5">
+                  <Label htmlFor="spoken-fillers" className="text-sm font-medium flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    Spoken fillers
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    A short &ldquo;hmm…&rdquo;, &ldquo;right,&rdquo; or &ldquo;okay so…&rdquo; while the agent thinks, in the call&apos;s language. Off: the agent waits in silence, then answers.
+                  </p>
+                </div>
+                <Switch
+                  id="spoken-fillers"
+                  checked={formData.spoken_fillers}
+                  onCheckedChange={(v) => onUpdateField('spoken_fillers', v)}
+                />
               </div>
 
               {/* Background Sound On/Off */}
               <div className="flex items-center justify-between rounded-lg border border-border p-4 bg-muted/40">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Ambient Noise Masking</Label>
-                  <p className="text-xs text-muted-foreground">Inject natural background atmosphere during calls</p>
+                  <Label htmlFor="bg-sound-on" className="text-sm font-medium">Office background noise</Label>
+                  <p className="text-xs text-muted-foreground">Quiet office sound behind the agent, so calls feel natural</p>
                 </div>
                 <Switch 
+                  id="bg-sound-on"
                   checked={bgSoundOn} 
                   onCheckedChange={setBgSoundOn}
                 />
@@ -480,17 +588,17 @@ export function AgentForm({
               )}>
                 {/* Background Sound URL */}
                 <div className="space-y-2">
-                  <Label htmlFor="bg-sound-url" className="text-xs font-medium">Sound Override URL / Path</Label>
+                  <Label htmlFor="bg-sound-url" className="text-xs font-medium">Sound file (optional)</Label>
                   <Input
                     id="bg-sound-url"
                     value={bgSoundUrl}
                     onChange={(e) => setBgSoundUrl(e.target.value)}
                     placeholder="/office_chatter_loud.mp3"
                     disabled={!bgSoundOn}
-                    className="h-9 text-xs"
+                    className="h-9 max-lg:h-11 text-xs"
                   />
-                  <p className="text-[10px] text-muted-foreground">
-                    Complete URL or relative sound path (e.g. <code>/office_chatter_loud.mp3</code>)
+                  <p className="text-xs text-muted-foreground">
+                    Keep the default office sound, or paste a link to your own .mp3.
                   </p>
                 </div>
 
@@ -499,7 +607,7 @@ export function AgentForm({
                   <div className="flex items-center justify-between">
                     <Label className="flex items-center gap-2 text-xs">
                       <Music className="h-4 w-4 text-muted-foreground" />
-                      <span>Ambiance Volume</span>
+                      <span>Background volume</span>
                     </Label>
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                       {Math.round(bgSoundVolume * 100)}%
@@ -514,9 +622,9 @@ export function AgentForm({
                     disabled={!bgSoundOn}
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>Silent (0%)</span>
-                    <span>Standard (40%)</span>
-                    <span>Full (100%)</span>
+                    <span>Silent</span>
+                    <span>Standard</span>
+                    <span>Full</span>
                   </div>
                 </div>
               </div>
@@ -561,16 +669,16 @@ export function AgentForm({
               <MessageSquare className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <CardTitle className="text-lg">System Instructions</CardTitle>
-              <CardDescription>Set guardrails and behavioral constraints</CardDescription>
+              <CardTitle className="text-lg">Boundaries</CardTitle>
+              <CardDescription>What the agent must always, or never, do</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <PromptEditor
             id="system_instructions"
-            label="System Prompt"
-            description="Rules the agent must always follow (safety, compliance, limitations)"
+            label="Rules"
+            description="For example: never quote prices, always offer a callback, stay polite if the person is upset"
             value={formData.system_instructions}
             onChange={(value) => onUpdateField('system_instructions', value)}
             placeholder="Enter system-level instructions..."
@@ -589,16 +697,16 @@ export function AgentForm({
               <PhoneOutgoing className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Outbound Call Configuration</CardTitle>
-              <CardDescription>Configure the opening message for outbound calls</CardDescription>
+              <CardTitle className="text-lg">Calls the agent makes</CardTitle>
+              <CardDescription>What the agent says first when it calls someone</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <PromptEditor
             id="outbound_starter_prompt"
-            label="Starter Prompt"
-            description="The first message the agent speaks when initiating a call"
+            label="Opening line"
+            description="The first thing the agent says when the person picks up"
             value={formData.outbound_starter_prompt}
             onChange={(value) => onUpdateField('outbound_starter_prompt', value)}
             placeholder="Hello! This is [Agent Name] from [Company]..."
@@ -608,6 +716,9 @@ export function AgentForm({
           />
         </CardContent>
       </Card>
+
+      {/* Corrections taught from transcripts (or added here) */}
+      <CorrectionsCard agentId={agentId} className="form-section animate-fade-in-up stagger-6" />
     </div>
   );
 }

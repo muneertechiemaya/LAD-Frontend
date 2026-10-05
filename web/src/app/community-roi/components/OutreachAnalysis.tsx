@@ -58,27 +58,27 @@ export const OutreachAnalysis: React.FC<OutreachAnalysisProps> = ({ memberId }) 
 
   if (isLoading) {
     return (
-      <div className="h-[300px] w-full flex items-center justify-center bg-white rounded-xl border border-gray-100">
+      <div className="h-[300px] w-full flex items-center justify-center bg-white rounded-xl border border-gray-100 dark:bg-[#071131] dark:border-slate-800">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm dark:bg-[#071131] dark:border-slate-800">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Outreach Analysis</h3>
-          <p className="text-sm text-gray-500">Interaction trends over the last 30 days</p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Outreach Analysis</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Interaction trends over the last 30 days</p>
         </div>
         <div className="flex gap-2">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-xs text-gray-600">Meetings</span>
+            <span className="text-xs text-gray-600 dark:text-slate-300">Meetings</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-            <span className="text-xs text-gray-600">Referrals</span>
+            <span className="text-xs text-gray-600 dark:text-slate-300">Referrals</span>
           </div>
         </div>
       </div>

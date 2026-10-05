@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [develop, stage, main]
 
+# Explicit, least-privilege token. gitleaks-action lists the PR's commits
+# (GET /pulls/:n/commits), which needs pull-requests: read. The repo default
+# token is now "read" (contents + packages only), so without this block every
+# PR failed with 403 "Resource not accessible by integration".
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   gitleaks:
     name: gitleaks (no committed secrets)

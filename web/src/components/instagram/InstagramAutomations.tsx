@@ -55,7 +55,7 @@ export const InstagramAutomations: React.FC = () => {
             const active = tab === t.id;
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
+                className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 max-lg:min-h-11 text-sm font-medium transition ${
                   active ? 'bg-white text-neutral-900' : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5'
                 }`}>
                 <Icon className="h-4 w-4" /> {t.label}
@@ -81,7 +81,7 @@ export const InstagramAutomations: React.FC = () => {
 // ── shared bits ─────────────────────────────────────────────────────────────
 
 const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
-  <div className="mb-3 flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+  <div className="mb-3 flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
     <AlertCircle className="h-4 w-4" /> {message}
   </div>
 );
@@ -170,7 +170,7 @@ const AutomationsPanel: React.FC = () => {
   return (
     <Card title="Automations">
       <div className="mb-5 flex justify-end">
-        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white/90">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 max-lg:min-h-11 text-sm font-medium text-neutral-900 hover:bg-white/90">
           <Plus className="h-4 w-4" /> New automation
         </button>
       </div>
@@ -288,7 +288,7 @@ const FlowsPanel: React.FC = () => {
   return (
     <Card title="Flows">
       <div className="mb-5 flex justify-end">
-        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 max-lg:min-h-11 text-sm font-medium text-neutral-900">
           <Plus className="h-4 w-4" /> New flow
         </button>
       </div>
@@ -395,7 +395,7 @@ const FaqPanel: React.FC = () => {
   return (
     <Card title="FAQ entries">
       <div className="mb-5 flex justify-end">
-        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 max-lg:min-h-11 text-sm font-medium text-neutral-900">
           <Plus className="h-4 w-4" /> New FAQ
         </button>
       </div>
@@ -498,7 +498,7 @@ const CouponsPanel: React.FC = () => {
   return (
     <Card title="Coupon batches">
       <div className="mb-5 flex justify-end">
-        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 max-lg:min-h-11 text-sm font-medium text-neutral-900">
           <Plus className="h-4 w-4" /> New batch
         </button>
       </div>
@@ -584,7 +584,7 @@ const LeadMagnetsPanel: React.FC = () => {
   return (
     <Card title="Lead magnets">
       <div className="mb-5 flex justify-end">
-        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 max-lg:min-h-11 text-sm font-medium text-neutral-900">
           <Plus className="h-4 w-4" /> New lead magnet
         </button>
       </div>

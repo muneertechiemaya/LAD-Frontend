@@ -63,13 +63,13 @@ function fmt(dateStr: string) {
 function statusColor(s: string) {
   if (s === 'active') return 'text-green-400 bg-green-900/20 border-green-800/50';
   if (s === 'suspended') return 'text-amber-400 bg-amber-900/20 border-amber-800/50';
-  return 'text-gray-400 bg-gray-800/40 border-gray-700';
+  return 'text-[#9ca3af] bg-gray-800/40 border-gray-700';
 }
 
 function planColor(p: string) {
   if (p === 'enterprise') return 'text-purple-300 bg-purple-900/20 border-purple-700/50';
   if (p === 'professional') return 'text-blue-300 bg-blue-900/20 border-blue-700/50';
-  return 'text-gray-400 bg-gray-800/30 border-gray-700';
+  return 'text-[#9ca3af] bg-gray-800/30 border-gray-700';
 }
 
 // ─── CopyButton ───────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function CopyBtn({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 1800);
   };
   return (
-    <button onClick={copy} className="ml-1.5 text-gray-600 hover:text-gray-300 transition-colors shrink-0">
+    <button onClick={copy} className="max-lg:min-h-11 ml-1.5 text-[#8b949e] hover:text-gray-300 transition-colors shrink-0">
       {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
     </button>
   );
@@ -193,10 +193,10 @@ function DetailPanel({ tenantId, environment, onClose }: {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">{detail?.tenant.name || 'Loading…'}</p>
-              <p className="text-xs text-gray-500 font-mono">{tenantId}</p>
+              <p className="text-xs text-[#8b949e] font-mono">{tenantId}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-300 text-lg font-light">✕</button>
+          <button onClick={onClose} className="max-lg:min-h-11 text-[#8b949e] hover:text-gray-300 text-lg font-light">✕</button>
         </div>
 
         {/* Tabs */}
@@ -205,10 +205,10 @@ function DetailPanel({ tenantId, environment, onClose }: {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`text-xs font-medium py-3 px-4 border-b-2 transition-colors -mb-px
+              className={`max-lg:min-h-11 text-xs font-medium py-3 px-4 border-b-2 transition-colors -mb-px
                 ${tab === t.id
                   ? 'border-purple-500 text-purple-300'
-                  : 'border-transparent text-gray-600 hover:text-gray-400'
+                  : 'border-transparent text-[#8b949e] hover:text-gray-400'
                 }`}
             >
               {t.label}
@@ -232,7 +232,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
                 <div className="space-y-4">
                   {/* Tenant IDs */}
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 overflow-hidden">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 border-b border-gray-800">
+                    <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-4 py-3 border-b border-gray-800">
                       Identifiers
                     </p>
                     {[
@@ -242,8 +242,8 @@ function DetailPanel({ tenantId, environment, onClose }: {
                       { label: 'DB URL',     value: detail.tenant.db_url || '-', icon: Key },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0">
-                        <Icon size={13} className="text-gray-600 shrink-0" />
-                        <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
+                        <Icon size={13} className="text-[#8b949e] shrink-0" />
+                        <span className="text-xs text-[#8b949e] w-24 shrink-0">{label}</span>
                         <span className="font-mono text-xs text-gray-200 flex-1 truncate">{value}</span>
                         {value !== '-' && <CopyBtn text={value} />}
                       </div>
@@ -252,7 +252,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
 
                   {/* Credentials */}
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 overflow-hidden">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 border-b border-gray-800">
+                    <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-4 py-3 border-b border-gray-800">
                       Login Credentials
                     </p>
                     {[
@@ -260,8 +260,8 @@ function DetailPanel({ tenantId, environment, onClose }: {
                       { label: 'Login URL', value: 'https://web.mrlads.com/login', icon: ExternalLink },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0">
-                        <Icon size={13} className="text-gray-600 shrink-0" />
-                        <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
+                        <Icon size={13} className="text-[#8b949e] shrink-0" />
+                        <span className="text-xs text-[#8b949e] w-24 shrink-0">{label}</span>
                         <span className={`text-xs flex-1 truncate ${label === 'Login URL' ? 'text-blue-400' : 'text-gray-200'}`}>{value}</span>
                         <CopyBtn text={value} />
                       </div>
@@ -270,7 +270,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
 
                   {/* Company info */}
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 overflow-hidden">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 border-b border-gray-800">
+                    <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-4 py-3 border-b border-gray-800">
                       Company
                     </p>
                     {[
@@ -286,8 +286,8 @@ function DetailPanel({ tenantId, environment, onClose }: {
                     ].map(({ label, value, icon: Icon }) => (
                       value ? (
                         <div key={label} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0">
-                          <Icon size={13} className="text-gray-600 shrink-0" />
-                          <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
+                          <Icon size={13} className="text-[#8b949e] shrink-0" />
+                          <span className="text-xs text-[#8b949e] w-24 shrink-0">{label}</span>
                           <span className="text-xs text-gray-200 flex-1">{value}</span>
                         </div>
                       ) : null
@@ -300,7 +300,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
               {tab === 'users' && (
                 <div className="space-y-3">
                   {detail.users.length === 0 && (
-                    <p className="text-sm text-gray-600 text-center py-8">No users found</p>
+                    <p className="text-sm text-[#8b949e] text-center py-8">No users found</p>
                   )}
                   {detail.users.map(u => (
                     <div key={u.id} className="bg-[#1a1f2e] rounded-xl border border-gray-800 overflow-hidden">
@@ -310,13 +310,13 @@ function DetailPanel({ tenantId, environment, onClose }: {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white truncate">{u.first_name} {u.last_name}</p>
-                          <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                          <p className="text-xs text-[#8b949e] truncate">{u.email}</p>
                         </div>
                         <div className="flex gap-1.5">
                           <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${
-                            u.role === 'owner' ? 'text-amber-300 border-amber-700 bg-amber-900/20' : 'text-gray-400 border-gray-700'
+                            u.role === 'owner' ? 'text-amber-300 border-amber-700 bg-amber-900/20' : 'text-[#9ca3af] border-gray-700'
                           }`}>{u.role}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border ${u.is_active ? 'text-green-400 border-green-800 bg-green-900/20' : 'text-gray-500 border-gray-700'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${u.is_active ? 'text-green-400 border-green-800 bg-green-900/20' : 'text-[#8b949e] border-gray-700'}`}>
                             {u.is_active ? 'active' : 'inactive'}
                           </span>
                         </div>
@@ -330,7 +330,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
                         { label: 'Joined',        value: fmt(u.created_at) },
                       ].filter(r => r.value).map(({ label, value }) => (
                         <div key={label} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-800/40 last:border-0">
-                          <span className="text-xs text-gray-500 w-28 shrink-0">{label}</span>
+                          <span className="text-xs text-[#8b949e] w-28 shrink-0">{label}</span>
                           <span className="font-mono text-xs text-gray-300 flex-1 truncate">{value}</span>
                           {(label === 'User ID' || label === 'Email') && <CopyBtn text={value!} />}
                         </div>
@@ -344,22 +344,22 @@ function DetailPanel({ tenantId, environment, onClose }: {
               {tab === 'features' && (
                 <div className="space-y-4">
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 p-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Feature Flags</p>
+                    <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">Feature Flags</p>
                     <div className="flex flex-wrap gap-2">
                       {detail.feature_flags.map(f => (
                         <span key={f.feature_key} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
-                          ${f.is_enabled ? 'border-green-800 text-green-400 bg-green-900/20' : 'border-gray-700 text-gray-600'}`}>
+                          ${f.is_enabled ? 'border-green-800 text-green-400 bg-green-900/20' : 'border-gray-700 text-[#8b949e]'}`}>
                           {f.is_enabled ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
                           {f.feature_key}
                         </span>
                       ))}
-                      {detail.feature_flags.length === 0 && <p className="text-xs text-gray-600">None</p>}
+                      {detail.feature_flags.length === 0 && <p className="text-xs text-[#8b949e]">None</p>}
                     </div>
                   </div>
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 p-4">
                     <div className="flex items-baseline justify-between gap-3 mb-3">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tenant Features</p>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Tenant Features</p>
+                      <p className="text-[11px] text-[#8b949e]">
                         Click a toggleable flag to switch it. Takes about a minute to apply.
                       </p>
                     </div>
@@ -372,11 +372,11 @@ function DetailPanel({ tenantId, environment, onClose }: {
                             disabled={togglingKey === f.feature_key}
                             onClick={() => toggleFeature(f.feature_key, !f.enabled)}
                             title={FEATURE_HELP[f.feature_key] || 'Toggle this feature'}
-                            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
+                            className={`max-lg:min-h-11 flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
                               transition-colors disabled:opacity-50 cursor-pointer
                               ${f.enabled
                                 ? 'border-blue-600 text-blue-300 bg-blue-900/30 hover:bg-blue-900/50'
-                                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'}`}
+                                : 'border-gray-600 text-[#9ca3af] hover:border-gray-500 hover:text-gray-300'}`}
                           >
                             {togglingKey === f.feature_key
                               ? <Loader2 size={10} className="animate-spin" />
@@ -385,13 +385,13 @@ function DetailPanel({ tenantId, environment, onClose }: {
                           </button>
                         ) : (
                         <span key={f.feature_key} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
-                          ${f.enabled ? 'border-blue-800 text-blue-400 bg-blue-900/20' : 'border-gray-700 text-gray-600'}`}>
+                          ${f.enabled ? 'border-blue-800 text-blue-400 bg-blue-900/20' : 'border-gray-700 text-[#8b949e]'}`}>
                           {f.enabled ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
                           {f.feature_key}
                         </span>
                         )
                       ))}
-                      {detail.tenant_features.length === 0 && <p className="text-xs text-gray-600">None</p>}
+                      {detail.tenant_features.length === 0 && <p className="text-xs text-[#8b949e]">None</p>}
                     </div>
                   </div>
                 </div>
@@ -400,18 +400,18 @@ function DetailPanel({ tenantId, environment, onClose }: {
               {/* CAPABILITIES TAB */}
               {tab === 'capabilities' && (
                 <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">
                     Owner Capabilities ({detail.capabilities.filter(c => c.enabled).length} active)
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {detail.capabilities.map(c => (
                       <span key={c.capability_key} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
-                        ${c.enabled ? 'border-purple-800 text-purple-400 bg-purple-900/20' : 'border-gray-700 text-gray-600'}`}>
+                        ${c.enabled ? 'border-purple-800 text-purple-400 bg-purple-900/20' : 'border-gray-700 text-[#8b949e]'}`}>
                         {c.enabled ? <Shield size={10} /> : <XCircle size={10} />}
                         {c.capability_key}
                       </span>
                     ))}
-                    {detail.capabilities.length === 0 && <p className="text-xs text-gray-600">None</p>}
+                    {detail.capabilities.length === 0 && <p className="text-xs text-[#8b949e]">None</p>}
                   </div>
                 </div>
               )}
@@ -494,8 +494,8 @@ export default function TenantManagePage() {
             </div>
           </div>
           <h1 className="text-xl font-semibold text-white">Access Restricted</h1>
-          <p className="text-sm text-gray-500">Super-admin only.</p>
-          <button onClick={() => router.back()} className="text-sm text-gray-600 hover:text-gray-400 underline underline-offset-2">Go back</button>
+          <p className="text-sm text-[#8b949e]">Super-admin only.</p>
+          <button onClick={() => router.back()} className="max-lg:min-h-11 text-sm text-[#8b949e] hover:text-gray-400 underline underline-offset-2">Go back</button>
         </div>
       </div>
     );
@@ -504,27 +504,27 @@ export default function TenantManagePage() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 flex flex-col">
       {/* Header */}
-      <div className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <div className="border-b border-gray-800 px-6 py-4 flex items-center justify-between flex-wrap gap-3 max-md:px-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
             <Building2 size={16} className="text-white" />
           </div>
           <div>
             <h1 className="text-sm font-semibold text-white">Tenant Management</h1>
-            <p className="text-xs text-gray-500">{tenants.length} tenant{tenants.length !== 1 ? 's' : ''} · {environment}</p>
+            <p className="text-xs text-[#8b949e]">{tenants.length} tenant{tenants.length !== 1 ? 's' : ''} · {environment}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Environment toggle */}
           <div className="flex rounded-lg border border-gray-700 overflow-hidden">
             {(['develop', 'stage'] as const).map(env => (
               <button
                 key={env}
                 onClick={() => setEnvironment(env)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors
+                className={`max-lg:min-h-11 px-3 py-1.5 text-xs font-medium transition-colors
                   ${environment === env
                     ? 'bg-purple-700 text-white'
-                    : 'text-gray-500 hover:text-gray-300'
+                    : 'text-[#8b949e] hover:text-gray-300'
                   }`}
               >
                 {env}
@@ -534,14 +534,14 @@ export default function TenantManagePage() {
           <button
             onClick={() => load(environment)}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 text-xs text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors disabled:opacity-50"
+            className="max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 text-xs text-[#9ca3af] hover:border-gray-500 hover:text-gray-200 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
           <button
             onClick={() => router.push('/tenant/onboard/new')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors"
+            className="max-lg:min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors"
           >
             <Plus size={12} />
             New Tenant
@@ -552,13 +552,13 @@ export default function TenantManagePage() {
       {/* Search */}
       <div className="px-6 py-3 border-b border-gray-800">
         <div className="relative max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e]" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, slug, email, plan…"
-            className="w-full bg-[#1e2333] border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200
-                       placeholder-gray-600 focus:outline-none focus:border-purple-500"
+            className="max-lg:min-h-11 max-md:text-[16px] w-full bg-[#1e2333] border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200
+                       placeholder:text-[#8b949e]! focus:outline-none focus:border-purple-500"
           />
         </div>
       </div>
@@ -578,7 +578,7 @@ export default function TenantManagePage() {
         {!loading && !error && (
           <div className="rounded-xl border border-gray-800 overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 bg-[#161b27] border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 bg-[#161b27] border-b border-gray-800 text-xs font-semibold text-[#8b949e] uppercase tracking-wider">
               <span>Company</span>
               <span>Plan</span>
               <span>Status</span>
@@ -588,7 +588,7 @@ export default function TenantManagePage() {
             </div>
 
             {filtered.length === 0 && (
-              <div className="py-16 text-center text-sm text-gray-600">
+              <div className="py-16 text-center text-sm text-[#8b949e]">
                 {search ? 'No tenants match your search' : 'No tenants found'}
               </div>
             )}
@@ -609,7 +609,7 @@ export default function TenantManagePage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{t.name}</p>
-                      <p className="text-xs text-gray-500 truncate font-mono">{t.email}</p>
+                      <p className="text-xs text-[#8b949e] truncate font-mono">{t.email}</p>
                     </div>
                   </div>
                 </div>
@@ -627,19 +627,19 @@ export default function TenantManagePage() {
 
                 {/* Database */}
                 <div className="flex items-center gap-1.5">
-                  <Database size={11} className={t.has_db ? 'text-green-500' : 'text-gray-600'} />
-                  <span className="text-xs text-gray-400 font-mono truncate">
+                  <Database size={11} className={t.has_db ? 'text-green-500' : 'text-[#8b949e]'} />
+                  <span className="text-xs text-[#9ca3af] font-mono truncate">
                     {t.db_label?.split(' - ')[0] || (t.has_db ? 'configured' : '-')}
                   </span>
                 </div>
 
                 {/* Created */}
-                <span className="text-xs text-gray-500">{fmt(t.created_at)}</span>
+                <span className="text-xs text-[#8b949e]">{fmt(t.created_at)}</span>
 
                 {/* Action */}
                 <button
                   onClick={e => { e.stopPropagation(); setSelectedId(t.id); }}
-                  className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors px-2 py-1 rounded border border-purple-800/40 hover:border-purple-600/60"
+                  className="max-lg:min-h-11 flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors px-2 py-1 rounded border border-purple-800/40 hover:border-purple-600/60"
                 >
                   View
                   <ExternalLink size={10} />
