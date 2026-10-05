@@ -153,6 +153,8 @@ export const deleteMedia = (id: string) => del<{ id: string }>(`/media/${id}`);
 /** Copy a Media Hub output (a short-lived signed URL) into the post library for good. */
 export const importGeneratedMedia = (body: ImportGeneratedRequest) => post<MediaItem>('/media/import-generated', body);
 export const getBrand = () => get<BrandInfo>('/brand');
+/** Turn an upload into a reference image for the image maker, or stop using it. */
+export const setMediaReference = (id: string, use: boolean) => post<MediaItem>(`/media/${id}/reference`, { use });
 
 /**
  * Upload goes as multipart, which the JSON apiClient can't send - same raw

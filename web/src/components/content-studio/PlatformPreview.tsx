@@ -1,20 +1,13 @@
 'use client';
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { Heart, MessageCircle, Play, Repeat2, Send, ThumbsUp } from 'lucide-react';
 import type { ContentPost, Platform } from '@lad/frontend-features/content-studio';
-import { selectSettings } from '@/store/slices/settingsSlice';
 import { PLATFORM_META, captionOf } from '@/lib/content-studio/meta';
 import { tone } from './ui';
 import { cn } from '@/lib/utils';
-import { useBrandLook } from '@/lib/content-studio/brand';
+import { useBrandLook, useBrandName } from '@/lib/content-studio/brand';
 
-export function useBrandName(): string {
-  const s = useSelector(selectSettings) as { companyName?: string } | undefined;
-  const name = (s?.companyName || '').trim();
-  // 'My Organization' is the slice's placeholder, not a real name.
-  return name && name !== 'My Organization' ? name : 'Your brand';
-}
+export { useBrandName } from '@/lib/content-studio/brand';
 
 function initials(name: string) {
   return name

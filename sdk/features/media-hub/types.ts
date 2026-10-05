@@ -32,3 +32,20 @@ export interface GenerateImageInput {
   /** Use the tenant's brand profile (colours, logo, style). Default true. */
   useBrand?: boolean;
 }
+
+/** A reference image the image maker can draw on (uploaded, or synced from Drive). */
+export interface ReferenceAsset {
+  id: string;
+  source: 'drive' | 'upload';
+  filename: string;
+  category: string;
+  enabled: boolean;
+  preview_url?: string | null;
+  source_name?: string;
+}
+
+export interface ReferenceStatus {
+  drive_connected: boolean;
+  folder_url?: string | null;
+  assets: ReferenceAsset[];
+}

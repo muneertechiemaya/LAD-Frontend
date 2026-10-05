@@ -410,7 +410,7 @@ test('Library: search, filters, bulk edit, templates, media upload', async ({ pa
   await root(page).getByRole('button', { name: 'Templates' }).click();
   await expect(root(page).getByText(/No templates yet/)).toBeVisible();
   await folders();
-  await root(page).getByRole('button', { name: 'Uploaded media' }).click();
+  await root(page).getByRole('button', { name: 'Images and video' }).click();
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a7600000000049454e44ae426082', 'hex');
   await root(page).getByLabel('Upload an image').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
   await expect(root(page).getByRole('img', { name: 'logo.png' })).toBeVisible();
@@ -641,7 +641,8 @@ test('Media tab: the Media Hub lives in Content Studio', async ({ page }, testIn
   await open(page, '?tab=media');
   await expect(root(page).getByText('Mr LADS').first()).toBeVisible();
   await expect(root(page).getByText('Requests').first()).toBeVisible();
-  await expect(root(page).getByText('Saved as your target audience')).toBeVisible();
+  // Business Profile is the single audience source: no Audience tile here.
+  await expect(root(page).getByText('Audience', { exact: true })).toHaveCount(0);
   const labels = await root(page).evaluate((el) =>
     Array.from(el.querySelectorAll('button, a, label, h1, h2, h3, legend, th, [role=tab], [aria-label]')).map((n) => `${n.getAttribute('aria-label') || ''} ${n.textContent || ''}`).join('\n')
   );
@@ -650,10 +651,14 @@ test('Media tab: the Media Hub lives in Content Studio', async ({ page }, testIn
   await shot(page, 'media', testInfo);
 });
 
-test('Media: old Settings › Media Hub links land on Content Studio › Media', async ({ page }) => {
+test('Media: old Settings › Media Hub links land in Content Studio', async ({ page }) => {
+  await page.goto('/settings?tab=media');
+  await page.waitForURL(/\/content-studio\?tab=media$/);
+  await expect(root(page).getByText('Mr LADS').first()).toBeVisible();
+  // Reference images moved to Library › Images and video.
   await page.goto('/settings?tab=media&panel=assets');
-  await page.waitForURL(/\/content-studio\?tab=media&panel=assets/);
-  await expect(root(page)).toBeVisible();
+  await page.waitForURL(/\/content-studio\?tab=library&view=media/);
+  await expect(root(page).getByRole('heading', { name: 'Your images' })).toBeVisible();
 });
 
 test('Media in the composer: from the gallery, make an image, slides in brand colours', async ({ page }) => {
@@ -691,4 +696,54 @@ test('Media in the composer: a promo video from a video script', async ({ page }
   await dlg.getByRole('button', { name: 'Attach to this post' }).click();
   await expect(page.getByText('Video attached')).toBeVisible();
   await expect(root(page).getByLabel('Attached video 1')).toBeVisible();
+});
+
+// ── one of each (de-duplication) ────────────────────────────────────────────
+test('One media library: uploads, Drive references and everything Media made, in Library', async ({ page, request }, testInfo) => {
+  await open(page, '?tab=media');
+  // Media's Gallery and Reference images tiles open the Library.
+  await root(page).getByRole('button', { name: 'Open in Library' }).first().click();
+  await page.waitForURL(/tab=library&view=media/);
+  await expect(root(page).getByRole('heading', { name: 'Your images' })).toBeVisible();
+
+  await root(page).getByLabel('Upload an image').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG });
+  await expect(root(page).getByRole('img', { name: 'logo.png' })).toBeVisible();
+  const use = root(page).getByRole('checkbox', { name: 'Mr LAD can use logo.png when making images' });
+  await use.check();
+  await expect(page.getByText('Mr LAD can use it now')).toBeVisible();
+  await expect(use).toBeChecked();
+  // The switched-on upload is not listed twice among the other references.
+  await expect(root(page).getByRole('checkbox', { name: /Mr LAD can use logo\.png/ })).toHaveCount(1);
+
+  // A Drive reference, switched off from the same place.
+  const drive = root(page).getByRole('checkbox', { name: 'Mr LAD can use logo-navy.png when making images' });
+  await expect(drive).toBeChecked();
+  await drive.uncheck();
+  await expect.poll(async () => (await (await request.get(`${MOCK}/__mage`)).json()).refs.find((r) => r.id === 'drive-1').enabled).toBe(false);
+
+  // Something Media made, kept for good.
+  await root(page).getByRole('button', { name: 'Keep in library' }).first().click();
+  await expect(page.getByText('Kept in your images')).toBeVisible();
+  expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
+  expect(await smallTargets(page)).toEqual([]);
+  await shot(page, 'library-media', testInfo);
+});
+
+test('One interview: the brief keeps the Business Profile customer and builds the brand profile', async ({ page, request }) => {
+  await request.post(`${MOCK}/__brand`, { data: { source: 'none' } });
+  await open(page, '?tab=media');
+  await root(page).getByRole('button', { name: 'Manage' }).first().click();
+  await page.getByRole('button', { name: 'No website? Answer the brand brief' }).click();
+  const brief = page.getByRole('dialog', { name: 'Your brand brief' });
+  await brief.getByRole('button', { name: 'Next' }).click();
+  // Prefilled from Business Profile, the single audience source.
+  const customer = brief.getByRole('textbox');
+  await expect(customer).toHaveValue('Founders of 20-person firms in Dubai who lose leads after hours');
+  await customer.fill('Clinic owners in Dubai who miss evening enquiries');
+  for (let i = 0; i < 4; i += 1) await brief.getByRole('button', { name: 'Next' }).click();
+  await brief.getByRole('button', { name: 'Save brief' }).click();
+  await expect(page.getByText('Brand brief saved')).toBeVisible();
+  await expect(page.getByText('Brand profile built')).toBeVisible();
+  await expect.poll(async () => (await (await request.get(`${MOCK}/__profile`)).json()).targetCustomers).toBe('Clinic owners in Dubai who miss evening enquiries');
+  expect((await (await request.get(`${MOCK}/__mage`)).json()).wizardBuilt).toBe(true);
 });

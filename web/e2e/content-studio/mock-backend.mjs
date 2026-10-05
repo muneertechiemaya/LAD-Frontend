@@ -82,7 +82,7 @@ function addVersion(p, reason) {
 }
 
 function reset() {
-  S = { settings: { brandBrief: SEED.brandBrief, ...SEED.settings, updatedAt: new Date().toISOString() }, posts: [], versions: [], folders: [], media: [], metrics: {}, panel: null, tests: [], runs: 0, calibration: 'collecting' };
+  S = { settings: { brandBrief: SEED.brandBrief, ...SEED.settings, updatedAt: new Date().toISOString() }, posts: [], versions: [], folders: [], media: [], metrics: {}, panel: null, tests: [], runs: 0, calibration: 'collecting', brandSource: 'media', profile: { companyName: 'TechieMaya', targetCustomers: 'Founders of 20-person firms in Dubai who lose leads after hours' }, refs: [{ id: 'drive-1', source: 'drive', key: 'k1', category: 'Logo', context: '', note: '', enabled: true, filename: 'logo-navy.png', preview_url: `http://127.0.0.1:${PORT}/__img/drive-1.png` }], wizardBuilt: false };
   const t = today();
   // A showcase post for today must still be ahead of us, or it lands as
   // already due. Same rule as the backend seed: keep the seed's time if it is
@@ -92,7 +92,11 @@ function reset() {
     const iso = zoned(addDays(t, dayOffset), time);
     if (dayOffset !== 0 || new Date(iso).getTime() >= earliest + minGapMin * 60_000) return iso;
     const q = 15 * 60_000;
-    return new Date(Math.ceil((earliest + minGapMin * 60_000) / q) * q).toISOString();
+    // Never spill past tonight: in the evening the gap would push "today's"
+    // posts to tomorrow and Today would have nothing to show.
+    const endOfDay = new Date(zoned(t, '23:45')).getTime();
+    const shifted = Math.ceil((earliest + minGapMin * 60_000) / q) * q;
+    return new Date(endOfDay > Date.now() + 5 * 60_000 ? Math.min(shifted, endOfDay) : shifted).toISOString();
   };
   for (const sp of SEED.posts) {
     const iso = seedTime(sp.schedule.dayOffset, sp.schedule.time, sp.schedule.time >= '12:00' ? 120 : 0);
@@ -407,10 +411,13 @@ function audienceRoute(r, m, body, res) {
 const PNG_1X1 = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a7600000000049454e44ae426082', 'hex');
 const MAGE_BRAND = { domain: 'techiemaya.com', display_domain: 'techiemaya.com', is_default: true, from_crawl: true, brand_name: 'Mr LADS', tagline: 'Hire Mr LADS, your sales employee across every channel', asset_count: 4, indexed: true, colors: { primary: '#F5C518', accent: '#7A1F5C', background: '#FFFFFF' } };
 const mediaUrl = (name) => `http://127.0.0.1:${PORT}/__img/${name}.png`;
-function mageRoute(p, m, res) {
+function readJson(req) {
+  return readBody(req).then((b) => { try { return JSON.parse(b.toString('utf8') || '{}'); } catch { return {}; } });
+}
+function mageRoute(p, m, res, req) {
   if (p === '/mage/overview') {
     return send(res, 200, {
-      brand_dna: { profiles: [MAGE_BRAND] },
+      brand_dna: { profiles: S.brandSource === 'media' || S.wizardBuilt ? [MAGE_BRAND] : [] },
       icp: { exists: true, name: 'Your audience', summary: 'Company: TechieMaya Industry: SaaS, Marketing Agency, Consulting' },
       keywords: { mappings: { 'company-branding': 'Use our navy and blue, logo top left' }, colors: {} },
       assets: { total: 0, active: 0, categories: [] },
@@ -433,7 +440,10 @@ function mageRoute(p, m, res) {
   }
   if (p === '/api/v1/media/promo-videos' && m === 'POST') return send(res, 202, { job_id: 'promo_e2e', status: 'completed', stage: 'collecting', writer: 'default' });
   if (p.startsWith('/api/v1/media/promo-videos/')) return send(res, 200, { job_id: 'promo_e2e', status: 'completed', stage: 'collecting', video_url: `http://127.0.0.1:${PORT}/__img/promo.mp4` });
-  if (p === '/brand-assets/status') return send(res, 200, { connected: true, folders: {}, assets: [], collaborators: [] });
+  if (p === '/brand-assets/status') return send(res, 200, { enabled: true, drive_enabled: true, drive_connected: true, folder_url: 'https://drive.google.com/drive/folders/e2e', asset_count: S.refs.length, active_count: S.refs.filter((a) => a.enabled).length, assets: S.refs, collaborators: [] });
+  if (p === '/brand-assets/toggle' && m === 'POST') return readJson(req).then((b) => { const a = S.refs.find((x) => x.id === b.asset_id); if (a) a.enabled = !!b.enabled; send(res, 200, { status: 'success' }); });
+  if (p === '/mage/wizard/read' && m === 'POST') return send(res, 200, { corpus: 'brief text', characters: 10, documents_read: 0, unreadable: [] });
+  if (p === '/mage/wizard/build' && m === 'POST') { S.wizardBuilt = true; return send(res, 200, { domain: 'techiemaya-brief', from_crawl: false }); }
   // Anything else the hub asks for: an empty success.
   return send(res, 200, { status: 'success' });
 }
@@ -450,11 +460,18 @@ const server = http.createServer(async (req, res) => {
   const m = req.method;
   if (m === 'OPTIONS') return send(res, 204, {});
   if (p === '/__reset' && m === 'POST') { reset(); return ok(res, { reset: true }); }
+  // Business Profile (ai-playground): the source for the audience.
+  if (p === '/api/ai-playground' && m === 'GET') return send(res, 200, { success: true, profile: S.profile });
+  if (p === '/api/ai-playground' && m === 'POST') { const b = await readJson(req); S.profile = { ...S.profile, ...(b.profile || {}) }; return send(res, 200, { success: true }); }
+  if (p === '/__profile' && m === 'GET') return send(res, 200, S.profile);
+  // Test-only: 'none' = no Media brand profile yet (no website read).
+  if (p === '/__brand' && m === 'POST') { const b = await readJson(req); S.brandSource = b.source || 'media'; return ok(res, { brandSource: S.brandSource }); }
+  if (p === '/__mage' && m === 'GET') return send(res, 200, { wizardBuilt: S.wizardBuilt, refs: S.refs });
   // Test-only: switch the calibration state ('collecting' | 'weak' | 'ready').
   if (p === '/__calibration' && m === 'POST') { const b = JSON.parse((await readBody(req)).toString('utf8') || '{}'); S.calibration = b.status || 'collecting'; return ok(res, { calibration: S.calibration }); }
   if (p === '/api/auth/me') return send(res, 200, { success: true, user: USER });
   if (p.startsWith('/__img/')) { res.writeHead(200, { 'content-type': p.endsWith('.mp4') ? 'video/mp4' : 'image/png', 'access-control-allow-origin': '*' }); return res.end(p.endsWith('.mp4') ? Buffer.alloc(0) : PNG_1X1); }
-  if (/^\/(mage|auto-media|playground-media|brand-assets)\//.test(p) || p.startsWith('/api/v1/media/')) return mageRoute(p, m, res);
+  if (/^\/(mage|auto-media|playground-media|brand-assets)\//.test(p) || p.startsWith('/api/v1/media/')) return mageRoute(p, m, res, req);
 
   if (!p.startsWith('/api/content-studio')) {
     // Everything else the app shell asks for (counts, notifications…): empty but valid.
@@ -473,7 +490,21 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Media Hub bridge
-  if (r === '/brand' && m === 'GET') return ok(res, { source: 'media', name: MAGE_BRAND.brand_name, tagline: MAGE_BRAND.tagline, colors: ['#F5C518', '#7A1F5C', '#FFFFFF'], degraded: false });
+  if (r === '/brand' && m === 'GET') {
+    if (S.brandSource !== 'media' && !S.wizardBuilt) return ok(res, { source: 'none', name: null, tagline: null, colors: [], degraded: false });
+    return ok(res, { source: 'media', name: MAGE_BRAND.brand_name, tagline: MAGE_BRAND.tagline, colors: ['#F5C518', '#7A1F5C', '#FFFFFF'], degraded: false });
+  }
+  if ((mm = r.match(/^\/media\/([^/]+)\/reference$/)) && m === 'POST') {
+    const item = S.media.find((x) => x.id === mm[1] && !x.deletedAt);
+    if (!item) return fail(res, 404, "That image wasn't found.", 'NOT_FOUND');
+    if (body.use && !item.referenceAssetId) {
+      item.referenceAssetId = `ref-${item.id.slice(0, 8)}`;
+      S.refs.push({ id: item.referenceAssetId, source: 'upload', key: item.id, category: 'Uploaded', context: '', note: '', enabled: true, filename: item.filename, preview_url: item.url });
+    }
+    if (!body.use && item.referenceAssetId) { S.refs = S.refs.filter((a) => a.id !== item.referenceAssetId); item.referenceAssetId = null; }
+    item.usedForImages = !!item.referenceAssetId;
+    return ok(res, item);
+  }
   if (r === '/media/import-generated' && m === 'POST') {
     if (!/^https?:\/\//.test(body.sourceUrl || '')) return fail(res, 400, 'That file link is not valid.', 'VALIDATION');
     const video = body.mediaType === 'video';

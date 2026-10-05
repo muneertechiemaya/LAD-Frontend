@@ -11,9 +11,8 @@
  *
  *   Requests          the job queue, the only thing here you DO
  *   Brand profile     name, tagline, palette; list/add/view/edit/delete in the modal
- *   Audience          the ICP profile the agent writes for
- *   Reference images  logos and photos it can borrow from
- *   Gallery           everything it has produced
+ *   Reference images  counts; managed in Library › Images and video
+ *   Gallery           opens Library › Images and video
  *   Shortcuts         short words that expand into a longer brief
  *   Google Drive      the shared folders, as an alternative way in
  *
@@ -26,6 +25,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Star,
   Trash2,
@@ -49,7 +49,6 @@ import {
   IconPhoto,
   IconSparkles,
   IconTypography,
-  IconUsersGroup,
 } from '@tabler/icons-react';
 import { safeStorage } from '@lad/shared/storage';
 import { BrandAssetsSettings } from './BrandAssetsSettings';
@@ -107,6 +106,7 @@ interface AssetSummary {
   last_synced?: string | null;
 }
 
+
 /** Work order counts for the status strip, from /mage/overview. */
 interface QueueSummary {
   queued: number;
@@ -115,14 +115,6 @@ interface QueueSummary {
   closed: number;
   total: number;
   last_synced?: string | null;
-}
-
-interface IcpSummary {
-  exists: boolean;
-  source?: string;
-  name?: string | null;
-  description?: string | null;
-  summary?: string;
 }
 
 interface ExtractionRun {
@@ -280,7 +272,7 @@ export function extractionFailureReason(message?: string): string {
   if (/404|not found/i.test(m)) {
     return 'That page does not exist. Check the address.';
   }
-  return 'Something went wrong reading that site. Try again, or use "No website" instead.';
+  return 'Something went wrong reading that site. Try again, or answer the brand brief instead.';
 }
 
 // ── render helpers, at module scope ─────────────────────────────────────────
@@ -431,10 +423,13 @@ const Modal: React.FC<{ title: string; onClose: () => void; children: React.Reac
   );
 };
 
-export const MediaHub: React.FC = () => {
+/** Library › Images and video: the one place for uploads, references and everything Media made. */
+const LIBRARY_MEDIA = '/content-studio?tab=library&view=media';
+
+export const MediaHub: React.FC<{ onOpenBrief?: () => void }> = ({ onOpenBrief }) => {
+  const router = useRouter();
   const [modal, setModal] = useState<ModalId | null>(null);
   const [profiles, setProfiles] = useState<BrandProfile[]>([]);
-  const [icp, setIcp] = useState<IcpSummary | null>(null);
   const [keywords, setKeywords] = useState<Record<string, string>>({});
   // token to palette name, so a shortcut keeps its dot colour across a reload.
   const [keywordColors, setKeywordColors] = useState<Record<string, string>>({});
@@ -522,7 +517,6 @@ export const MediaHub: React.FC = () => {
       if (!res.ok) throw new Error(await readError(res, 'Could not load your media settings.'));
       const data = await res.json();
       setProfiles(data?.brand_dna?.profiles || []);
-      setIcp(data?.icp || null);
       setKeywords(data?.keywords?.mappings || {});
       setKeywordColors(data?.keywords?.colors || {});
       setAssets(data?.assets || null);
@@ -554,9 +548,10 @@ export const MediaHub: React.FC = () => {
   // the page. Read off window rather than useSearchParams so the component does
   // not need a Suspense boundary of its own.
   useEffect(() => {
+    // Reference images now live in Library › Images and video.
     const panel = new URLSearchParams(window.location.search).get('panel');
-    if (panel === 'assets') setModal('assets');
-  }, []);
+    if (panel === 'assets') router.replace(LIBRARY_MEDIA);
+  }, [router]);
 
   // Assigned in the body, not just the cleanup: StrictMode mounts, unmounts and
   // remounts, and a ref survives that, so a cleanup-only version would latch
@@ -1024,25 +1019,6 @@ export const MediaHub: React.FC = () => {
     busy === 'extract' ||
     (!!extractRun && !['completed', 'failed', 'error'].includes(String(extractRun.status)));
 
-  /**
-   * One readable line for the Audience tile.
-   *
-   * The stored summary is a run-on of "Company: x Industry: y What they do: z",
-   * which is fine for a prompt and unreadable on a tile. Prefer the two fields a
-   * person would actually recognise their own audience by.
-   */
-  const icpHighlight = (() => {
-    const raw = icp?.summary || icp?.description || '';
-    if (!raw) return '';
-    const pick = (label: string) => {
-      const m = raw.match(new RegExp(`${label}\s*:\s*([^:]+?)(?=\s+[A-Z][a-z]+(?:\s[a-z]+)*\s*:|$)`));
-      return m ? m[1].trim().replace(/\s+/g, ' ') : '';
-    };
-    const industry = pick('Industry');
-    const where = pick('Geographic focus') || pick('Locations');
-    const line = [industry, where].filter(Boolean).join(' · ');
-    return line || raw.slice(0, 90);
-  })();
 
   // No full-card spinner. The layout is known before any of the data is, so the
   // card is drawn straight away and each tile fills in as its section lands.
@@ -1051,7 +1027,6 @@ export const MediaHub: React.FC = () => {
   // Each section arrives on its own, so each tile knows independently whether it
   // is still waiting rather than the whole card sharing one flag.
   const brandPending = loading && !defaultProfile;
-  const icpPending = loading && !icp;
   const assetsPending = loading && !assets;
   const keywordsPending = loading && !Object.keys(keywords).length;
 
@@ -1414,40 +1389,6 @@ export const MediaHub: React.FC = () => {
         </Tile>
 
         <Tile
-          icon={<IconUsersGroup stroke={1.75} />}
-          title="Audience"
-          hint="Who the agent is writing for"
-        >
-          {icpPending ? (
-            <TextSkeleton />
-          ) : icp?.exists ? (
-            <>
-              {/* Record names like "AI Playground Profile" are internal and mean
-                  nothing to a customer, so they are suppressed in favour of the
-                  content. A name someone actually chose is still shown. */}
-              <div className="text-sm text-gray-900 dark:text-gray-100">
-                {icp.name && !/playground|default|untitled|profile$/i.test(icp.name)
-                  ? icp.name
-                  : 'Your audience'}
-              </div>
-              <div className="text-gray-500 dark:text-gray-400 line-clamp-2 text-[clamp(0.74rem,0.82vw,0.84rem)]">
-                {icpHighlight || 'Saved and used on every generation.'}
-              </div>
-              <div className="text-gray-400 mt-1.5 text-[clamp(0.66rem,0.74vw,0.75rem)]">
-                Saved as your target audience
-              </div>
-            </>
-          ) : overviewFailed ? (
-            <Unavailable what="your audience" />
-          ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              No audience saved. Without one the agent guesses who it is talking to.
-            </p>
-          )}
-          <ManageButton onClick={() => setModal('audience')} hint="Create or edit your target audience" />
-        </Tile>
-
-        <Tile
           icon={<IconPhoto stroke={1.75} />}
           title="Reference images"
           hint="Logos and photos the agent can borrow from"
@@ -1490,7 +1431,7 @@ export const MediaHub: React.FC = () => {
               <p className="text-xs text-gray-400 dark:text-gray-500">Nothing uploaded yet.</p>
             ) : null}
           </div>
-          <ManageButton onClick={() => setModal('assets')} hint="Upload, describe or remove reference images" />
+          <ManageButton onClick={() => router.push(LIBRARY_MEDIA)} label="Open in Library" hint="Upload images and choose which ones Mr LAD can use, in Library › Images and video" />
         </Tile>
 
         <Tile
@@ -1505,9 +1446,9 @@ export const MediaHub: React.FC = () => {
               older "Show all" was redundant: the gallery carries its own
               full-history control via onLoadFullHistory. */}
           <ManageButton
-            onClick={() => openGallery(false)}
-            label="Show recents"
-            hint="Open the gallery. It can load your full history from inside."
+            onClick={() => router.push(LIBRARY_MEDIA)}
+            label="Open in Library"
+            hint="Everything Media made is in Library › Images and video"
           />
         </Tile>
 
@@ -1659,11 +1600,16 @@ export const MediaHub: React.FC = () => {
               {extractionRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add from URL'}
             </button>
             <button
-              onClick={() => { setModal(null); setShowWizard(true); }}
-              title="Build a profile without a website, from material you paste or upload"
+              onClick={() => {
+                setModal(null);
+                // One interview: the brand brief also builds this profile when there is no website.
+                if (onOpenBrief) onOpenBrief();
+                else setShowWizard(true);
+              }}
+              title="No website? Answer the brand brief and Mr LAD builds your profile from it"
               className="max-sm:flex-1 max-lg:min-h-11 text-sm font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 whitespace-nowrap"
             >
-              No website
+              No website? Answer the brand brief
             </button>
           </div>
 
@@ -1788,72 +1734,6 @@ export const MediaHub: React.FC = () => {
         </Modal>
       )}
 
-      {modal === 'audience' && (
-        <Modal title="Audience" onClose={() => setModal(null)}>
-          {icp?.exists ? (
-            <>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {/* "AI Playground Profile" is the name the Playground saves under by
-                    default - a system label, not something the tenant chose. */}
-                {!icp.name || icp.name === 'AI Playground Profile' ? 'Your audience' : icp.name}
-              </div>
-
-              {/* Broken into fields rather than dumped as one block. The summary
-                  arrives as a run-on string of "Company: x Industry: y What they
-                  do: z", which is readable to a machine and to nobody else. */}
-              {(() => {
-                const raw = icp.summary || icp.description || '';
-                const parts = raw
-                  .split(/(?=\b(?:Company|Industry|What they do|Target customers|Pain points|Locations|Job titles|Tone|Timezone|Operating hours|Geographic focus)\s*:)/g)
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-
-                if (parts.length < 2) {
-                  return (
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 whitespace-pre-wrap">
-                      {raw || 'No detail saved.'}
-                    </p>
-                  );
-                }
-                return (
-                  <dl className="mt-3 space-y-2">
-                    {parts.map((part, i) => {
-                      const [label, ...rest] = part.split(':');
-                      const value = rest.join(':').trim();
-                      if (!value) return null;
-                      return (
-                        <div key={i}>
-                          <dt className="text-[11px] uppercase tracking-wide text-gray-400">
-                            {label.trim()}
-                          </dt>
-                          <dd className="text-sm text-gray-700 dark:text-gray-300">{value}</dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                );
-              })()}
-            </>
-          ) : overviewFailed ? (
-            <Unavailable what="your audience" />
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nothing saved yet. The agent will guess who it is talking to until you add one.
-            </p>
-          )}
-
-          {/* Goes to the ICP panel on Advanced Search, which is where an audience
-              is actually built. It used to open the media generation chat, which
-              is a different feature entirely and could not edit this at all.
-              ?open_icp=true is read on mount by that page. */}
-          <a
-            href="/onboarding/advanced-search-ai?open_icp=true"
-            className="inline-flex items-center min-h-11 mt-5 text-sm font-medium px-3 py-2 rounded-lg bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-colors"
-          >
-            {icp?.exists ? 'Edit your audience' : 'Set up your audience'}
-          </a>
-        </Modal>
-      )}
 
       {modal === 'assets' && (
         <Modal title="Reference images" onClose={() => setModal(null)}>

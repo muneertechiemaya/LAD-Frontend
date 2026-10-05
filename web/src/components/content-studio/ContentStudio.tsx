@@ -212,7 +212,7 @@ export function ContentStudio() {
           />
         ) : null}
         {area === 'library' ? <LibraryView tz={tz} settings={settings.data} onEdit={edit} /> : null}
-        {area === 'media' ? <MediaHub /> : null}
+        {area === 'media' ? <MediaHub onOpenBrief={() => setBriefOpen(true)} /> : null}
         {area === 'downloads' ? <DownloadsView tz={tz} /> : null}
         {area === 'analytics' ? <AnalyticsView /> : null}
       </main>

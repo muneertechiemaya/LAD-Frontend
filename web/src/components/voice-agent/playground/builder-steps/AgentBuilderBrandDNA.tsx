@@ -98,7 +98,7 @@ export function AgentBuilderBrandDNA({
     </button>
   ) : (
     <Link
-      href="/content-studio?tab=media&panel=assets"
+      href="/content-studio?tab=library&view=media"
       className="font-bold text-amber-900 underline underline-offset-2 hover:text-amber-950"
     >
       MAGe folder

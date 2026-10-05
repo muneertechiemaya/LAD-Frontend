@@ -7,7 +7,7 @@ import { downloadCalendarCsv, downloadCalendarPdf } from '@/lib/content-studio/e
 import { postTitle } from '@/lib/content-studio/meta';
 import { addDays, daysInMonth, friendlyTime, localDate, monthName, shortDate, startOfMonth, startOfWeek, todayLocal } from '@/lib/content-studio/time';
 import { DownloadMenu } from './DownloadMenu';
-import { useBrandName } from './PlatformPreview';
+import { useBrandLook } from '@/lib/content-studio/brand';
 import { Card, CsButton, ErrorNote, PlatformBadge, SectionTitle, Segmented, tone } from './ui';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +15,7 @@ type Range = 'week' | 'month' | 'next';
 
 export function DownloadsView({ tz }: { tz: string }) {
   const today = todayLocal(tz);
-  const brand = useBrandName();
+  const brand = useBrandLook();
   const { push } = useToast();
   const [range, setRange] = useState<Range>('month');
   const [busy, setBusy] = useState<'csv' | 'pdf' | null>(null);
@@ -39,7 +39,7 @@ export function DownloadsView({ tz }: { tz: string }) {
     setBusy(kind);
     setErr(null);
     try {
-      const name = kind === 'csv' ? downloadCalendarCsv(list, r.label) : await downloadCalendarPdf(list, r.month, tz, { name: brand, primary: '#0B1957' });
+      const name = kind === 'csv' ? downloadCalendarCsv(list, r.label) : await downloadCalendarPdf(list, r.month, tz, brand);
       push({ variant: 'success', title: 'Downloaded', description: name });
     } catch (e) {
       setErr(e);
