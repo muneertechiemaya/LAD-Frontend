@@ -11,16 +11,15 @@ import { BillingSettings } from '../../components/settings/BillingSettings';
 import { CreditsSettings } from '../../components/settings/CreditsSettings';
 import { BusinessProfileSettings } from '../../components/settings/BusinessProfileSettings';
 import { TeamManagement } from '../../components/settings/TeamManagement';
-import { MageSettings } from '../../components/settings/MageSettings';
 import { CalendarSettings } from '../../components/calendar/CalendarSettings';
 import { NotificationSettings } from '../../components/settings/NotificationSettings';
-import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair, CalendarDays, Image as ImageIcon, Bell } from 'lucide-react';
+import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair, CalendarDays, Bell } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 
-type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'calendars' | 'media' | 'chat' | 'notifications' | 'api' | 'billing' | 'credits';
+type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'calendars' | 'chat' | 'notifications' | 'api' | 'billing' | 'credits';
 
 const SettingsPage: React.FC = () => {
   const router = useRouter();
@@ -84,8 +83,14 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     // Initialize active tab from URL query param if present
     const tabParam = (searchParams.get('tab') || '').toLowerCase();
-    const allowed: ActiveTab[] = ['businessprofile', 'team', 'accounts', 'website', 'integrations', 'calendars', 'media', 'chat', 'notifications', 'api', 'billing', 'credits'];
+    const allowed: ActiveTab[] = ['businessprofile', 'team', 'accounts', 'website', 'integrations', 'calendars', 'chat', 'notifications', 'api', 'billing', 'credits'];
     // The Company tab was merged into Business Profile - redirect old links/bookmarks.
+    // Media Hub moved into Content Studio › Media - send old links/bookmarks there.
+    if (tabParam === 'media') {
+      const panel = searchParams.get('panel');
+      router.replace(`/content-studio?tab=media${panel ? `&panel=${encodeURIComponent(panel)}` : ''}`);
+      return;
+    }
     if (tabParam === 'company') {
       const sp = new URLSearchParams(Array.from(searchParams.entries()));
       sp.set('tab', 'businessprofile');
@@ -130,7 +135,6 @@ const SettingsPage: React.FC = () => {
     // { id: 'website' as ActiveTab, label: 'Website', icon: Globe },
     { id: 'integrations' as ActiveTab, label: 'Integrations', icon: Plug },
     { id: 'calendars' as ActiveTab, label: 'Calendars', icon: CalendarDays },
-    { id: 'media' as ActiveTab, label: 'Media Hub', icon: ImageIcon },
     { id: 'chat' as ActiveTab, label: 'Chat Settings', icon: MessageSquare },
     { id: 'notifications' as ActiveTab, label: 'Notifications', icon: Bell },
     { id: 'api' as ActiveTab, label: 'Voice Settings', icon: Terminal },
@@ -205,7 +209,6 @@ const SettingsPage: React.FC = () => {
         {activeTab === 'businessprofile' && <BusinessProfileSettings />}
         {activeTab === 'integrations' && <IntegrationsSettings />}
         {activeTab === 'calendars' && <CalendarSettings />}
-        {activeTab === 'media' && <MageSettings />}
         {activeTab === 'chat' && <ChatSettings />}
         {activeTab === 'notifications' && <NotificationSettings />}
         {activeTab === 'api' && <VoiceAgentSettings />}

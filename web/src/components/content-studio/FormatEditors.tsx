@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import type { ScriptBeat, Slide, VideoScript } from '@lad/frontend-features/content-studio';
 import { Card, CsButton, Field, Label, SectionTitle, Segmented, inputCls, textareaCls, tone } from './ui';
 import { cn } from '@/lib/utils';
+import { useBrandLook } from '@/lib/content-studio/brand';
 
 function move<T>(arr: T[], i: number, d: -1 | 1): T[] {
   const j = i + d;
@@ -23,6 +24,7 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
 
 // ── carousel ───────────────────────────────────────────────────────────────
 export function CarouselEditor({ slides, onChange }: { slides: Slide[]; onChange: (s: Slide[]) => void }) {
+  const brand = useBrandLook();
   const set = (i: number, patch: Partial<Slide>) => onChange(slides.map((s, k) => (k === i ? { ...s, ...patch } : s)));
   return (
     <Card className="flex flex-col gap-3 p-4">
@@ -43,6 +45,7 @@ export function CarouselEditor({ slides, onChange }: { slides: Slide[]; onChange
                 'flex aspect-square w-full max-w-[120px] flex-col justify-between rounded-lg p-2 text-[10px] leading-tight',
                 i === 0 ? 'bg-[#0B1957] text-white' : 'border border-[#E3E7F0] bg-white text-[#0E1530]'
               )}
+              style={i === 0 ? { backgroundColor: brand.primary } : undefined}
             >
               <span className="font-bold">
                 {i + 1} / {slides.length}

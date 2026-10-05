@@ -12,6 +12,8 @@ import { safeStorage } from '../../shared/storage';
 import type {
   Analytics,
   AudiencePanel,
+  BrandInfo,
+  ImportGeneratedRequest,
   AudienceTest,
   AudienceTestRequest,
   BulkPatch,
@@ -89,6 +91,7 @@ export const contentStudioKeys = {
   audiencePanel: () => [...contentStudioKeys.all, 'audiencePanel'] as const,
   audienceTests: (postId: string) => [...contentStudioKeys.all, 'audienceTests', postId] as const,
   calibration: () => [...contentStudioKeys.all, 'calibration'] as const,
+  brand: () => [...contentStudioKeys.all, 'brand'] as const,
 };
 
 // ── settings & channels ────────────────────────────────────────────────────
@@ -147,6 +150,9 @@ export const renameFolder = (id: string, name: string) => patch<Folder>(`/folder
 export const deleteFolder = (id: string) => del<{ id: string }>(`/folders/${id}`);
 export const listMedia = () => get<MediaItem[]>('/media');
 export const deleteMedia = (id: string) => del<{ id: string }>(`/media/${id}`);
+/** Copy a Media Hub output (a short-lived signed URL) into the post library for good. */
+export const importGeneratedMedia = (body: ImportGeneratedRequest) => post<MediaItem>('/media/import-generated', body);
+export const getBrand = () => get<BrandInfo>('/brand');
 
 /**
  * Upload goes as multipart, which the JSON apiClient can't send - same raw

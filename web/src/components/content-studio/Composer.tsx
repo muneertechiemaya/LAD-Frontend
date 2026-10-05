@@ -24,6 +24,7 @@ import { PlatformPreview } from './PlatformPreview';
 import { CarouselEditor, ScriptEditor, ThreadEditor } from './FormatEditors';
 import { GradePanel, HookPicker, SchedulePanel, VersionsPanel } from './ComposerPanels';
 import { AudienceCard } from './AudienceTest';
+import { PostMedia } from './PostMedia';
 import { RepurposeDialog } from './RepurposeDialog';
 import { Card, CsButton, ErrorNote, Field, Label, PlatformBadge, SectionTitle, StatusChip, inputCls, textareaCls, tone } from './ui';
 import { cn } from '@/lib/utils';
@@ -401,6 +402,16 @@ function ComposerForm({
           <p className={cn('text-xs tabular-nums', captionLen > meta.limit ? 'font-semibold text-[#A1202B] dark:text-[#FFB3B9]' : tone.soft)}>
             Caption {captionLen.toLocaleString()} / {meta.limit.toLocaleString()} characters
           </p>
+          <PostMedia
+            mediaUrls={form.mediaUrls || []}
+            onChange={(urls) => set('mediaUrls', urls)}
+            platform={form.platform}
+            format={form.format}
+            hook={form.hook}
+            body={form.body}
+            cta={form.cta}
+            script={form.script}
+          />
           <label className={cn('flex min-h-11 items-center gap-3 text-sm', tone.ink)}>
             <input type="checkbox" className="h-5 w-5 accent-[#0B1957]" checked={form.isTemplate} onChange={(e) => set('isTemplate', e.target.checked)} />
             Keep as a reusable template in the Library

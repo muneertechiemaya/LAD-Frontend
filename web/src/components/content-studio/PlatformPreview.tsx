@@ -7,6 +7,7 @@ import { selectSettings } from '@/store/slices/settingsSlice';
 import { PLATFORM_META, captionOf } from '@/lib/content-studio/meta';
 import { tone } from './ui';
 import { cn } from '@/lib/utils';
+import { useBrandLook } from '@/lib/content-studio/brand';
 
 export function useBrandName(): string {
   const s = useSelector(selectSettings) as { companyName?: string } | undefined;
@@ -35,12 +36,14 @@ function Fold({ text, at }: { text: string; at: number | null }) {
 }
 
 function SlideCard({ heading, text, n, of, cover }: { heading: string; text?: string; n: number; of: number; cover?: boolean }) {
+  const brand = useBrandLook();
   return (
     <div
       className={cn(
         'flex aspect-square w-full flex-col justify-between rounded-lg p-4',
         cover ? 'bg-[#0B1957] text-white' : 'border border-[#E3E7F0] bg-white text-[#0E1530]'
       )}
+      style={cover ? { backgroundColor: brand.primary } : undefined}
     >
       <span className={cn('text-[11px] font-bold tabular-nums', cover ? 'text-white/85' : 'text-[#4A5470]')}>
         {n} / {of}

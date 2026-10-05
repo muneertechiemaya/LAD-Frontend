@@ -96,19 +96,39 @@ const field =
   'w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0b1638] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40';
 const labelCls = 'block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1';
 
-export const PromoVideoStudio: React.FC = () => {
+export interface PromoBriefStart {
+  product?: string;
+  goal?: string;
+  audience?: string;
+  tone?: string;
+  ctaLabel?: string;
+  format?: PromoFormat;
+  seconds?: PromoSeconds;
+}
+
+/**
+ * `initial` prefills the brief (Content Studio passes a video script's hook and
+ * call to action). `onUse` adds an "Attach to this post" action to a finished
+ * video; without it the studio behaves exactly as on the Media tab.
+ */
+export const PromoVideoStudio: React.FC<{ initial?: PromoBriefStart; onUse?: (videoUrl: string) => Promise<void> | void; useLabel?: string }> = ({
+  initial,
+  onUse,
+  useLabel = 'Attach to this post',
+}) => {
   const options = usePromoOptions();
   const start = useStartPromoVideo();
   const [jobId, setJobId] = useState<string | null>(null);
   const job = usePromoVideo(jobId);
+  const [using, setUsing] = useState(false);
 
-  const [product, setProduct] = useState('');
-  const [goal, setGoal] = useState('');
-  const [audience, setAudience] = useState('');
-  const [tone, setTone] = useState('');
-  const [format, setFormat] = useState<PromoFormat>('16:9');
-  const [seconds, setSeconds] = useState<PromoSeconds>(45);
-  const [ctaLabel, setCtaLabel] = useState('Book a demo');
+  const [product, setProduct] = useState(initial?.product || '');
+  const [goal, setGoal] = useState(initial?.goal || '');
+  const [audience, setAudience] = useState(initial?.audience || '');
+  const [tone, setTone] = useState(initial?.tone || '');
+  const [format, setFormat] = useState<PromoFormat>(initial?.format || '16:9');
+  const [seconds, setSeconds] = useState<PromoSeconds>(initial?.seconds || 45);
+  const [ctaLabel, setCtaLabel] = useState(initial?.ctaLabel || 'Book a demo');
   const [ctaUrl, setCtaUrl] = useState('');
   const [writer, setWriter] = useState('');
   const [style, setStyle] = useState<PromoStyle>('classic');
@@ -252,6 +272,23 @@ export const PromoVideoStudio: React.FC = () => {
             className="w-full max-h-[70vh] object-contain rounded-lg bg-black"
           />
           <div className="flex flex-wrap gap-2">
+            {onUse ? (
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={using}
+                onClick={async () => {
+                  setUsing(true);
+                  try {
+                    await onUse(data.video_url as string);
+                  } finally {
+                    setUsing(false);
+                  }
+                }}
+              >
+                {using ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {useLabel}
+              </button>
+            ) : null}
             <a href={data.video_url} download className={primaryBtn}>
               <Download className="w-4 h-4" /> Download
             </a>

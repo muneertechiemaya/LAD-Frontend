@@ -10,13 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/app-toaster';
 import {
-  DEFAULT_BRAND,
   downloadCaptionTxt,
   downloadScriptTxt,
   downloadSlidesPdf,
   downloadSlidesPng,
   type BrandLook,
 } from '@/lib/content-studio/exports';
+import { useBrandLook } from '@/lib/content-studio/brand';
 import { CsButton } from './ui';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +32,7 @@ export interface ExtraDownload {
  */
 export function DownloadMenu({
   post,
-  brand = DEFAULT_BRAND,
+  brand: brandProp,
   extra = [],
   label = 'Download',
   size = 'sm',
@@ -47,6 +47,9 @@ export function DownloadMenu({
 }) {
   const { push } = useToast();
   const [busy, setBusy] = useState(false);
+  // Slides and calendars are drawn in the Media brand's colours when there is one.
+  const mediaBrand = useBrandLook();
+  const brand = brandProp || mediaBrand;
   const slides = post.slides?.length || 0;
 
   const items: ExtraDownload[] = [];

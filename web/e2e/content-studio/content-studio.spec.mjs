@@ -443,7 +443,7 @@ test('Analytics is labelled sample data and never invents live numbers', async (
 
 test('Contrast is 4.5:1 or better in light and dark', async ({ page }, testInfo) => {
   for (const dark of [false, true]) {
-    for (const tab of ['', '?tab=create', '?tab=library', '?tab=analytics', '?tab=plan']) {
+    for (const tab of ['', '?tab=create', '?tab=library', '?tab=media', '?tab=analytics', '?tab=plan']) {
       await open(page, tab);
       if (tab === '?tab=create') await page.goto(`/content-studio?tab=create&post=new`);
       await setDark(page, dark);
@@ -470,7 +470,7 @@ test('Motion respects prefers-reduced-motion', async ({ page }) => {
 
 test('Labels never say AI, agentic, virality or ICP', async ({ page }) => {
   const banned = /\b(AI|agentic|virality|ICP)\b/i;
-  for (const tab of ['', '?tab=plan', '?tab=calendar', '?tab=create', '?tab=library', '?tab=downloads', '?tab=analytics']) {
+  for (const tab of ['', '?tab=plan', '?tab=calendar', '?tab=create', '?tab=library', '?tab=media', '?tab=downloads', '?tab=analytics']) {
     await open(page, tab);
     const labels = await root(page).evaluate((el) =>
       Array.from(el.querySelectorAll('button, a, label, h1, h2, h3, legend, th, [role=tab], [aria-label]'))
@@ -511,15 +511,17 @@ test('No third-party scheduler: code and network', async ({ page }) => {
   expect(all.filter((u) => PUBLISHERS.test(u))).toEqual([]);
   expect(all.map((u) => new URL(u).hostname).filter((h) => !isShell(h) && !h.startsWith('data'))).toEqual([]);
   const webRoot = path.resolve(here, '..', '..');
-  const dirs = ['src/components/content-studio', 'src/lib/content-studio', 'src/app/content-studio', '../sdk/features/content-studio'];
+  const dirs = ['src/components/content-studio', 'src/lib/content-studio', 'src/app/content-studio', '../sdk/features/content-studio', '../sdk/features/media-hub'];
   const hits = [];
-  for (const d of dirs) {
-    const abs = path.join(webRoot, d);
-    for (const f of fs.readdirSync(abs)) {
-      const s = fs.readFileSync(path.join(abs, f), 'utf8');
-      if (THIRD_PARTY.test(s)) hits.push(path.join(d, f));
+  // Walks subfolders too (components/content-studio/media holds the Media Hub).
+  const scan = (rel) => {
+    const abs = path.join(webRoot, rel);
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      if (e.isDirectory()) scan(path.join(rel, e.name));
+      else if (THIRD_PARTY.test(fs.readFileSync(path.join(abs, e.name), 'utf8'))) hits.push(path.join(rel, e.name));
     }
-  }
+  };
+  dirs.forEach(scan);
   expect(hits).toEqual([]);
 });
 
@@ -630,4 +632,63 @@ test('Audience test: the approval card shows the result for the current version'
   const card = root(page).getByRole('article').filter({ hasText: 'Needs approval' });
   await expect(card.getByText(/Audience test:/)).toBeVisible();
   await expect(card.getByText('(simulated)', { exact: false })).toBeVisible();
+});
+
+// ── Media (the Media Hub, moved into Content Studio) ─────────────────────────
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a7600000000049454e44ae426082', 'hex');
+
+test('Media tab: the Media Hub lives in Content Studio', async ({ page }, testInfo) => {
+  await open(page, '?tab=media');
+  await expect(root(page).getByText('Mr LADS').first()).toBeVisible();
+  await expect(root(page).getByText('Requests').first()).toBeVisible();
+  await expect(root(page).getByText('Saved as your target audience')).toBeVisible();
+  const labels = await root(page).evaluate((el) =>
+    Array.from(el.querySelectorAll('button, a, label, h1, h2, h3, legend, th, [role=tab], [aria-label]')).map((n) => `${n.getAttribute('aria-label') || ''} ${n.textContent || ''}`).join('\n')
+  );
+  expect(labels.match(BANNED)).toBeNull();
+  expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
+  await shot(page, 'media', testInfo);
+});
+
+test('Media: old Settings › Media Hub links land on Content Studio › Media', async ({ page }) => {
+  await page.goto('/settings?tab=media&panel=assets');
+  await page.waitForURL(/\/content-studio\?tab=media&panel=assets/);
+  await expect(root(page)).toBeVisible();
+});
+
+test('Media in the composer: from the gallery, make an image, slides in brand colours', async ({ page }) => {
+  await openComposerFor(page, 'LinkedIn · Carousel');
+  // The brand's first colour (#F5C518) can't carry white text, so the cover uses its accent (#7A1F5C).
+  await expect(root(page).locator('ol li div[aria-hidden]').first()).toHaveCSS('background-color', 'rgb(122, 31, 92)');
+
+  await root(page).getByRole('button', { name: 'From your gallery' }).click();
+  const gallery = page.getByRole('dialog', { name: 'Add from your gallery' });
+  await gallery.getByRole('button', { name: 'Attach gallery image 1' }).click();
+  await expect(page.getByText('Image attached')).toBeVisible();
+  await expect(root(page).getByRole('img', { name: 'Attached image 1' })).toBeVisible();
+
+  await root(page).getByRole('button', { name: 'Make an image' }).click();
+  const make = page.getByRole('dialog', { name: 'Make an image' });
+  await expect(make.getByRole('textbox', { name: 'Describe the image' })).toHaveValue(/An image for a LinkedIn post\./);
+  await make.getByRole('button', { name: 'Make it' }).click();
+  await make.getByRole('button', { name: 'Use this image' }).click();
+  await expect(root(page).getByRole('img', { name: 'Attached image 2' })).toBeVisible();
+
+  await root(page).getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible();
+  await root(page).getByRole('button', { name: 'Remove media 1' }).click();
+  await expect(root(page).getByRole('img', { name: 'Attached image 2' })).toHaveCount(0);
+  expect(await smallTargets(page)).toEqual([]);
+});
+
+test('Media in the composer: a promo video from a video script', async ({ page }) => {
+  await openComposerFor(page, 'Instagram · Reel');
+  await root(page).getByRole('button', { name: 'Make a promo video' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Make a promo video' });
+  await expect(dlg.getByLabel('What are you promoting?')).toHaveValue(/2am/);
+  await dlg.locator('input[type=file]').setInputFiles({ name: 'screen.png', mimeType: 'image/png', buffer: PNG });
+  await dlg.getByRole('button', { name: 'Create video' }).click();
+  await dlg.getByRole('button', { name: 'Attach to this post' }).click();
+  await expect(page.getByText('Video attached')).toBeVisible();
+  await expect(root(page).getByLabel('Attached video 1')).toBeVisible();
 });

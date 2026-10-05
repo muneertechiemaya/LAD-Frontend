@@ -10,6 +10,7 @@ import { PlanView } from './PlanView';
 import { CalendarView } from './CalendarView';
 import { Composer } from './Composer';
 import { LibraryView } from './LibraryView';
+import { MediaHub } from './media/MediaHub';
 import { DownloadsView } from './DownloadsView';
 import { AnalyticsView } from './AnalyticsView';
 import { MoveTimeDialog } from './MoveTimeDialog';
@@ -19,7 +20,7 @@ import { CoachDialog } from './CoachDialog';
 import { Card, CsButton, ErrorNote, Label, SectionTitle, tone } from './ui';
 import { cn } from '@/lib/utils';
 
-export type AreaId = 'today' | 'plan' | 'calendar' | 'create' | 'library' | 'downloads' | 'analytics';
+export type AreaId = 'today' | 'plan' | 'calendar' | 'create' | 'library' | 'media' | 'downloads' | 'analytics';
 
 const AREAS: { id: AreaId; label: string }[] = [
   { id: 'today', label: 'Today' },
@@ -27,6 +28,7 @@ const AREAS: { id: AreaId; label: string }[] = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'create', label: 'Create' },
   { id: 'library', label: 'Library' },
+  { id: 'media', label: 'Media' },
   { id: 'downloads', label: 'Downloads' },
   { id: 'analytics', label: 'Analytics' },
 ];
@@ -37,6 +39,7 @@ const TITLES: Record<AreaId, string> = {
   calendar: 'Calendar',
   create: 'Create and edit',
   library: 'Library',
+  media: 'Media',
   downloads: 'Downloads',
   analytics: 'Analytics',
 };
@@ -209,6 +212,7 @@ export function ContentStudio() {
           />
         ) : null}
         {area === 'library' ? <LibraryView tz={tz} settings={settings.data} onEdit={edit} /> : null}
+        {area === 'media' ? <MediaHub /> : null}
         {area === 'downloads' ? <DownloadsView tz={tz} /> : null}
         {area === 'analytics' ? <AnalyticsView /> : null}
       </main>

@@ -10,7 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
 import { contentStudioKeys as keys } from './api';
-import type { AudienceTestRequest, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
+import type { AudienceTestRequest, ImportGeneratedRequest, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
 
 function useInvalidateAll() {
   const qc = useQueryClient();
@@ -279,4 +279,18 @@ export function useApplyAudienceFix() {
 
 export function useCalibration(enabled = true) {
   return useQuery({ queryKey: keys.calibration(), queryFn: api.getCalibration, enabled, staleTime: 5 * 60_000 });
+}
+
+// ── media hub bridge ──────────────────────────────────────────────────────
+
+export function useBrand() {
+  return useQuery({ queryKey: keys.brand(), queryFn: api.getBrand, staleTime: 10 * 60_000 });
+}
+
+export function useImportGeneratedMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ImportGeneratedRequest) => api.importGeneratedMedia(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.media() }),
+  });
 }
