@@ -87,8 +87,8 @@ const SettingsPage: React.FC = () => {
     // The Company tab was merged into Business Profile - redirect old links/bookmarks.
     // Media Hub moved into Content Studio › Media - send old links/bookmarks there.
     if (tabParam === 'media') {
-      const panel = searchParams.get('panel');
-      router.replace(`/content-studio?tab=media${panel ? `&panel=${encodeURIComponent(panel)}` : ''}`);
+      // Reference images (?panel=assets) now live in Library › Images and video.
+      router.replace(searchParams.get('panel') === 'assets' ? '/content-studio?tab=library&view=media' : '/content-studio?tab=media');
       return;
     }
     if (tabParam === 'company') {

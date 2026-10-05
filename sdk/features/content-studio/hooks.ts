@@ -10,7 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
 import { contentStudioKeys as keys } from './api';
-import type { AudienceTestRequest, ImportGeneratedRequest, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
+import type { AudienceTestRequest, ImportGeneratedRequest, MediaItem, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
 
 function useInvalidateAll() {
   const qc = useQueryClient();
@@ -292,5 +292,17 @@ export function useImportGeneratedMedia() {
   return useMutation({
     mutationFn: (body: ImportGeneratedRequest) => api.importGeneratedMedia(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.media() }),
+  });
+}
+
+export function useSetMediaReference() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, use }: { id: string; use: boolean }) => api.setMediaReference(id, use),
+    onSuccess: (item) => {
+      // Write the answer in straight away so the switch doesn't flick back while the list reloads.
+      qc.setQueryData<MediaItem[]>(keys.media(), (list) => list?.map((x) => (x.id === item.id ? item : x)));
+      qc.invalidateQueries({ queryKey: keys.media() });
+    },
   });
 }

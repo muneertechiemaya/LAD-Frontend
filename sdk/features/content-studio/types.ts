@@ -191,6 +191,10 @@ export interface MediaItem {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  /** Also one of the image maker's reference images ("Mr LAD can use this when making images"). */
+  usedForImages?: boolean;
+  /** The image maker's asset id while usedForImages is on. */
+  referenceAssetId?: string | null;
 }
 
 export interface Gap {

@@ -8,7 +8,7 @@
 import { safeStorage } from '../../shared/storage';
 import { apiErrorFromResponse } from '../../shared/apiError';
 import { getMediaGenUrl } from '../../shared/service-urls';
-import type { Gallery, GenerateImageInput, ImageJob } from './types';
+import type { Gallery, GenerateImageInput, ImageJob, ReferenceStatus } from './types';
 
 function authHeaders(): Record<string, string> {
   const token = safeStorage.getItem('token');
@@ -42,5 +42,43 @@ export async function generateImage(input: GenerateImageInput): Promise<ImageJob
 export async function getImageJob(jobId: string): Promise<ImageJob> {
   const res = await fetch(`${getMediaGenUrl()}/api/v1/media/jobs/${encodeURIComponent(jobId)}?return_type=url`, { headers: authHeaders() });
   if (!res.ok) throw await apiErrorFromResponse(res, 'Could not read the image status.');
+  return res.json();
+}
+
+/** The image maker's reference images, including the ones synced from the Drive folder. */
+export async function getReferences(): Promise<ReferenceStatus> {
+  const res = await fetch(`${getMediaGenUrl()}/brand-assets/status`, { headers: authHeaders() });
+  if (!res.ok) throw await apiErrorFromResponse(res, 'Could not load your reference images.');
+  const b = await res.json();
+  return { drive_connected: !!b?.drive_connected, folder_url: b?.folder_url ?? null, assets: b?.assets || [] };
+}
+
+/** Use (or stop using) one reference image, e.g. a Drive photo. */
+export async function toggleReference(assetId: string, enabled: boolean): Promise<void> {
+  const res = await fetch(`${getMediaGenUrl()}/brand-assets/toggle`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ asset_id: assetId, enabled }),
+  });
+  if (!res.ok) throw await apiErrorFromResponse(res, 'Could not change that reference image.');
+}
+
+/**
+ * Build the Media brand profile from text instead of a website (the brand
+ * brief's answers). Two steps on the service: read the text into a corpus,
+ * then synthesise and save the profile from the corpus plus the answers.
+ */
+export async function buildBrandProfileFromText(input: { text: string; answers: Record<string, string>; brandName?: string }): Promise<{ domain?: string }> {
+  const form = new FormData();
+  form.append('pasted_text', input.text);
+  const read = await fetch(`${getMediaGenUrl()}/mage/wizard/read`, { method: 'POST', headers: authHeaders(), body: form });
+  if (!read.ok) throw await apiErrorFromResponse(read, 'Could not read the brief.');
+  const { corpus } = await read.json();
+  const res = await fetch(`${getMediaGenUrl()}/mage/wizard/build`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ corpus: corpus || input.text, answers: input.answers, brand_name: input.brandName || '' }),
+  });
+  if (!res.ok) throw await apiErrorFromResponse(res, 'Could not build the brand profile.');
   return res.json();
 }

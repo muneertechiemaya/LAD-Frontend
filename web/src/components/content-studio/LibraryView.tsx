@@ -1,6 +1,7 @@
 'use client';
-import React, { useMemo, useRef, useState } from 'react';
-import { ChevronDown, FolderPlus, Pencil, Search, Trash2, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ChevronDown, FolderPlus, Pencil, Search, Trash2 } from 'lucide-react';
 import type { ContentPost, Platform, PostStatus, StudioSettings } from '@lad/frontend-features/content-studio';
 import {
   PLATFORMS,
@@ -8,24 +9,29 @@ import {
   useBulkUpdate,
   useCreateFolder,
   useDeleteFolder,
-  useDeleteMedia,
   useFolders,
-  useMedia,
   usePosts,
   useRenameFolder,
-  useUploadMedia,
 } from '@lad/frontend-features/content-studio';
 import { useToast } from '@/components/ui/app-toaster';
 import { PLATFORM_META, STATUS_META, formatName, postTitle } from '@/lib/content-studio/meta';
 import { friendlyTime, localDate, shortDate } from '@/lib/content-studio/time';
 import { downloadCalendarCsv } from '@/lib/content-studio/exports';
-import { ApprovalChip, Card, CsButton, ErrorNote, Label, PlatformBadge, SampleChip, SectionTitle, StatusChip, inputCls, tone } from './ui';
+import { ApprovalChip, Card, CsButton, ErrorNote, Label, PlatformBadge, SampleChip, StatusChip, inputCls, tone } from './ui';
 import { cn } from '@/lib/utils';
+import { MediaLibrary } from './MediaLibrary';
 
 type Scope = { kind: 'all' } | { kind: 'folder'; id: string } | { kind: 'templates' } | { kind: 'media' };
 
 export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: StudioSettings | undefined; onEdit: (p: ContentPost) => void }) {
-  const [scope, setScope] = useState<Scope>({ kind: 'all' });
+  // ?view=media opens Images and video directly (Media's Gallery and
+  // Reference images tiles link here). Read through the router, not
+  // window.location, which lags a client-side navigation.
+  const view = useSearchParams().get('view');
+  const [scope, setScope] = useState<Scope>(view === 'media' ? { kind: 'media' } : { kind: 'all' });
+  useEffect(() => {
+    if (view === 'media') setScope({ kind: 'media' });
+  }, [view]);
   const [q, setQ] = useState('');
   const [platform, setPlatform] = useState<Platform | ''>('');
   const [status, setStatus] = useState<PostStatus | ''>('');
@@ -81,7 +87,7 @@ export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: St
       : scope.kind === 'templates'
         ? 'Templates'
         : scope.kind === 'media'
-          ? 'Uploaded media'
+          ? 'Images and video'
           : (folders.data || []).find((f) => f.id === scope.id)?.name || 'Folder';
 
   const folderBtn = (active: boolean) =>
@@ -185,7 +191,7 @@ export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: St
             Templates
           </button>
           <button type="button" className={folderBtn(scope.kind === 'media')} onClick={() => pick({ kind: 'media' })} aria-current={scope.kind === 'media' ? 'true' : undefined}>
-            Uploaded media
+            Images and video
           </button>
         </div>
         <ErrorNote error={folders.error || createFolder.error || renameFolder.error || deleteFolder.error} />
@@ -382,67 +388,5 @@ export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: St
         </section>
       )}
     </div>
-  );
-}
-
-function MediaLibrary() {
-  const media = useMedia();
-  const upload = useUploadMedia();
-  const del = useDeleteMedia();
-  const { push } = useToast();
-  const input = useRef<HTMLInputElement>(null);
-  return (
-    <section className="flex min-w-0 flex-col gap-3" aria-label="Uploaded media">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <SectionTitle>Uploaded media</SectionTitle>
-        <input
-          ref={input}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="sr-only"
-          aria-label="Upload an image"
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            e.target.value = '';
-            if (!f) return;
-            try {
-              await upload.mutateAsync(f);
-              push({ variant: 'success', title: 'Uploaded', description: f.name });
-            } catch {
-              /* shown below */
-            }
-          }}
-        />
-        <CsButton variant="primary" busy={upload.isPending} onClick={() => input.current?.click()}>
-          <Upload className="h-4 w-4" aria-hidden />
-          Upload image
-        </CsButton>
-      </div>
-      <p className={cn('text-xs', tone.soft)}>PNG, JPEG or WebP up to 10 MB. Attach them to posts from the composer.</p>
-      <ErrorNote error={media.error || upload.error || del.error} />
-      {media.isLoading ? (
-        <p className={cn('text-sm', tone.soft)}>Loading media…</p>
-      ) : media.data?.length ? (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-          {media.data.map((m) => (
-            <li key={m.id}>
-              <Card className="flex flex-col gap-2 p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.url} alt={m.filename} className="aspect-square w-full rounded-lg object-cover" loading="lazy" />
-                <span className={cn('truncate text-xs', tone.ink)}>{m.filename}</span>
-                <CsButton size="sm" variant="ghost" aria-label={`Delete ${m.filename}`} onClick={() => del.mutate(m.id)}>
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                  Delete
-                </CsButton>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Card className="p-5">
-          <p className={cn('text-sm', tone.soft)}>Nothing uploaded yet.</p>
-        </Card>
-      )}
-    </section>
   );
 }

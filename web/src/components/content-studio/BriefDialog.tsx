@@ -1,7 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import type { BrandBrief } from '@lad/frontend-features/content-studio';
-import { useSaveStudioSettings } from '@lad/frontend-features/content-studio';
+import { useBrand, useSaveStudioSettings } from '@lad/frontend-features/content-studio';
+import { buildBrandProfileFromText } from '@lad/frontend-features/media-hub';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBusinessProfile } from '@lad/frontend-features/ai-icp-assistant';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/app-toaster';
@@ -21,7 +23,7 @@ const VOICES = [
 type Step = 'business' | 'customer' | 'primaryCta' | 'strongOpinion' | 'story' | 'voice';
 const STEPS: { id: Step; q: string; hint: string; placeholder: string }[] = [
   { id: 'business', q: "What's your business? What do you sell?", hint: 'Plain words. "Handmade soy candles" beats "wellness lifestyle products".', placeholder: 'We help…' },
-  { id: 'customer', q: 'Who is your customer? Describe one real person who buys from you.', hint: 'One person, not a demographic. What do they want, and what annoys them?', placeholder: 'A founder of a 20-person firm in Dubai who…' },
+  { id: 'customer', q: 'Who is your customer? Describe one real person who buys from you.', hint: 'One person, not a demographic. What do they want, and what annoys them? This is your Business Profile’s target customer, so it’s kept in step there too.', placeholder: 'A founder of a 20-person firm in Dubai who…' },
   { id: 'primaryCta', q: 'What is the one thing you want someone to do after seeing your posts?', hint: 'One action: book a call, send a message, visit the site.', placeholder: 'Book a 20-minute demo' },
   { id: 'strongOpinion', q: 'What do you believe about your industry that most people in it would argue with?', hint: 'This is what makes posts worth reading. A habit you think is a mistake, advice you ignore.', placeholder: 'Most firms don’t have a lead problem. They have a…' },
   { id: 'story', q: 'Tell me one recent story, win or thing that happened in your business.', hint: 'A real moment. No story yet? Write the question customers ask you most.', placeholder: 'Last month a client…' },
@@ -33,10 +35,18 @@ const EMPTY: BrandBrief = { business: '', customer: '', primaryCta: '', strongOp
 /**
  * The brand brief: 6 questions, one at a time, saved once and used by every
  * post Mr LAD writes. Nothing generates until it exists.
+ *
+ * It is the ONE interview about the business:
+ *  - "Who is your customer?" is the Business Profile's target customer (the
+ *    single source for the audience): prefilled from it and saved back to it.
+ *  - With no Media brand profile yet (no website to read), finishing the brief
+ *    builds one from these answers, replacing Media's separate wizard.
  */
 export function BriefDialog({ open, onClose, initial }: { open: boolean; onClose: () => void; initial: BrandBrief | null }) {
   const save = useSaveStudioSettings();
-  const { profile } = useBusinessProfile();
+  const { profile, save: saveProfile } = useBusinessProfile();
+  const brand = useBrand();
+  const qc = useQueryClient();
   const { push } = useToast();
   const [step, setStep] = useState(0);
   const [brief, setBrief] = useState<BrandBrief>(initial || EMPTY);
@@ -50,12 +60,13 @@ export function BriefDialog({ open, onClose, initial }: { open: boolean; onClose
     setBrief({
       ...base,
       business: base.business || [profile?.companyName, profile?.productsServices || profile?.valueProposition].filter(Boolean).join(': '),
-      customer: base.customer || profile?.targetCustomers || '',
+      // The Business Profile is the source for the audience.
+      customer: profile?.targetCustomers || base.customer || '',
       voiceWords: base.voiceWords || profile?.campaignTone || '',
     });
     setStory((base.storyVault || [])[0] || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, profile?.targetCustomers]);
 
   const cur = STEPS[step];
   const value =
@@ -74,6 +85,35 @@ export function BriefDialog({ open, onClose, initial }: { open: boolean; onClose
       await save.mutateAsync({ brandBrief: { ...brief, storyVault: vault } });
       push({ variant: 'success', title: 'Brand brief saved', description: 'Every post Mr LAD writes now uses it.' });
       onClose();
+      const customer = brief.customer.trim();
+      if (customer && customer !== (profile?.targetCustomers || '').trim()) {
+        saveProfile({ targetCustomers: customer }).catch(() =>
+          push({ variant: 'warning', title: 'Business Profile not updated', description: 'The brief is saved, but your target customer in Business Profile kept its old text.' })
+        );
+      }
+      // No website-based brand profile yet: build one from the brief.
+      if (brand.data && brand.data.source === 'none' && !brand.data.degraded) {
+        const answers: Record<string, string> = {
+          'What do you sell?': brief.business,
+          'Who is your customer?': customer,
+          'What should people do after seeing your posts?': brief.primaryCta,
+          'What do you believe that others in your industry would argue with?': brief.strongOpinion,
+          'A recent story from the business': vault[0] || '',
+          'How do you sound?': [...brief.voice, brief.voiceWords || ''].filter(Boolean).join(', '),
+        };
+        const text = Object.entries(answers)
+          .filter(([, a]) => a)
+          .map(([q, a]) => `${q}\n${a}`)
+          .join('\n\n');
+        buildBrandProfileFromText({ text, answers, brandName: profile?.companyName || '' })
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ['contentStudio', 'brand'] });
+            push({ variant: 'success', title: 'Brand profile built', description: 'Made from your brief. Add your logo and colours in Media › Brand profile.' });
+          })
+          .catch(() => {
+            /* optional extra: the brief itself is saved */
+          });
+      }
     } catch {
       /* shown below */
     }
