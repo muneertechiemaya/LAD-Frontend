@@ -130,6 +130,10 @@
       "types": "./features/voice-agent/index.ts",
       "default": "./features/voice-agent/index.ts"
     },
+    "./media-hub": {
+      "types": "./features/media-hub/index.ts",
+      "default": "./features/media-hub/index.ts"
+    },
     "./content-studio": {
       "types": "./features/content-studio/index.ts",
       "default": "./features/content-studio/index.ts"

@@ -575,7 +575,7 @@ export const BrandAssetsSettings: React.FC<{ section?: BrandAssetsSection }> = (
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
           Logos, product shots and anything else you want to appear in generated media. We
-          describe each one so the AI knows when to use it.
+          describe each one so Mr LAD knows when to use it.
         </p>
 
         {error && (

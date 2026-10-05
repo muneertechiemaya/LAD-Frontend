@@ -438,3 +438,22 @@ export interface Calibration {
     publishedAt: string;
   }[];
 }
+
+// ── media hub bridge ──────────────────────────────────────────────────────
+
+/** The Media brand profile, for drawing slides in the client's colours. */
+export interface BrandInfo {
+  source: 'media' | 'none';
+  name: string | null;
+  tagline: string | null;
+  /** Hex, primary first, at most 5. */
+  colors: string[];
+  /** True when the Media service couldn't be reached (not the same as "no profile"). */
+  degraded: boolean;
+}
+
+export interface ImportGeneratedRequest {
+  sourceUrl: string;
+  filename?: string;
+  mediaType?: 'image' | 'video';
+}

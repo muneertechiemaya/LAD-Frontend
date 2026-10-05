@@ -1,6 +1,8 @@
 'use client';
 /**
- * MAGe, the media generation settings card.
+ * Media: what the agent knows about the brand and what it has been asked to
+ * make (the MAGe service). Lives in Content Studio › Media; it used to be
+ * Settings › Media Hub, which now redirects here.
  *
  * Organised around the two questions a customer actually has: what does the
  * agent know about my brand, and what have I asked it to make. Tiles preview
@@ -429,7 +431,7 @@ const Modal: React.FC<{ title: string; onClose: () => void; children: React.Reac
   );
 };
 
-export const MageSettings: React.FC = () => {
+export const MediaHub: React.FC = () => {
   const [modal, setModal] = useState<ModalId | null>(null);
   const [profiles, setProfiles] = useState<BrandProfile[]>([]);
   const [icp, setIcp] = useState<IcpSummary | null>(null);
@@ -517,7 +519,7 @@ export const MageSettings: React.FC = () => {
   const loadOverview = useCallback(async () => {
     try {
       const res = await fetch(`${WORKER_URL}/mage/overview`, { headers: headers() });
-      if (!res.ok) throw new Error(await readError(res, 'Could not load MAGe settings.'));
+      if (!res.ok) throw new Error(await readError(res, 'Could not load your media settings.'));
       const data = await res.json();
       setProfiles(data?.brand_dna?.profiles || []);
       setIcp(data?.icp || null);
@@ -528,7 +530,7 @@ export const MageSettings: React.FC = () => {
       setOverviewFailed(false);
       return data;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load MAGe settings.');
+      setError(e instanceof Error ? e.message : 'Could not load your media settings.');
       // The tiles must not read this as "the tenant has nothing configured".
       setOverviewFailed(true);
       return null;
@@ -1432,7 +1434,7 @@ export const MageSettings: React.FC = () => {
                 {icpHighlight || 'Saved and used on every generation.'}
               </div>
               <div className="text-gray-400 mt-1.5 text-[clamp(0.66rem,0.74vw,0.75rem)]">
-                Saved as your ICP profile
+                Saved as your target audience
               </div>
             </>
           ) : overviewFailed ? (
@@ -1442,7 +1444,7 @@ export const MageSettings: React.FC = () => {
               No audience saved. Without one the agent guesses who it is talking to.
             </p>
           )}
-          <ManageButton onClick={() => setModal('audience')} hint="Create or edit your ICP profile" />
+          <ManageButton onClick={() => setModal('audience')} hint="Create or edit your target audience" />
         </Tile>
 
         <Tile

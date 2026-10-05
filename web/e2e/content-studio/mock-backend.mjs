@@ -401,6 +401,43 @@ function audienceRoute(r, m, body, res) {
   return false;
 }
 
+// ── Media Hub (LAD-MAGe) stand-in ───────────────────────────────────────────
+// The browser calls MAGe directly (NEXT_PUBLIC_MEDIA_GEN_URL points here in the
+// e2e build). Images are served by this mock so <img> tags really load.
+const PNG_1X1 = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a7600000000049454e44ae426082', 'hex');
+const MAGE_BRAND = { domain: 'techiemaya.com', display_domain: 'techiemaya.com', is_default: true, from_crawl: true, brand_name: 'Mr LADS', tagline: 'Hire Mr LADS, your sales employee across every channel', asset_count: 4, indexed: true, colors: { primary: '#F5C518', accent: '#7A1F5C', background: '#FFFFFF' } };
+const mediaUrl = (name) => `http://127.0.0.1:${PORT}/__img/${name}.png`;
+function mageRoute(p, m, res) {
+  if (p === '/mage/overview') {
+    return send(res, 200, {
+      brand_dna: { profiles: [MAGE_BRAND] },
+      icp: { exists: true, name: 'Your audience', summary: 'Company: TechieMaya Industry: SaaS, Marketing Agency, Consulting' },
+      keywords: { mappings: { 'company-branding': 'Use our navy and blue, logo top left' }, colors: {} },
+      assets: { total: 0, active: 0, categories: [] },
+      queue: { queued: 0, processing: 0, completed: 2, closed: 0, total: 2, last_synced: new Date().toISOString() },
+    });
+  }
+  if (p === '/auto-media/jobs') {
+    const row = (i) => ({ group_id: `g${i}`, source: 'gcs', status: 'completed', filename: `poster-${i}.png`, instruction: 'add company-branding for this poster', description: '', attempts: 1, image_count: 2, completed_at: new Date().toISOString() });
+    return send(res, 200, { active_run: false, last_synced: new Date().toISOString(), counts: { queued: 0, processing: 0, completed: 2, closed: 0 }, queued: [], processing: [], completed: [row(1), row(2)], closed: [] });
+  }
+  if (p === '/playground-media/gallery') {
+    return send(res, 200, { images: [{ generation_id: 'gen-1', urls: [mediaUrl('gallery-1'), mediaUrl('gallery-2')], created_at: Date.now() / 1000 }], videos: [] });
+  }
+  if (p === '/api/v1/media/generate-image-and-hold' && m === 'POST') {
+    return send(res, 200, { job_id: 'img_gen_e2e', status: 'completed', images: [{ index: 0, mime_type: 'image/png', url: mediaUrl('made-1') }], error: null });
+  }
+  if (p.startsWith('/api/v1/media/jobs/')) return send(res, 200, { job_id: p.split('/').pop(), status: 'completed', images: [{ index: 0, mime_type: 'image/png', url: mediaUrl('made-1') }] });
+  if (p === '/api/v1/media/promo-videos/options') {
+    return send(res, 200, { writers: [{ id: 'default', name: 'Default', available: true }], default_writer: 'default', styles: [{ id: 'classic', label: 'Classic' }], default_style: 'classic', voice: { available: false }, formats: ['16:9', '9:16'], lengths: [30, 45, 60, 90], rendering_available: true, max_screenshots: 6 });
+  }
+  if (p === '/api/v1/media/promo-videos' && m === 'POST') return send(res, 202, { job_id: 'promo_e2e', status: 'completed', stage: 'collecting', writer: 'default' });
+  if (p.startsWith('/api/v1/media/promo-videos/')) return send(res, 200, { job_id: 'promo_e2e', status: 'completed', stage: 'collecting', video_url: `http://127.0.0.1:${PORT}/__img/promo.mp4` });
+  if (p === '/brand-assets/status') return send(res, 200, { connected: true, folders: {}, assets: [], collaborators: [] });
+  // Anything else the hub asks for: an empty success.
+  return send(res, 200, { status: 'success' });
+}
+
 const USER = {
   id: 'e2e-user', email: 'owner@example.test', name: 'Test Owner', firstName: 'Test', role: 'owner', tenantId: 'e2e-tenant',
   capabilities: ['view_overview', 'view_campaigns', 'view_conversations', 'view_content_studio', 'view_settings'],
@@ -416,6 +453,8 @@ const server = http.createServer(async (req, res) => {
   // Test-only: switch the calibration state ('collecting' | 'weak' | 'ready').
   if (p === '/__calibration' && m === 'POST') { const b = JSON.parse((await readBody(req)).toString('utf8') || '{}'); S.calibration = b.status || 'collecting'; return ok(res, { calibration: S.calibration }); }
   if (p === '/api/auth/me') return send(res, 200, { success: true, user: USER });
+  if (p.startsWith('/__img/')) { res.writeHead(200, { 'content-type': p.endsWith('.mp4') ? 'video/mp4' : 'image/png', 'access-control-allow-origin': '*' }); return res.end(p.endsWith('.mp4') ? Buffer.alloc(0) : PNG_1X1); }
+  if (/^\/(mage|auto-media|playground-media|brand-assets)\//.test(p) || p.startsWith('/api/v1/media/')) return mageRoute(p, m, res);
 
   if (!p.startsWith('/api/content-studio')) {
     // Everything else the app shell asks for (counts, notifications…): empty but valid.
@@ -431,6 +470,16 @@ const server = http.createServer(async (req, res) => {
 
   if (r.startsWith('/audience') || /\/audience-tests/.test(r)) {
     if (audienceRoute(r, m, body, res) !== false) return;
+  }
+
+  // Media Hub bridge
+  if (r === '/brand' && m === 'GET') return ok(res, { source: 'media', name: MAGE_BRAND.brand_name, tagline: MAGE_BRAND.tagline, colors: ['#F5C518', '#7A1F5C', '#FFFFFF'], degraded: false });
+  if (r === '/media/import-generated' && m === 'POST') {
+    if (!/^https?:\/\//.test(body.sourceUrl || '')) return fail(res, 400, 'That file link is not valid.', 'VALIDATION');
+    const video = body.mediaType === 'video';
+    const item = { id: crypto.randomUUID(), url: body.sourceUrl, filename: body.filename || (video ? 'promo.mp4' : 'image.png'), mimeType: video ? 'video/mp4' : 'image/png', sizeBytes: 1024, createdAt: new Date().toISOString() };
+    S.media.unshift(item);
+    return ok(res, item, 201);
   }
 
   // settings & channels
