@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { ChevronDown, FolderPlus, Pencil, Search, Trash2 } from 'lucide-react';
 import type { ContentPost, Platform, PostStatus, StudioSettings } from '@lad/frontend-features/content-studio';
 import {
-  PLATFORMS,
+  useEnabledPlatforms,
   STATUSES,
   useBulkUpdate,
   useCreateFolder,
@@ -24,6 +24,7 @@ import { MediaLibrary } from './MediaLibrary';
 type Scope = { kind: 'all' } | { kind: 'folder'; id: string } | { kind: 'templates' } | { kind: 'media' };
 
 export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: StudioSettings | undefined; onEdit: (p: ContentPost) => void }) {
+  const enabledPlatforms = useEnabledPlatforms();
   // ?view=media opens Images and video directly (Media's Gallery and
   // Reference images tiles link here). Read through the router, not
   // window.location, which lags a client-side navigation.
@@ -208,7 +209,7 @@ export function LibraryView({ tz, settings, onEdit }: { tz: string; settings: St
             </label>
             <select aria-label="Platform" className={inputCls} value={platform} onChange={(e) => setPlatform(e.target.value as Platform | '')}>
               <option value="">All platforms</option>
-              {PLATFORMS.map((p) => (
+              {enabledPlatforms.map((p) => (
                 <option key={p} value={p}>
                   {PLATFORM_META[p].label}
                 </option>

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Minus, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { Goal, Pillar, PlanSlot, Platform, StudioSettings } from '@lad/frontend-features/content-studio';
-import { PLATFORMS, useFillGaps, useGeneratePlan, usePlanPreview, useSaveStudioSettings } from '@lad/frontend-features/content-studio';
+import { useEnabledPlatforms, useFillGaps, useGeneratePlan, usePlanPreview, useSaveStudioSettings } from '@lad/frontend-features/content-studio';
 import { apiErrorCode } from '@lad/shared/apiError';
 import { useToast } from '@/components/ui/app-toaster';
 import { GOAL_LABEL, PLATFORM_META, formatName } from '@/lib/content-studio/meta';
@@ -53,6 +53,7 @@ function Stepper({ value, onChange, label }: { value: number; onChange: (n: numb
 }
 
 export function PlanView({ settings, settingsError }: { settings: StudioSettings | undefined; settingsError: unknown }) {
+  const enabledPlatforms = useEnabledPlatforms();
   const [draft, setDraft] = useState<Draft>(() => toDraft(settings));
   // Phones list the month day by day; show a week first so the page stays short.
   const [allDays, setAllDays] = useState(false);
@@ -67,7 +68,7 @@ export function PlanView({ settings, settingsError }: { settings: StudioSettings
 
   const sum = draft.pillars.reduce((a, p) => a + (Number(p.weight) || 0), 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(settings));
-  const perWeek = PLATFORMS.reduce((a, p) => a + (draft.frequency[p] || 0), 0);
+  const perWeek = enabledPlatforms.reduce((a, p) => a + (draft.frequency[p] || 0), 0);
   const valid = sum === 100 && draft.pillars.length >= 1 && draft.pillars.every((p) => p.name.trim());
 
   const setPillar = (i: number, patch: Partial<Pillar>) =>
@@ -223,7 +224,7 @@ export function PlanView({ settings, settingsError }: { settings: StudioSettings
             <span className={cn('text-sm tabular-nums', tone.soft)}>{perWeek} a week</span>
           </div>
           <ul className="flex flex-col">
-            {PLATFORMS.map((p) => (
+            {enabledPlatforms.map((p) => (
               <li key={p} className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t py-2 sm:grid-cols-[minmax(0,1fr)_auto_120px]', tone.line)}>
                 <span className={cn('inline-flex items-center gap-2 text-sm font-semibold', tone.ink)}>
                   <PlatformBadge platform={p} />

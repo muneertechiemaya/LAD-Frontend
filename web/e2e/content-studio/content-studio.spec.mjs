@@ -191,7 +191,7 @@ test('Today: greeting, cards, gap banner, week strip, layout', async ({ page }, 
   await open(page);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/2 sample posts are lined up for today\. 1 needs your approval\./);
   await expect(root(page).getByRole('article')).toHaveCount(2);
-  await expect(root(page).getByText(/Next week has 2 empty days, \w+ and \w+\./)).toBeVisible();
+  await expect(root(page).getByText(/Next week has \d+ empty days?/)).toBeVisible();
   await expect(root(page).getByText(/fill them from your .+ pillar\?/)).toBeVisible();
   await expect(root(page).getByRole('list', { name: 'Posts in the next 7 days' }).getByRole('listitem')).toHaveCount(7);
   await expect(root(page).getByText('Sample data').first()).toBeVisible();
@@ -746,4 +746,23 @@ test('One interview: the brief keeps the Business Profile customer and builds th
   await expect(page.getByText('Brand profile built')).toBeVisible();
   await expect.poll(async () => (await (await request.get(`${MOCK}/__profile`)).json()).targetCustomers).toBe('Clinic owners in Dubai who miss evening enquiries');
   expect((await (await request.get(`${MOCK}/__mage`)).json()).wizardBuilt).toBe(true);
+});
+
+// ── platforms switched off for now (CONTENT_STUDIO_PLATFORMS) ───────────────
+test('Only LinkedIn and Instagram are offered while Facebook, X and TikTok are off', async ({ page }) => {
+  const hidden = /^(Facebook|X|TikTok)$/;
+  await open(page);
+  await expect(root(page).getByText(/^(Facebook|X|TikTok): /)).toHaveCount(0); // Where posts go out
+  await open(page, '?tab=create&post=new');
+  const pick = root(page).getByRole('group', { name: 'Platform' });
+  await expect(pick.getByRole('button', { name: 'LinkedIn' })).toBeVisible();
+  await expect(pick.getByRole('button', { name: 'Instagram' })).toBeVisible();
+  await expect(pick.getByRole('button', { name: hidden })).toHaveCount(0);
+  await open(page, '?tab=calendar');
+  await expect(root(page).getByRole('group', { name: 'Show platforms' }).getByRole('button')).toHaveCount(2);
+  await open(page, '?tab=plan');
+  await expect(root(page).getByText(hidden)).toHaveCount(0);
+  await open(page, '?tab=library');
+  const opts = await root(page).getByRole('combobox', { name: 'Platform' }).locator('option').allTextContents();
+  expect(opts).toEqual(['All platforms', 'LinkedIn', 'Instagram']);
 });

@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { ChevronLeft, ChevronRight, Clock, GripVertical, Pencil } from 'lucide-react';
 import type { ContentPost, Platform } from '@lad/frontend-features/content-studio';
-import { PLATFORMS, usePosts, useSchedulePost, useStudioSettings, useUpdatePost } from '@lad/frontend-features/content-studio';
+import { useEnabledPlatforms, usePosts, useSchedulePost, useStudioSettings, useUpdatePost } from '@lad/frontend-features/content-studio';
 import { useToast } from '@/components/ui/app-toaster';
 import { PLATFORM_META, formatName, postTitle } from '@/lib/content-studio/meta';
 import {
@@ -127,6 +127,7 @@ export function CalendarView({
   onEdit: (p: ContentPost) => void;
   onMoveTime: (p: ContentPost) => void;
 }) {
+  const enabledPlatforms = useEnabledPlatforms();
   const today = todayLocal(tz);
   const [view, setView] = useState<View>(initialDate ? 'day' : 'week');
   const [anchor, setAnchor] = useState(initialDate || today);
@@ -249,7 +250,7 @@ export function CalendarView({
 
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show platforms">
         <Label className="mr-1">Show</Label>
-        {PLATFORMS.map((p) => {
+        {enabledPlatforms.map((p) => {
           const on = !hidden.includes(p);
           return (
             <button

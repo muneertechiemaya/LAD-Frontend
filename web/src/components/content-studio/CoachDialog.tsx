@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type { ContentPost, Idea, Platform } from '@lad/frontend-features/content-studio';
-import { PLATFORMS, useGenerateDraft, useGenerateIdeas } from '@lad/frontend-features/content-studio';
+import { useEnabledPlatforms, useGenerateDraft, useGenerateIdeas } from '@lad/frontend-features/content-studio';
 import { apiErrorCode } from '@lad/shared/apiError';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { ANGLE_LABEL, PLATFORM_FORMATS, PLATFORM_META } from '@/lib/content-studio/meta';
@@ -24,6 +24,7 @@ export function CoachDialog({
   onNeedBrief: () => void;
   onDrafted: (p: ContentPost) => void;
 }) {
+  const enabledPlatforms = useEnabledPlatforms();
   const ideas = useGenerateIdeas();
   const draft = useGenerateDraft();
   const [picked, setPicked] = useState<Idea | null>(null);
@@ -112,7 +113,7 @@ export function CoachDialog({
             <div className="flex flex-col gap-4">
               <p className={cn('rounded-[12px] border p-3 text-[15px] font-semibold', tone.line, tone.ink)}>{picked.title}</p>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Platform">
-                {PLATFORMS.map((p) => (
+                {enabledPlatforms.map((p) => (
                   <button
                     key={p}
                     type="button"

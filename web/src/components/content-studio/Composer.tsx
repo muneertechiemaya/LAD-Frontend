@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronDown, Copy, FileText, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
 import type { ContentPost, Platform, PostFormat, PostPatch, StudioSettings } from '@lad/frontend-features/content-studio';
 import {
-  PLATFORMS,
+  useEnabledPlatforms,
   auditVoice,
   useChannels,
   useCreatePost,
@@ -28,6 +28,7 @@ import { PostMedia } from './PostMedia';
 import { RepurposeDialog } from './RepurposeDialog';
 import { Card, CsButton, ErrorNote, Field, Label, PlatformBadge, SectionTitle, StatusChip, inputCls, textareaCls, tone } from './ui';
 import { cn } from '@/lib/utils';
+import { joinWords } from '@/lib/content-studio/time';
 
 type Form = Required<
   Pick<PostPatch, 'platform' | 'format' | 'title' | 'hook' | 'body' | 'cta' | 'slides' | 'threadParts' | 'isTemplate' | 'mediaUrls'>
@@ -113,6 +114,7 @@ function StartPanel({ onCreated, onNew }: { onCreated: (p: ContentPost) => void;
   const drafts = usePosts({ status: 'draft', limit: 6 });
   const ideas = usePosts({ status: 'idea', limit: 6 });
   const [repurpose, setRepurpose] = useState(false);
+  const enabledPlatforms = useEnabledPlatforms();
   const list = [...(drafts.data?.posts || []), ...(ideas.data?.posts || [])].slice(0, 8);
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -127,7 +129,7 @@ function StartPanel({ onCreated, onNew }: { onCreated: (p: ContentPost) => void;
           Turn a long piece into posts
         </CsButton>
         <p className={cn('text-sm', tone.soft)}>
-          Paste a blog post, newsletter or video transcript and get 3 LinkedIn posts, 5 X threads and 2 short-video scripts, each graded.
+          Paste a blog post, newsletter or video transcript and get a week of graded drafts for {joinWords(enabledPlatforms.map((p) => PLATFORM_META[p].label))}.
         </p>
       </Card>
       <Card className="flex flex-col gap-3 p-5">
@@ -169,6 +171,8 @@ function ComposerForm({
   onCreated: (p: ContentPost) => void;
   onDone: () => void;
 }) {
+  // A post already on a platform that's switched off keeps it, so it isn't stranded.
+  const enabledPlatforms = useEnabledPlatforms();
   const post = usePost(postId);
   const channels = useChannels();
   const folders = useFolders();
@@ -229,6 +233,7 @@ function ComposerForm({
     [form, tagCount]
   );
   const meta = PLATFORM_META[form.platform];
+  const shownPlatforms = enabledPlatforms.includes(form.platform) ? enabledPlatforms : [...enabledPlatforms, form.platform];
   const captionLen = captionOf(merged).length;
 
   const save = async () => {
@@ -299,7 +304,7 @@ function ComposerForm({
             <div className="flex flex-col gap-2">
               <Label>Platform</Label>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Platform">
-                {PLATFORMS.map((p) => (
+                {shownPlatforms.map((p) => (
                   <button
                     key={p}
                     type="button"
@@ -499,7 +504,7 @@ function ComposerForm({
             <SectionTitle as="h3">Preview</SectionTitle>
           </div>
           <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Preview as">
-            {PLATFORMS.map((p) => {
+            {shownPlatforms.map((p) => {
               const on = (previewOn || form.platform) === p;
               return (
                 <button

@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
 import { contentStudioKeys as keys } from './api';
+import { DEFAULT_ENABLED_PLATFORMS, PLATFORMS } from './types';
 import type { AudienceTestRequest, ImportGeneratedRequest, MediaItem, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
 
 function useInvalidateAll() {
@@ -19,6 +20,13 @@ function useInvalidateAll() {
 
 export function useStudioSettings() {
   return useQuery({ queryKey: keys.settings(), queryFn: api.getSettings, staleTime: 60_000 });
+}
+
+/** The platforms Content Studio offers right now (server-controlled). */
+export function useEnabledPlatforms(): readonly Platform[] {
+  const s = useStudioSettings();
+  const on = s.data?.enabledPlatforms?.filter((p) => PLATFORMS.includes(p));
+  return on && on.length ? PLATFORMS.filter((p) => on.includes(p)) : DEFAULT_ENABLED_PLATFORMS;
 }
 
 export function useSaveStudioSettings() {
