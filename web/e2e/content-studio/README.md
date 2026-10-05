@@ -29,3 +29,13 @@ npx playwright test --config e2e/content-studio/playwright.config.mjs
 ```
 
 Results land in `e2e/content-studio/results/` (JSON, HTML report, screenshots per width).
+
+## Platforms switched on in the mock
+
+The mock mirrors the backend's `CONTENT_STUDIO_PLATFORMS` with `MOCK_PLATFORMS`
+(default `linkedin,instagram`; Facebook, X and TikTok are hidden for now). To
+run with all five, start the mock with
+`MOCK_PLATFORMS=linkedin,instagram,facebook,x,tiktok node e2e/content-studio/mock-backend.mjs`
+and update the "Only LinkedIn and Instagram are offered…" test, which asserts
+the two-platform set.
+
