@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Check, History, RotateCcw, Sparkles, Wand2, X } from 'lucide-react';
-import type { ChannelInfo, ContentPost, HookOption, Platform, VoiceRuleResult } from '@lad/frontend-features/content-studio';
+import { Check, History, RotateCcw, Sparkles, Users, Wand2, X } from 'lucide-react';
+import type { AudienceTest, ChannelInfo, ContentPost, HookOption, Platform, VoiceRuleResult } from '@lad/frontend-features/content-studio';
 import {
   DIMENSION_LABELS,
   RULE_LABELS,
@@ -12,6 +12,7 @@ import {
   useGradePost,
   useMarkPosted,
   useRestoreVersion,
+  useRunAudienceTest,
   useSchedulePost,
   useUnschedulePost,
   useVersions,
@@ -40,12 +41,37 @@ export function HookPicker({
   onNeedBrief: () => void;
 }) {
   const gen = useGenerateHooks();
+  const testHooks = useRunAudienceTest();
+  // Head-to-head result, kept with the exact hook texts it was run on.
+  const [hookTest, setHookTest] = useState<{ texts: string[]; test: AudienceTest } | null>(null);
   const t = first3Words(current);
-  const run = () =>
+  const run = () => {
+    setHookTest(null);
     gen.mutate(
       { topic: topic || current, platform, postId },
       { onError: (e) => apiErrorCode(e) === 'BRIEF_REQUIRED' && onNeedBrief() }
     );
+  };
+  const hooks = gen.data?.hooks || [];
+  const runHooks = async () => {
+    if (!postId) return;
+    const texts = hooks.slice(0, 3).map((h) => h.text);
+    try {
+      const test = await testHooks.mutateAsync({ postId, body: { variant: 'hooks', hooks: texts } });
+      setHookTest({ texts, test });
+    } catch (e) {
+      if (apiErrorCode(e) === 'BRIEF_REQUIRED') onNeedBrief();
+    }
+  };
+  const statFor = (text: string) => {
+    if (!hookTest) return null;
+    const i = hookTest.texts.indexOf(text);
+    const h = i >= 0 ? hookTest.test.summary.hooks?.[i] : undefined;
+    return h ? { picks: h.picks, total: hookTest.test.summary.answered, winner: hookTest.test.summary.winner === i } : null;
+  };
+  const noneStopped = hookTest
+    ? Math.max(0, hookTest.test.summary.answered - (hookTest.test.summary.hooks || []).reduce((n, h) => n + h.picks, 0))
+    : 0;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -83,13 +109,48 @@ export function HookPicker({
                   <span className={cn('text-xs', tone.soft)}>
                     {h.category} · first 3 words “{h.first3}” {h.first3Pass ? 'pass' : 'weak'}
                   </span>
+                  {(() => {
+                    const st = statFor(h.text);
+                    return st ? (
+                      <span className={cn('flex flex-wrap items-center gap-2 text-xs', tone.ink)}>
+                        <span className="font-semibold tabular-nums">
+                          Stops {st.picks} of {st.total}
+                        </span>
+                        {st.winner ? (
+                          <span className="inline-flex h-6 items-center rounded-full bg-[#E3F4EA] px-2.5 font-semibold text-[#0F5A33] dark:bg-[#0E3320] dark:text-[#9BE3B8]">
+                            Panel pick
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null;
+                  })()}
                 </span>
               </label>
             );
           })}
         </fieldset>
       ) : null}
-      <ErrorNote error={gen.error && apiErrorCode(gen.error) !== 'BRIEF_REQUIRED' ? gen.error : null} />
+      {postId && hooks.length >= 2 ? (
+        <div className="flex flex-col gap-1">
+          <CsButton size="sm" className="self-start" busy={testHooks.isPending} onClick={runHooks}>
+            <Users className="h-4 w-4" aria-hidden />
+            Test these hooks with your audience
+          </CsButton>
+          <p className={cn('text-xs', tone.soft)} aria-live="polite">
+            {testHooks.isPending
+              ? 'Your panel is reading the openings…'
+              : hookTest
+                ? `${noneStopped} of ${hookTest.test.summary.answered} wouldn't stop for any of them. Simulated reactions.`
+                : 'Each person sees only the openings, as the feed shows them, and picks the one that would stop them. Uses credits.'}
+          </p>
+        </div>
+      ) : null}
+      <ErrorNote
+        error={
+          (gen.error && apiErrorCode(gen.error) !== 'BRIEF_REQUIRED' ? gen.error : null) ||
+          (testHooks.error && apiErrorCode(testHooks.error) !== 'BRIEF_REQUIRED' ? testHooks.error : null)
+        }
+      />
     </div>
   );
 }

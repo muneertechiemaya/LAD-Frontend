@@ -308,3 +308,133 @@ export interface DraftRequest {
   pillar?: string;
   angle?: Angle;
 }
+
+// ── audience test ("Test with your audience") ─────────────────────────────
+// A panel of 20 simulated people modelled on the tenant's buyers reacts to a
+// post before it goes out. Results are counts out of the panel; the only
+// numeric prediction is a LinkedIn engagement-rate range, and only once real
+// numbers have calibrated it (Calibration.status === 'ready').
+
+export type AudienceSegment = 'buyer' | 'peer' | 'casual';
+export type Habit = 'daily' | 'weekly' | 'rarely';
+
+export interface AudiencePersona {
+  id: string;
+  /** "Head of Operations · Logistics · Dubai" - never a personal name. */
+  label: string;
+  segment: AudienceSegment;
+  /** Role family, plural: "Operations heads". */
+  group: string;
+  seniority: string | null;
+  industry: string | null;
+  region: string | null;
+  cares: string[];
+  scrollsPast: string[];
+  platforms: Partial<Record<Platform, Habit>>;
+}
+
+export interface AudiencePanel {
+  id: string;
+  personas: AudiencePersona[];
+  source: { leadsUsed: number; usedProfile: boolean; buyers: number; peers: number; casual: number };
+  builtAt: string;
+  builtBy: string | null;
+}
+
+export type ObjectionKind =
+  | 'not_for_me'
+  | 'unclear'
+  | 'too_long'
+  | 'sounds_like_an_ad'
+  | 'no_proof'
+  | 'too_generic'
+  | 'tone'
+  | 'other';
+
+export type ReactionKind = 'none' | 'like' | 'insightful' | 'celebrate' | 'support' | 'funny' | 'love';
+
+export interface PersonaReaction {
+  personaId: string;
+  stopped: boolean;
+  readAll: boolean;
+  reaction: ReactionKind;
+  comment: string | null;
+  share: boolean;
+  message: boolean;
+  objection: { kind: ObjectionKind; text: string } | null;
+  why: string;
+}
+
+export interface HookPick {
+  personaId: string;
+  /** Index into the tested hooks; null = none of them would stop this person. */
+  pick: number | null;
+  why: string;
+}
+
+export interface GroupStat {
+  group: string;
+  stopped: number;
+  size: number;
+}
+
+export type PredictionStatus = 'not_linkedin' | 'collecting' | 'weak' | 'ready';
+
+export interface AudienceTestSummary {
+  answered: number;
+  panelSize: number;
+  degraded: boolean;
+  counts: { stopped: number; readAll: number; reacted: number; commented: number; shared: number; messaged: number } | null;
+  panelScore: number | null;
+  segments: { segment: AudienceSegment; size: number; stopped: number }[];
+  landsWith: GroupStat | null;
+  misses: GroupStat | null;
+  objections: { kind: ObjectionKind; count: number; example: string }[];
+  comments: { personaLabel: string; text: string }[];
+  fix: GradeFix | null;
+  hooks: { text: string; picks: number; score: number }[] | null;
+  winner: number | null;
+  history: { tested: number; betterThan: number } | null;
+  prediction: { metric: 'engagementRate'; low: number; high: number; basedOn: number } | null;
+  predictionStatus: PredictionStatus;
+  predictionNeed: { have: number; need: number } | null;
+}
+
+export type AudienceVariant = 'post' | 'hooks';
+
+export interface AudienceTest {
+  id: string;
+  postId: string;
+  panelId: string;
+  postVersion: number;
+  platform: Platform;
+  variant: AudienceVariant;
+  createdAt: string;
+  createdBy: string | null;
+  cached?: boolean;
+  summary: AudienceTestSummary;
+  reactions: Array<PersonaReaction | HookPick>;
+}
+
+export interface AudienceTestRequest {
+  variant: AudienceVariant;
+  hooks?: string[];
+  force?: boolean;
+}
+
+export interface Calibration {
+  status: 'collecting' | 'weak' | 'ready';
+  platform: 'linkedin';
+  have: number;
+  need: number;
+  rho: number | null;
+  points: {
+    postId: string;
+    title: string;
+    panelScore: number;
+    engagementRate: number;
+    predictedLow: number | null;
+    predictedHigh: number | null;
+    publishedAt: string;
+  }[];
+}

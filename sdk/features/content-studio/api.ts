@@ -11,7 +11,11 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '../../shared/apiCl
 import { safeStorage } from '../../shared/storage';
 import type {
   Analytics,
+  AudiencePanel,
+  AudienceTest,
+  AudienceTestRequest,
   BulkPatch,
+  Calibration,
   ChannelInfo,
   ContentPost,
   DraftRequest,
@@ -82,6 +86,9 @@ export const contentStudioKeys = {
   folders: () => [...contentStudioKeys.all, 'folders'] as const,
   media: () => [...contentStudioKeys.all, 'media'] as const,
   analytics: (from?: string, to?: string) => [...contentStudioKeys.all, 'analytics', from ?? '', to ?? ''] as const,
+  audiencePanel: () => [...contentStudioKeys.all, 'audiencePanel'] as const,
+  audienceTests: (postId: string) => [...contentStudioKeys.all, 'audienceTests', postId] as const,
+  calibration: () => [...contentStudioKeys.all, 'calibration'] as const,
 };
 
 // ── settings & channels ────────────────────────────────────────────────────
@@ -159,6 +166,16 @@ export async function uploadMedia(file: File): Promise<MediaItem> {
   if (!res.ok) throw new Error(body?.error || 'Upload failed. Try a PNG, JPEG or WebP under 10 MB.');
   return body.data as MediaItem;
 }
+
+// ── audience test ─────────────────────────────────────────────────────────
+export const getAudiencePanel = () => get<{ panel: AudiencePanel | null }>('/audience/panel');
+export const buildAudiencePanel = () => post<{ panel: AudiencePanel }>('/audience/panel');
+export const runAudienceTest = (postId: string, body: AudienceTestRequest) =>
+  post<AudienceTest>(`/posts/${postId}/audience-tests`, body);
+export const listAudienceTests = (postId: string) => get<AudienceTest[]>(`/posts/${postId}/audience-tests`);
+export const applyAudienceFix = (postId: string, testId: string) =>
+  post<ContentPost>(`/posts/${postId}/audience-tests/${testId}/apply-fix`);
+export const getCalibration = () => get<Calibration>('/audience/calibration');
 
 // ── analytics & seed ──────────────────────────────────────────────────────
 export const getAnalytics = (from?: string, to?: string) => get<Analytics>(`/analytics${qs({ from, to })}`);

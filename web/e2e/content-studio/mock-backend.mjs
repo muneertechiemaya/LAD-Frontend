@@ -82,7 +82,7 @@ function addVersion(p, reason) {
 }
 
 function reset() {
-  S = { settings: { brandBrief: SEED.brandBrief, ...SEED.settings, updatedAt: new Date().toISOString() }, posts: [], versions: [], folders: [], media: [], metrics: {} };
+  S = { settings: { brandBrief: SEED.brandBrief, ...SEED.settings, updatedAt: new Date().toISOString() }, posts: [], versions: [], folders: [], media: [], metrics: {}, panel: null, tests: [], runs: 0, calibration: 'collecting' };
   const t = today();
   // A showcase post for today must still be ahead of us, or it lands as
   // already due. Same rule as the backend seed: keep the seed's time if it is
@@ -210,6 +210,197 @@ function patchPost(p, patch, reason) {
   return p;
 }
 
+// ── audience test (CONTRACT-audience.md) ─────────────────────────────────────
+// Deterministic stand-in: answers come from a hash of the post text and the
+// member, so the same version always gets the same result. Formulas match the
+// contract's score and summary rules.
+const hash = (str) => { let h = 2166136261; for (const ch of str) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const unit = (str) => hash(str) / 4294967295;
+const SEG_W = { buyer: 1, peer: 0.6, casual: 0.3 };
+const PANEL_SPEC = [
+  ['buyer', 'Operations heads', 'Head of Operations', 'Logistics', 'Dubai', 5],
+  ['buyer', 'Sales directors', 'Sales Director', 'Real estate', 'Dubai', 4],
+  ['buyer', 'Founders', 'Founder', 'Professional services', 'Abu Dhabi', 3],
+  ['buyer', 'Finance managers', 'Finance Manager', 'Trading', 'Sharjah', 2],
+  ['peer', 'Sales consultants', 'Sales Consultant', 'Consulting', 'Dubai', 1],
+  ['peer', 'Agency owners', 'Marketing Agency Owner', 'Marketing', 'Dubai', 1],
+  ['peer', 'CRM implementers', 'CRM Implementer', 'Software', 'Abu Dhabi', 1],
+  ['casual', 'Casual scrollers', 'Early-career professional', null, 'Dubai', 3],
+];
+function buildPanel() {
+  const personas = [];
+  const seq = { buyer: 0, peer: 0, casual: 0 };
+  for (const [segment, group, title, industry, region, n] of PANEL_SPEC) {
+    for (let i = 0; i < n; i += 1) {
+      seq[segment] += 1;
+      const id = `${segment}-${seq[segment]}`; // same ids as the backend: buyer-1…14, peer-1…3, casual-1…3
+      personas.push({
+        id, segment, group, seniority: segment === 'casual' ? null : 'Senior', industry, region,
+        label: [title, industry, region].filter(Boolean).join(' · '),
+        cares: segment === 'buyer' ? ['Replying to buyers before competitors do', 'Not adding headcount'] : ['Ideas worth passing on'],
+        scrollsPast: ['Generic advice', 'Posts that read like ads'],
+        platforms: { linkedin: segment === 'casual' ? 'weekly' : 'daily', instagram: 'weekly', x: 'rarely' },
+      });
+    }
+  }
+  return { id: crypto.randomUUID(), personas, source: { leadsUsed: 412, usedProfile: true, buyers: 14, peers: 3, casual: 3 }, builtAt: new Date().toISOString(), builtBy: 'e2e-user' };
+}
+const OBJ = ['no_proof', 'too_generic', 'not_for_me', 'too_long', 'sounds_like_an_ad'];
+const OBJ_TEXT = { no_proof: 'I would want one real number from their own inbox.', too_generic: 'Every agency says this.', not_for_me: 'We do not sell to people who message at night.', too_long: 'Lost me halfway through.', sounds_like_an_ad: 'Feels like a pitch, not a story.' };
+function postReactions(post, panel) {
+  const text = `${post.hook}|${post.body}|${post.cta}|v${post.version}`;
+  return panel.personas.map((pp) => {
+    const base = { buyer: 0.62, peer: 0.45, casual: 0.22 }[pp.segment];
+    const stopped = unit(`${text}|${pp.id}|stop`) < base;
+    const readAll = stopped && unit(`${text}|${pp.id}|read`) < 0.6;
+    const reacts = readAll && unit(`${text}|${pp.id}|react`) < 0.7;
+    const comment = readAll && pp.segment !== 'casual' && unit(`${text}|${pp.id}|comment`) < 0.35;
+    const kind = OBJ[hash(`${text}|${pp.id}|obj`) % OBJ.length];
+    return {
+      personaId: pp.id, stopped, readAll,
+      reaction: reacts ? (pp.segment === 'buyer' ? 'insightful' : 'like') : 'none',
+      comment: comment ? `${pp.group === 'Operations heads' ? 'Our night shift' : 'We'} lose deals this way too. How fast is fast enough?` : null,
+      share: readAll && unit(`${text}|${pp.id}|share`) < 0.15,
+      message: readAll && pp.segment === 'buyer' && unit(`${text}|${pp.id}|dm`) < 0.12,
+      objection: readAll && !reacts ? null : { kind, text: OBJ_TEXT[kind] },
+      why: stopped ? 'The opening named a problem I have this week.' : 'Looked like the usual advice post.',
+    };
+  });
+}
+function summarise(post, panel, reactions, variant, hooks) {
+  const P = new Map(panel.personas.map((x) => [x.id, x]));
+  const answered = reactions.length;
+  const segs = ['buyer', 'peer', 'casual'].map((segment) => {
+    const rs = reactions.filter((r) => P.get(r.personaId).segment === segment);
+    return { segment, size: rs.length, stopped: rs.filter((r) => (variant === 'hooks' ? r.pick !== null : r.stopped)).length };
+  });
+  const out = {
+    answered, panelSize: panel.personas.length, degraded: answered < panel.personas.length,
+    counts: null, panelScore: null, segments: segs, landsWith: null, misses: null, objections: [], comments: [], fix: null,
+    hooks: null, winner: null, history: null, prediction: null, predictionStatus: post.platform === 'linkedin' ? S.calibration : 'not_linkedin', predictionNeed: null,
+  };
+  if (post.platform === 'linkedin' && S.calibration === 'collecting') out.predictionNeed = { have: 3, need: 10 };
+  if (variant === 'hooks') {
+    let tw = 0;
+    const per = hooks.map(() => 0);
+    const picks = hooks.map(() => 0);
+    for (const r of reactions) { const w = SEG_W[P.get(r.personaId).segment]; tw += w; if (r.pick !== null) { per[r.pick] += w; picks[r.pick] += 1; } }
+    out.hooks = hooks.map((text, i) => ({ text, picks: picks[i], score: Math.round((100 * per[i]) / tw) }));
+    out.winner = picks.some((n) => n > 0) ? picks.indexOf(Math.max(...picks)) : null;
+    out.predictionStatus = post.platform === 'linkedin' ? S.calibration : 'not_linkedin';
+    return out;
+  }
+  const c = { stopped: 0, readAll: 0, reacted: 0, commented: 0, shared: 0, messaged: 0 };
+  let num = 0;
+  let den = 0;
+  for (const r of reactions) {
+    c.stopped += r.stopped; c.readAll += r.readAll; c.reacted += r.reaction !== 'none'; c.commented += !!r.comment; c.shared += r.share; c.messaged += r.message;
+    const w = SEG_W[P.get(r.personaId).segment];
+    num += w * (0.4 * r.stopped + 0.25 * r.readAll + 0.15 * (r.reaction !== 'none') + 0.15 * !!r.comment + 0.05 * (r.share || r.message));
+    den += w;
+  }
+  out.counts = c;
+  out.panelScore = Math.round((100 * num) / den);
+  const groups = [];
+  for (const pp of panel.personas.filter((x) => x.segment === 'buyer')) {
+    let g = groups.find((x) => x.group === pp.group);
+    if (!g) { g = { group: pp.group, stopped: 0, size: 0 }; groups.push(g); }
+    g.size += 1;
+    g.stopped += reactions.find((r) => r.personaId === pp.id)?.stopped ? 1 : 0;
+  }
+  const ranked = groups.filter((g) => g.size >= 2);
+  if (ranked.length) {
+    out.landsWith = ranked.reduce((a, b) => (b.stopped / b.size > a.stopped / a.size ? b : a));
+    const low = ranked.reduce((a, b) => (b.stopped / b.size < a.stopped / a.size ? b : a));
+    out.misses = low === out.landsWith || low.stopped === low.size ? null : low;
+  }
+  const counts = new Map();
+  for (const r of reactions) if (r.objection) { const e = counts.get(r.objection.kind) || { kind: r.objection.kind, count: 0, example: r.objection.text }; e.count += 1; counts.set(r.objection.kind, e); }
+  out.objections = [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+  const seen = new Set();
+  out.comments = reactions
+    .filter((r) => r.comment)
+    .sort((a, b) => SEG_W[P.get(b.personaId).segment] - SEG_W[P.get(a.personaId).segment])
+    .filter((r) => { const k = r.comment.toLowerCase().replace(/\s+/g, ' ').trim(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 3)
+    .map((r) => ({ personaLabel: P.get(r.personaId).label, text: r.comment }));
+  if (out.objections.length) out.fix = { issue: 'No proof from your own account', current: post.hook, why: 'Buyers who stopped wanted one real number before they believed it.', fix: 'Add your own slowest reply time from last week in the second line.' };
+  const others = S.tests.filter((t) => t.variant === 'post' && t.postId !== post.id && t.summary.panelScore != null);
+  const latestPer = new Map();
+  for (const t of others) if (!latestPer.has(t.postId)) latestPer.set(t.postId, t.summary.panelScore);
+  const prior = [...latestPer.values()].slice(0, 20);
+  out.history = prior.length ? { tested: prior.length, betterThan: prior.filter((v) => v < out.panelScore).length } : null;
+  if (post.platform === 'linkedin' && S.calibration === 'ready') {
+    const mid = round1(0.04 * out.panelScore + 0.6);
+    out.prediction = { metric: 'engagementRate', low: round1(Math.max(0, mid - 0.6)), high: round1(mid + 0.7), basedOn: 14 };
+  }
+  return out;
+}
+function hookPicks(panel, hooks) {
+  return panel.personas.map((pp) => {
+    const none = unit(`${hooks.join('|')}|${pp.id}|none`) < { buyer: 0.25, peer: 0.4, casual: 0.7 }[pp.segment];
+    // The opening that names a concrete moment (a time, a number) wins more often.
+    const scored = hooks.map((h, i) => ({ i, s: (/\d/.test(h) ? 0.35 : 0) + unit(`${h}|${pp.id}`) }));
+    scored.sort((a, b) => b.s - a.s);
+    return { personaId: pp.id, pick: none ? null : scored[0].i, why: none ? 'None of these would stop me.' : 'It named a moment I recognise.' };
+  });
+}
+function calibration() {
+  if (S.calibration === 'collecting') return { status: 'collecting', platform: 'linkedin', have: 3, need: 10, rho: null, points: [] };
+  const titles = ['Deals lost in the inbox', 'The 11pm enquiry', 'Three replies that close', 'What a 2am lead wants', 'Why we stopped cold calling', 'One question before pricing', 'The follow-up nobody sends', 'How fast is fast enough', 'Your best lead is asleep', 'A reply in 4 minutes', 'Office hours are a myth', 'The weekend inbox', 'Quotes that sit unread', 'Speed beats price'];
+  const points = titles.map((title, i) => {
+    const panelScore = 38 + ((i * 17) % 45);
+    const mid = round1(0.04 * panelScore + 0.6);
+    return { postId: `cal-${i}`, title, panelScore, engagementRate: round1(mid + (((i * 7) % 9) - 4) / 10), predictedLow: S.calibration === 'ready' ? round1(Math.max(0, mid - 0.6)) : null, predictedHigh: S.calibration === 'ready' ? round1(mid + 0.7) : null, publishedAt: new Date(Date.now() - (i + 3) * 86400000).toISOString() };
+  });
+  return { status: S.calibration, platform: 'linkedin', have: points.length, need: 10, rho: S.calibration === 'ready' ? 0.71 : 0.12, points };
+}
+function audienceRoute(r, m, body, res) {
+  let mm;
+  if (r === '/audience/panel' && m === 'GET') return ok(res, { panel: S.panel });
+  if (r === '/audience/panel' && m === 'POST') {
+    if (!S.settings.brandBrief) return fail(res, 409, 'Add your brand brief first so posts sound like your business.', 'BRIEF_REQUIRED');
+    if (S.runs >= 30) return fail(res, 429, "You've run 30 audience tests today. You can run more tomorrow.", 'TEST_LIMIT');
+    S.runs += 1;
+    S.panel = buildPanel();
+    return ok(res, { panel: S.panel }, 201);
+  }
+  if (r === '/audience/calibration' && m === 'GET') return ok(res, calibration());
+  if ((mm = r.match(/^\/posts\/([^/]+)\/audience-tests$/))) {
+    const x = find(mm[1]);
+    if (!x) return fail(res, 404, "That post wasn't found.", 'NOT_FOUND');
+    if (m === 'GET') return ok(res, S.tests.filter((t) => t.postId === x.id).slice(0, 10));
+    if (m !== 'POST') return false;
+    if (!S.panel) return fail(res, 409, 'Build your audience panel first.', 'PANEL_REQUIRED');
+    if (!(x.hook || x.body)) return fail(res, 409, 'Write the post first, then test it.', 'EMPTY_POST');
+    const variant = body.variant === 'hooks' ? 'hooks' : 'post';
+    const hooks = variant === 'hooks' ? (Array.isArray(body.hooks) ? body.hooks.map(String).filter((h) => h.trim()) : []) : null;
+    if (variant === 'hooks' && (hooks.length < 2 || hooks.length > 3 || hooks.some((h) => h.length > 300))) return fail(res, 400, 'Send 2 or 3 hooks of up to 300 characters.', 'VALIDATION');
+    const key = hooks ? hooks.join('\u0000') : '';
+    const hit = S.tests.find((t) => t.postId === x.id && t.postVersion === x.version && t.panelId === S.panel.id && t.variant === variant && (t.hooksKey || '') === key);
+    if (hit && !body.force) return ok(res, { ...hit, cached: true });
+    if (S.runs >= 30) return fail(res, 429, "You've run 30 audience tests today. You can run more tomorrow.", 'TEST_LIMIT');
+    S.runs += 1;
+    const reactions = variant === 'hooks' ? hookPicks(S.panel, hooks) : postReactions(x, S.panel);
+    const test = {
+      id: crypto.randomUUID(), postId: x.id, panelId: S.panel.id, postVersion: x.version, platform: x.platform, variant,
+      createdAt: new Date().toISOString(), createdBy: 'e2e-user', hooksKey: key,
+      summary: summarise(x, S.panel, reactions, variant, hooks), reactions,
+    };
+    S.tests.unshift(test);
+    return ok(res, test, 201);
+  }
+  if ((mm = r.match(/^\/posts\/([^/]+)\/audience-tests\/([^/]+)\/apply-fix$/)) && m === 'POST') {
+    const x = find(mm[1]);
+    const t = S.tests.find((y) => y.id === mm[2] && y.postId === mm[1]);
+    if (!x || !t) return fail(res, 404, "That test wasn't found.", 'NOT_FOUND');
+    if (t.postVersion !== x.version) return fail(res, 409, 'The post changed since this test. Run the test again.', 'POST_CHANGED');
+    if (!t.summary.fix) return fail(res, 409, 'This test has no fix to apply.', 'NO_FIX');
+    return ok(res, patchPost(x, { body: `${x.body}\n\n${t.summary.fix.fix}` }, `applied audience fix: ${t.summary.fix.issue}`));
+  }
+  return false;
+}
+
 const USER = {
   id: 'e2e-user', email: 'owner@example.test', name: 'Test Owner', firstName: 'Test', role: 'owner', tenantId: 'e2e-tenant',
   capabilities: ['view_overview', 'view_campaigns', 'view_conversations', 'view_content_studio', 'view_settings'],
@@ -222,6 +413,8 @@ const server = http.createServer(async (req, res) => {
   const m = req.method;
   if (m === 'OPTIONS') return send(res, 204, {});
   if (p === '/__reset' && m === 'POST') { reset(); return ok(res, { reset: true }); }
+  // Test-only: switch the calibration state ('collecting' | 'weak' | 'ready').
+  if (p === '/__calibration' && m === 'POST') { const b = JSON.parse((await readBody(req)).toString('utf8') || '{}'); S.calibration = b.status || 'collecting'; return ok(res, { calibration: S.calibration }); }
   if (p === '/api/auth/me') return send(res, 200, { success: true, user: USER });
 
   if (!p.startsWith('/api/content-studio')) {
@@ -235,6 +428,10 @@ const server = http.createServer(async (req, res) => {
   if (raw.length && ctype.includes('application/json')) { try { body = JSON.parse(raw.toString('utf8')); } catch { return fail(res, 400, 'Bad JSON', 'VALIDATION'); } }
   const q = Object.fromEntries(url.searchParams.entries());
   let mm;
+
+  if (r.startsWith('/audience') || /\/audience-tests/.test(r)) {
+    if (audienceRoute(r, m, body, res) !== false) return;
+  }
 
   // settings & channels
   if (r === '/settings' && m === 'GET') return ok(res, S.settings);

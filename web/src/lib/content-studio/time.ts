@@ -148,3 +148,13 @@ export function joinWords(items: string[]): string {
   if (items.length <= 1) return items.join('');
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
+
+/** "just now", "5 minutes ago", "3 hours ago", "2 days ago". */
+export function ago(iso: string, now: number = Date.now()): string {
+  const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (s < 60) return 'just now';
+  const n = (k: number, unit: string) => `${k} ${unit}${k === 1 ? '' : 's'} ago`;
+  if (s < 3600) return n(Math.round(s / 60), 'minute');
+  if (s < 86400) return n(Math.round(s / 3600), 'hour');
+  return n(Math.round(s / 86400), 'day');
+}

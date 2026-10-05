@@ -10,7 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
 import { contentStudioKeys as keys } from './api';
-import type { BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
+import type { AudienceTestRequest, BulkPatch, DraftRequest, Platform, PostListQuery, PostPatch, StudioSettings } from './types';
 
 function useInvalidateAll() {
   const qc = useQueryClient();
@@ -228,4 +228,55 @@ export function useAnalytics(from?: string, to?: string) {
 export function useSeedShowcase() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: api.seedShowcase, onSuccess: invalidate });
+}
+
+// ── audience test ─────────────────────────────────────────────────────────
+
+export function useAudiencePanel(enabled = true) {
+  return useQuery({ queryKey: keys.audiencePanel(), queryFn: api.getAudiencePanel, enabled, staleTime: 5 * 60_000 });
+}
+
+export function useBuildAudiencePanel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.buildAudiencePanel,
+    onSuccess: (data) => {
+      qc.setQueryData(keys.audiencePanel(), data);
+      // A new panel makes earlier results stale for the next run, not wrong; refresh the list views.
+      qc.invalidateQueries({ queryKey: [...keys.all, 'audienceTests'] });
+    },
+  });
+}
+
+export function useAudienceTests(postId: string | null | undefined) {
+  return useQuery({
+    queryKey: keys.audienceTests(postId || ''),
+    queryFn: () => api.listAudienceTests(postId as string),
+    enabled: !!postId,
+    staleTime: 60_000,
+  });
+}
+
+/** Runs a test. Only the post's own test list changes, so the rest of the feature stays cached. */
+export function useRunAudienceTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, body }: { postId: string; body: AudienceTestRequest }) => api.runAudienceTest(postId, body),
+    onSuccess: (_test, { postId }) => {
+      qc.invalidateQueries({ queryKey: keys.audienceTests(postId) });
+      qc.invalidateQueries({ queryKey: keys.today() });
+    },
+  });
+}
+
+export function useApplyAudienceFix() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ postId, testId }: { postId: string; testId: string }) => api.applyAudienceFix(postId, testId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCalibration(enabled = true) {
+  return useQuery({ queryKey: keys.calibration(), queryFn: api.getCalibration, enabled, staleTime: 5 * 60_000 });
 }
