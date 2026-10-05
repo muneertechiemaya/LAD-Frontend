@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/app-toaster';
 import { PLATFORM_META, captionOf, formatName, scoreSubline } from '@/lib/content-studio/meta';
 import { friendlyTime } from '@/lib/content-studio/time';
 import { DownloadMenu, type ExtraDownload } from './DownloadMenu';
+import { AudienceLine } from './AudienceTest';
 import { ApprovalChip, Card, CsButton, PlatformBadge, SampleChip, StatusChip, tone } from './ui';
 import { cn } from '@/lib/utils';
 
@@ -82,6 +83,7 @@ export function PostCard({ post, onEdit, onPreview, onMoveTime, extraDownloads }
           <span className={tone.soft}>· {pending && topFix ? `Top fix: ${topFix.fix}` : scoreSubline(post)}</span>
         </p>
       ) : null}
+      {pending ? <AudienceLine post={post} /> : null}
       {post.status === 'failed' && post.lastError ? (
         <p className="text-[13px] text-[#A1202B] dark:text-[#FFB3B9]">{post.lastError}</p>
       ) : null}

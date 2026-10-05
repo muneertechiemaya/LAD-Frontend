@@ -7,7 +7,17 @@
  * LinkedIn and Facebook are both blue, so a platform is never shown by colour
  * alone - always with its glyph.
  */
-import type { Angle, ContentPost, Goal, Platform, PostFormat, PostStatus } from '@lad/frontend-features/content-studio';
+import type {
+  Angle,
+  AudienceSegment,
+  ContentPost,
+  Goal,
+  ObjectionKind,
+  Platform,
+  PostFormat,
+  PostStatus,
+  ReactionKind,
+} from '@lad/frontend-features/content-studio';
 
 export const PLATFORM_META: Record<
   Platform,
@@ -104,3 +114,31 @@ export function scoreSubline(p: ContentPost): string {
   const d = g.dimensions;
   return `Hook ${d.hook} · Voice ${d.voice} · Platform fit ${d.platformFit}`;
 }
+
+// ── audience test ─────────────────────────────────────────────────────────
+export const SEGMENT_LABEL: Record<AudienceSegment, string> = {
+  buyer: 'Buyers',
+  peer: 'Peers',
+  casual: 'Casual scrollers',
+};
+
+export const OBJECTION_LABEL: Record<ObjectionKind, string> = {
+  not_for_me: 'Not for me',
+  unclear: 'Unclear',
+  too_long: 'Too long',
+  sounds_like_an_ad: 'Sounds like an ad',
+  no_proof: 'No proof',
+  too_generic: 'Too generic',
+  tone: 'Tone feels off',
+  other: 'Other',
+};
+
+export const REACTION_LABEL: Record<ReactionKind, string> = {
+  none: 'No reaction',
+  like: 'Like',
+  insightful: 'Insightful',
+  celebrate: 'Celebrate',
+  support: 'Support',
+  funny: 'Funny',
+  love: 'Love',
+};

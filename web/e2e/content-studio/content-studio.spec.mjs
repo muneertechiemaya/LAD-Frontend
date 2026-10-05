@@ -483,25 +483,33 @@ test('Labels never say AI, agentic, virality or ICP', async ({ page }) => {
 
 test('No third-party scheduler: code and network', async ({ page }) => {
   // Hosts the app shell itself loads on every page (fonts, the billing SDK).
+  // Stripe.js also opens its own frames (m.stripe.network, m/r/q.stripe.com).
   const SHELL = new Set(['localhost', '127.0.0.1', 'fonts.googleapis.com', 'fonts.gstatic.com', 'js.stripe.com']);
+  const isShell = (h) => SHELL.has(h) || h.endsWith('.stripe.com') || h.endsWith('.stripe.network');
   // Social publishing / scheduling APIs Content Studio must never call.
   const PUBLISHERS = /(buffer|hootsuite|later\.com|sproutsocial|publer|metricool|api\.linkedin|graph\.facebook|graph\.instagram|api\.twitter|api\.x\.com|tiktokapis|unipile)/i;
   const all = [];
-  page.on('request', (r) => all.push(r.url()));
+  const calls = []; // fetch/XHR only: what an action asks a server to do
+  page.on('request', (r) => {
+    all.push(r.url());
+    if (['fetch', 'xhr'].includes(r.resourceType())) calls.push(r.url());
+  });
   await open(page);
-  const loaded = all.length;
+  const loaded = calls.length;
   await root(page).getByRole('article').filter({ hasText: 'Needs approval' }).getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByText('Approved. It goes out on time.')).toBeVisible();
   await root(page).getByRole('article').filter({ hasText: 'Carousel' }).getByRole('button', { name: 'Move time' }).click();
   await page.getByRole('dialog', { name: 'Move time' }).locator('p:has-text("Suggested times") ~ button').first().click();
   await expect(page.getByText('Moved', { exact: true })).toBeVisible();
-  const actions = all.slice(loaded).filter((u) => !u.startsWith('data:'));
-  // every request the approve + reschedule made stayed on Mr LAD's own origin
+  // The shell may still be pulling in scripts (e.g. the billing SDK) while the
+  // actions run; those aren't calls the actions made, so only API calls count.
+  const actions = calls.slice(loaded).filter((u) => !u.startsWith('data:'));
+  // every API call the approve + reschedule made stayed on Mr LAD's own origin
   expect(actions.map((u) => new URL(u).hostname).filter((h) => h !== 'localhost' && h !== '127.0.0.1')).toEqual([]);
   expect(actions.some((u) => /\/api\/content-studio\/posts\/[^/]+\/approve$/.test(u))).toBe(true);
   expect(actions.some((u) => /\/api\/content-studio\/posts\/[^/]+\/schedule$/.test(u))).toBe(true);
   expect(all.filter((u) => PUBLISHERS.test(u))).toEqual([]);
-  expect(all.map((u) => new URL(u).hostname).filter((h) => !SHELL.has(h) && !h.startsWith('data'))).toEqual([]);
+  expect(all.map((u) => new URL(u).hostname).filter((h) => !isShell(h) && !h.startsWith('data'))).toEqual([]);
   const webRoot = path.resolve(here, '..', '..');
   const dirs = ['src/components/content-studio', 'src/lib/content-studio', 'src/app/content-studio', '../sdk/features/content-studio'];
   const hits = [];
@@ -513,4 +521,113 @@ test('No third-party scheduler: code and network', async ({ page }) => {
     }
   }
   expect(hits).toEqual([]);
+});
+
+// ── Test with your audience (CONTRACT-audience.md) ──────────────────────────
+const audience = (page) => root(page).locator('[aria-label="Test with your audience"]');
+const BANNED = /\b(AI|agentic|virality|ICP)\b/i;
+
+async function openComposerFor(page, cardText) {
+  await open(page);
+  await root(page).getByRole('article').filter({ hasText: cardText }).getByRole('button', { name: 'Edit' }).click();
+  await expect(audience(page)).toBeVisible();
+}
+
+async function buildPanel(page) {
+  await audience(page).getByRole('button', { name: 'Build my audience panel' }).click();
+  await expect(audience(page).getByText('20 people: 14 buyers, 3 peers, 3 casual scrollers')).toBeVisible();
+}
+
+test('Audience test: build the panel, run it, read every answer, apply the fix', async ({ page }, testInfo) => {
+  await openComposerFor(page, 'LinkedIn · Carousel');
+  const card = audience(page);
+  await expect(card.getByText('Simulated reactions from people modelled on your audience, not real ones.')).toBeVisible();
+  await buildPanel(page);
+
+  await card.getByRole('button', { name: "See who's on it" }).click();
+  const panelDialog = page.getByRole('dialog', { name: 'Your audience panel' });
+  await expect(panelDialog.getByText('Head of Operations · Logistics · Dubai').first()).toBeVisible();
+  await expect(panelDialog.getByText('They are simulated people, not your contacts.', { exact: false })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await card.getByRole('button', { name: 'Run the test' }).click();
+  await expect(card.getByText(/^\d+ of 20 stopped scrolling$/)).toBeVisible();
+  await expect(card.getByText(/^Panel score \d+ \/ 100: how far people got/)).toBeVisible();
+  await expect(card.getByText('What held people back')).toBeVisible();
+  // LinkedIn, not yet calibrated: no numbers, a progress note instead.
+  await expect(card.getByText('An engagement range appears after 10 published LinkedIn posts with real numbers. You have 3.')).toBeVisible();
+  await expect(card.getByText(/Likely engagement/)).toHaveCount(0);
+
+  await card.getByRole('button', { name: 'See every answer' }).click();
+  const answers = page.getByRole('dialog', { name: 'Every answer' });
+  await expect(answers.locator('li')).toHaveCount(20);
+  await page.keyboard.press('Escape');
+
+  expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
+  expect(await smallTargets(page)).toEqual([]);
+  for (const dark of [false, true]) {
+    await setDark(page, dark);
+    await page.waitForTimeout(150);
+    expect(await contrastFailures(page), dark ? 'dark' : 'light').toEqual([]);
+  }
+  await setDark(page, false);
+  const labels = await card.evaluate((el) =>
+    Array.from(el.querySelectorAll('button, a, label, h2, h3, legend, th, [aria-label]')).map((n) => `${n.getAttribute('aria-label') || ''} ${n.textContent || ''}`).join('\n')
+  );
+  expect(labels.match(BANNED)).toBeNull();
+  await card.scrollIntoViewIfNeeded();
+  await shot(page, 'audience-test', testInfo);
+
+  // The fix writes a new version, so the result is now for an older one.
+  await card.getByRole('button', { name: 'Fix with this' }).click();
+  await expect(page.getByText('Fix applied')).toBeVisible();
+  await expect(card.getByText(/This test was on v\d+\. The post has changed since/)).toBeVisible();
+  await card.getByRole('button', { name: 'Run the test' }).click();
+  await expect(card.getByText(/The post has changed since/)).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Run again' })).toBeVisible();
+});
+
+test('Audience test: hooks head-to-head picks a winner', async ({ page }) => {
+  await openComposerFor(page, 'LinkedIn · Carousel');
+  await buildPanel(page);
+  await root(page).getByRole('button', { name: '3 hook options' }).click();
+  await root(page).getByRole('button', { name: 'Test these hooks with your audience' }).click();
+  await expect(root(page).getByText('Panel pick')).toHaveCount(1);
+  await expect(root(page).getByText(/^Stops \d+ of 20$/)).toHaveCount(3);
+  await expect(root(page).getByText(/wouldn't stop for any of them\. Simulated reactions\./)).toBeVisible();
+});
+
+test('Audience test: a calibrated range for LinkedIn only, and Analytics shows predicted vs actual', async ({ page, request }, testInfo) => {
+  await request.post(`${MOCK}/__calibration`, { data: { status: 'ready' } });
+  await openComposerFor(page, 'LinkedIn · Carousel');
+  await buildPanel(page);
+  await audience(page).getByRole('button', { name: 'Run the test' }).click();
+  await expect(audience(page).getByText(/^Likely engagement \d+(\.\d)?% to \d+(\.\d)?%$/)).toBeVisible();
+  await expect(audience(page).getByText(/your last 14 published LinkedIn posts/)).toBeVisible();
+
+  // Instagram never gets a range.
+  await openComposerFor(page, 'Instagram · Reel');
+  await audience(page).getByRole('button', { name: 'Run the test' }).click();
+  await expect(audience(page).getByText('Engagement ranges cover LinkedIn only, where Mr LAD publishes and reads the real numbers.')).toBeVisible();
+
+  await open(page, '?tab=analytics');
+  const cal = root(page).locator('[aria-label="Audience test: predicted vs actual"]');
+  // Table from tablet width up; stacked rows on phones so the real number stays on screen.
+  if (testInfo.project.name === 'phone-390') await expect(cal.getByRole('list', { name: 'Predicted vs actual per post' }).getByRole('listitem')).toHaveCount(14);
+  else await expect(cal.getByRole('row')).toHaveCount(15);
+  await expect(cal.getByText(/Real engagement landed inside the predicted range for \d+ of 14\./)).toBeVisible();
+  expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
+  await cal.scrollIntoViewIfNeeded();
+  await shot(page, 'audience-calibration', testInfo);
+});
+
+test('Audience test: the approval card shows the result for the current version', async ({ page }) => {
+  await openComposerFor(page, 'Instagram · Reel');
+  await buildPanel(page);
+  await audience(page).getByRole('button', { name: 'Run the test' }).click();
+  await expect(audience(page).getByText(/^\d+ of 20 stopped scrolling$/)).toBeVisible();
+  await open(page);
+  const card = root(page).getByRole('article').filter({ hasText: 'Needs approval' });
+  await expect(card.getByText(/Audience test:/)).toBeVisible();
+  await expect(card.getByText('(simulated)', { exact: false })).toBeVisible();
 });

@@ -23,6 +23,7 @@ import { DownloadMenu } from './DownloadMenu';
 import { PlatformPreview } from './PlatformPreview';
 import { CarouselEditor, ScriptEditor, ThreadEditor } from './FormatEditors';
 import { GradePanel, HookPicker, SchedulePanel, VersionsPanel } from './ComposerPanels';
+import { AudienceCard } from './AudienceTest';
 import { RepurposeDialog } from './RepurposeDialog';
 import { Card, CsButton, ErrorNote, Field, Label, PlatformBadge, SectionTitle, StatusChip, inputCls, textareaCls, tone } from './ui';
 import { cn } from '@/lib/utils';
@@ -513,6 +514,7 @@ function ComposerForm({
           <PlatformPreview post={merged} platform={previewOn || form.platform} />
         </Card>
         {server ? <GradePanel post={server} liveRules={liveRules} dirty={dirty} onNeedBrief={onOpenBrief} /> : null}
+        {server ? <AudienceCard post={server} dirty={dirty} onNeedBrief={onOpenBrief} /> : null}
         {server ? <SchedulePanel key={`${server.id}-${server.version}`} post={server} channel={channel} dirty={dirty} windowTime={settings?.windows?.[server.platform]} /> : null}
         {server ? <VersionsPanel post={server} dirty={dirty} /> : null}
       </aside>

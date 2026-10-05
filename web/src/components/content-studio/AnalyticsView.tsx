@@ -6,6 +6,7 @@ import { useAnalytics } from '@lad/frontend-features/content-studio';
 import { PLATFORM_META } from '@/lib/content-studio/meta';
 import { shortDate } from '@/lib/content-studio/time';
 import { Card, ErrorNote, Label, PlatformBadge, SampleChip, SectionTitle, tone } from './ui';
+import { PredictedVsActual } from './AudienceTest';
 import { cn } from '@/lib/utils';
 
 function hourLabel(h: number) {
@@ -182,6 +183,8 @@ export function AnalyticsView() {
           </ul>
         </Card>
       </div>
+
+      <PredictedVsActual />
     </div>
   );
 }
