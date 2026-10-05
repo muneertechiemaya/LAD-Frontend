@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { retiredModelReplacement } from '@/lib/retired-ai-models';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ const FLOW_TEMPLATES = [
 
 const AI_MODELS = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-flash-latest', label: 'Gemini Flash (latest)' },
   { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
   { id: 'gpt-4o', label: 'GPT-4o' },
 ];
@@ -515,6 +516,7 @@ export function TenantOnboarding() {
           accounts.map((account) => {
             const isExpanded = expandedAccount === account.slug;
             const isActive = account.status === 'active';
+            const modelRetired = !!retiredModelReplacement(account.ai_model);
 
             return (
               <div key={account.slug} className="group">
@@ -547,9 +549,12 @@ export function TenantOnboarding() {
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-slate-300">
-                    <span className="flex items-center gap-1">
+                    <span
+                      className={`flex items-center gap-1 ${modelRetired ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                      title={modelRetired ? 'Google retired this model, so the WhatsApp service can no longer call it.' : undefined}
+                    >
                       <Bot className="h-3 w-3" />
-                      {account.ai_model}
+                      {account.ai_model}{modelRetired && ' (retired)'}
                     </span>
                     <span>{account.timezone}</span>
                   </div>

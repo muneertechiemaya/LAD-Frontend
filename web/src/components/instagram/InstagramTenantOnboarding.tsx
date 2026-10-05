@@ -21,6 +21,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { retiredModelReplacement } from '@/lib/retired-ai-models';
 import {
   Plus, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, Power, Eye, EyeOff,
   X as XIcon, Instagram as InstagramIcon, Pencil,
@@ -87,7 +88,7 @@ const INITIAL_FORM: CreateAccountForm = {
 
 const AI_MODELS = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-flash-latest', label: 'Gemini Flash (latest)' },
   { id: 'gpt-4o-mini',      label: 'GPT-4o Mini' },
   { id: 'gpt-4o',           label: 'GPT-4o' },
   { id: 'claude-sonnet-4',  label: 'Claude Sonnet 4' },
@@ -782,7 +783,10 @@ function EditAccountModal({
   // start blank - empty stays blank means "leave existing secret untouched".
   const [displayName, setDisplayName] = useState(account.display_name || '');
   const [username, setUsername] = useState(account.instagram_username || '');
-  const [aiModel, setAiModel] = useState(account.ai_model || 'gemini-2.5-flash');
+  // A retired model opens on its replacement, so the select shows what saving
+  // will store and the diff below sends the switch.
+  const modelReplacement = retiredModelReplacement(account.ai_model);
+  const [aiModel, setAiModel] = useState(modelReplacement || account.ai_model || 'gemini-2.5-flash');
   const [status, setStatus] = useState(account.status || 'active');
   const [metaAppId, setMetaAppId] = useState(account.meta_app_id || '');
   const [metaVerifyToken, setMetaVerifyToken] = useState(account.meta_verify_token || '');
@@ -890,7 +894,10 @@ function EditAccountModal({
             <Input value={username} onChange={setUsername} placeholder="naveenyeluru" />
           </Field>
 
-          <Field label="AI model">
+          <Field
+            label="AI model"
+            hint={modelReplacement ? `${account.ai_model} was retired by Google. Saving switches it.` : undefined}
+          >
             <select
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
@@ -899,6 +906,11 @@ function EditAccountModal({
               {AI_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
+              {/* A stored id outside the list (e.g. the column default 'claude')
+                  would otherwise show as the first option while state keeps it. */}
+              {!AI_MODELS.some((m) => m.id === aiModel) && (
+                <option value={aiModel}>{aiModel}</option>
+              )}
             </select>
           </Field>
 
