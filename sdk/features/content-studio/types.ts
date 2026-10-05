@@ -17,6 +17,12 @@ export type Angle =
 export type Goal = 'book_meetings' | 'generate_leads' | 'grow_followers' | 'build_authority' | 'launch_offer';
 
 export const PLATFORMS: readonly Platform[] = ['linkedin', 'instagram', 'facebook', 'x', 'tiktok'];
+/**
+ * Platforms Content Studio offers when the server doesn't say (it does, in
+ * StudioSettings.enabledPlatforms, from CONTENT_STUDIO_PLATFORMS). Facebook, X
+ * and TikTok are off for the time being.
+ */
+export const DEFAULT_ENABLED_PLATFORMS: readonly Platform[] = ['linkedin', 'instagram'];
 export const STATUSES: readonly PostStatus[] = ['idea', 'draft', 'ready', 'scheduled', 'published', 'failed'];
 
 export interface Pillar {
@@ -37,6 +43,8 @@ export interface BrandBrief {
 }
 
 export interface StudioSettings {
+  /** Which platforms are switched on (server-controlled), in canonical order. */
+  enabledPlatforms?: Platform[];
   brandBrief: BrandBrief | null;
   goals: Goal[];
   pillars: Pillar[];

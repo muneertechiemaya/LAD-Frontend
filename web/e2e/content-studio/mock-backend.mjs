@@ -22,6 +22,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SEED = JSON.parse(fs.readFileSync(path.join(here, 'fixtures', 'content-studio-seed.json'), 'utf8'));
 const PORT = Number(process.env.MOCK_PORT || 4799);
 const TZ = 'Asia/Dubai';
+// Mirrors the backend's CONTENT_STUDIO_PLATFORMS (default: Facebook, X and TikTok off for now).
+const ENABLED = (process.env.MOCK_PLATFORMS || 'linkedin,instagram').split(',').map((x) => x.trim()).filter(Boolean);
+const isOn = (p) => ENABLED.includes(p);
 const WEIGHTS = { hook: 0.5, specificity: 0.1, emotion: 0.1, shareability: 0.1, voice: 0.1, polarity: 0.05, platformFit: 0.05 };
 
 // ── time helpers (same maths as web/src/lib/content-studio/time.ts) ────────
@@ -98,7 +101,7 @@ function reset() {
     const shifted = Math.ceil((earliest + minGapMin * 60_000) / q) * q;
     return new Date(endOfDay > Date.now() + 5 * 60_000 ? Math.min(shifted, endOfDay) : shifted).toISOString();
   };
-  for (const sp of SEED.posts) {
+  for (const sp of SEED.posts.filter((x) => isOn(x.platform))) {
     const iso = seedTime(sp.schedule.dayOffset, sp.schedule.time, sp.schedule.time >= '12:00' ? 120 : 0);
     const p = mkPost({
       platform: sp.platform, format: sp.format, pillar: sp.pillar, status: sp.status, approvalState: sp.approvalState,
@@ -111,7 +114,7 @@ function reset() {
     addVersion(p, 'created from the showcase');
     if (sp.sampleMetrics) S.metrics[p.id] = { ...sp.sampleMetrics, source: 'sample' };
   }
-  for (const idea of SEED.ideas) {
+  for (const idea of SEED.ideas.filter((x) => isOn(x.platform))) {
     const p = mkPost({ platform: idea.platform, format: idea.format, pillar: idea.pillar, status: 'idea', title: idea.title, angle: idea.angle, scheduledAt: zoned(addDays(t, idea.schedule.dayOffset), idea.schedule.time), isSample: true });
     p.publishMode = modeFor(p);
     S.posts.push(p);
@@ -135,7 +138,7 @@ function planSlots(start, days) {
   const slots = [];
   for (const [, wd] of weeks) {
     for (const pf of PRIORITY) {
-      const n0 = s.frequency[pf] || 0;
+      const n0 = isOn(pf) ? s.frequency[pf] || 0 : 0;
       if (!n0) continue;
       const allowed = ['linkedin', 'x'].includes(pf) ? wd.filter((d) => wIdx(d) < 5) : wd;
       if (!allowed.length) continue;
@@ -514,7 +517,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // settings & channels
-  if (r === '/settings' && m === 'GET') return ok(res, S.settings);
+  if (r === '/settings' && m === 'GET') return ok(res, { ...S.settings, enabledPlatforms: ENABLED });
   if (r === '/settings' && m === 'PUT') { S.settings = { ...S.settings, ...body, updatedAt: new Date().toISOString() }; return ok(res, S.settings); }
   if (r === '/channels') return ok(res, [
     { platform: 'linkedin', mode: 'auto', connected: true, note: 'Mr LAD publishes text and single-image posts; carousels and videos get a reminder.' },
@@ -522,7 +525,7 @@ const server = http.createServer(async (req, res) => {
     { platform: 'facebook', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
     { platform: 'x', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
     { platform: 'tiktok', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
-  ]);
+  ].filter((c) => isOn(c.platform)));
 
   // today
   if (r === '/today') {
@@ -587,6 +590,9 @@ const server = http.createServer(async (req, res) => {
     if (q.q) { const s = q.q.toLowerCase(); list = list.filter((x) => [x.title, x.hook, x.body, x.cta, ...(x.slides || []).map((y) => y.heading)].join(' ').toLowerCase().includes(s)); }
     list = [...list].sort((a, b) => (a.scheduledAt || '9').localeCompare(b.scheduledAt || '9'));
     return ok(res, { posts: list.slice(0, Number(q.limit || 200)), total: list.length });
+  }
+  if ((r === '/posts' || r === '/generate/draft' || r === '/generate/ideas' || r === '/generate/hooks') && m === 'POST' && body.platform && !isOn(body.platform)) {
+    return fail(res, 400, "That platform isn't available in Content Studio yet.", 'VALIDATION');
   }
   if (r === '/posts' && m === 'POST') {
     if (!body.platform) return fail(res, 400, 'Pick a platform.', 'VALIDATION');

@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { FORMAT_LABEL, PLATFORM_META, postTitle } from '@/lib/content-studio/meta';
 import { CsButton, ErrorNote, Field, PlatformBadge, inputCls, textareaCls, tone } from './ui';
 import { cn } from '@/lib/utils';
+import { useEnabledPlatforms } from '@lad/frontend-features/content-studio';
+import { joinWords } from '@/lib/content-studio/time';
 
 const MIN_CHARS = 600;
 
 /**
- * One long piece in, a week of posts out: 3 LinkedIn posts, 5 X threads and
+ * One long piece in, a week of posts out, for the platforms switched on (was 3 LinkedIn posts, 5 X threads and
  * 2 short-video scripts, each opened with a tested hook and graded. A thin
  * source returns fewer strong posts rather than padding.
  */
@@ -26,6 +28,7 @@ export function RepurposeDialog({
   onDone: (posts: ContentPost[]) => void;
 }) {
   const run = useRepurpose();
+  const enabledPlatforms = useEnabledPlatforms();
   const [source, setSource] = useState('');
   const [title, setTitle] = useState('');
   const created = run.data?.posts || [];
@@ -44,7 +47,7 @@ export function RepurposeDialog({
         <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto p-5 sm:p-6">
           <DialogTitle className="pr-10 text-xl">Turn a long piece into posts</DialogTitle>
           <DialogDescription className={tone.soft}>
-            Paste a blog post, newsletter, script or video transcript. You get up to 3 LinkedIn posts, 5 X threads and 2 short-video scripts as drafts.
+            Paste a blog post, newsletter, script or video transcript. You get a week of drafts for {joinWords(enabledPlatforms.map((p) => PLATFORM_META[p].label))}: posts, carousels and short-video scripts.
           </DialogDescription>
           {created.length ? (
             <div className="flex flex-col gap-3">
