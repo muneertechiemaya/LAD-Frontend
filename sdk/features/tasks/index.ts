@@ -1,6 +1,7 @@
 /**
  * Tasks Feature SDK — "My Tasks": chats handed to a person, conversations
- * assigned to me, my assignment notifications, and pending approvals.
+ * assigned to me, my assignment notifications, pending approvals, and
+ * Content Studio's to-dos.
  *
  *   import { useWaitingChats, useAssignedConversations } from '@lad/frontend-features/tasks';
  */
@@ -13,6 +14,7 @@ export {
   markTaskNotificationRead,
   getPendingApprovals,
   decideApproval,
+  getContentTasks,
 } from './api';
 
 export {
@@ -23,6 +25,7 @@ export {
   usePendingApprovals,
   useDecideApproval,
   useMyTasksCount,
+  useContentTasks,
 } from './hooks';
 
 export type {
@@ -36,4 +39,7 @@ export type {
   ApprovalDecision,
   PendingApproval,
   PendingApprovals,
+  ContentTask,
+  ContentTaskKind,
+  ContentTasks,
 } from './types';

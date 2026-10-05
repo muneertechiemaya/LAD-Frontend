@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   decideApproval,
   getAssignedConversations,
+  getContentTasks,
   getPendingApprovals,
   getTaskNotifications,
   getWaitingChats,
@@ -43,6 +44,10 @@ export function useMarkTaskNotificationRead() {
   });
 }
 
+export function useContentTasks(enabled = true) {
+  return useQuery({ queryKey: taskKeys.content(), queryFn: getContentTasks, enabled, ...LIVE });
+}
+
 export function usePendingApprovals(enabled = true) {
   return useQuery({ queryKey: taskKeys.approvals(), queryFn: getPendingApprovals, enabled, ...LIVE });
 }
@@ -71,14 +76,19 @@ export function useDecideApproval() {
  * later (people read the first number). A source that failed simply doesn't
  * contribute. `capped` is true when a chat channel hit its page size (show "+").
  */
-export function useMyTasksCount(enabled = true) {
-  const waba = useWaitingChats('waba', enabled);
-  const personal = useWaitingChats('personal', enabled);
+export function useMyTasksCount(enabled = true, sources: { chats?: boolean; content?: boolean } = {}) {
+  // Chats need the Conversations feature, content items need Content Studio;
+  // a tenant may have either, so each is asked for only when it applies.
+  const chats = enabled && sources.chats !== false;
+  const contentOn = enabled && !!sources.content;
+  const waba = useWaitingChats('waba', chats);
+  const personal = useWaitingChats('personal', chats);
   const approvals = usePendingApprovals(enabled);
-  const assigned = useAssignedConversations(enabled);
-  const notes = useTaskNotifications(enabled);
+  const assigned = useAssignedConversations(chats);
+  const notes = useTaskNotifications(chats);
+  const content = useContentTasks(contentOn);
 
-  const queries = [waba, personal, approvals, assigned, notes];
+  const queries = [approvals, ...(chats ? [waba, personal, assigned, notes] : []), ...(contentOn ? [content] : [])];
   if (queries.some((q) => q.isLoading) || queries.every((q) => q.data === undefined)) {
     return { count: undefined, capped: false };
   }
@@ -88,7 +98,8 @@ export function useMyTasksCount(enabled = true) {
     (personal.data?.length ?? 0) +
     (approvals.data?.items.length ?? 0) +
     (assigned.data?.length ?? 0) +
-    (notes.data?.filter((n) => !n.isRead).length ?? 0);
+    (notes.data?.filter((n) => !n.isRead).length ?? 0) +
+    (content.data?.counts.actionable ?? 0);
   const capped = (waba.data?.length ?? 0) >= WAITING_CHATS_LIMIT || (personal.data?.length ?? 0) >= WAITING_CHATS_LIMIT;
   return { count, capped };
 }

@@ -51,6 +51,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import LAD3DShowcase from "@/app/page";
 import { FEATURE } from '@/lib/page-permissions';
+import { useTaskSources } from '@/components/tasks/useTaskSources';
 
 // Internal observability console is super-admin only - gated by email, matching
 // the backend `requireSuperAdmin` gate on /api/admin/monitor.
@@ -266,9 +267,10 @@ export function Sidebar() {
       group: "today",
       label: "My Tasks",
       icon: ListTodo,
-      details: "Chats waiting for a person, conversations assigned to you, and your notifications.",
+      details: "Chats waiting for a person, approvals, posts to put out and gaps to fill, conversations assigned to you, and your notifications.",
       requiredCapability: "view_conversations",
-      requiredFeature: FEATURE.CONVERSATIONS,
+      // Content Studio tenants get their to-dos here too, with or without Conversations.
+      requiredFeature: [...FEATURE.CONVERSATIONS, ...FEATURE.CONTENT_STUDIO],
     },
     {
       href: "/conversations",
@@ -470,7 +472,8 @@ export function Sidebar() {
 
   // Same badge as the phone bar (shares its query cache).
   const hasTasksNav = nav.some((n) => n.href === TASKS_HREF);
-  const { count: taskCount, capped: taskCapped } = useMyTasksCount(isHydrated && hasTasksNav);
+  const taskSources = useTaskSources();
+  const { count: taskCount, capped: taskCapped } = useMyTasksCount(isHydrated && hasTasksNav, taskSources);
   const taskBadge = taskCount ? (taskCount > 99 ? '99+' : `${taskCount}${taskCapped ? '+' : ''}`) : null;
 
   return (

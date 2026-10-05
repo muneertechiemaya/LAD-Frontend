@@ -1,7 +1,7 @@
 /**
  * Content Studio acceptance tests (390 / 768 / 1440 via playwright.config.mjs).
  *
- * Checks the brief's hard rules: every core action ≤ 3 taps from Today, every
+ * Checks the brief's hard rules: every core action ≤ 3 taps (from Calendar or My Tasks), every
  * download is a real file in the stated format, versions restore, contrast
  * ≥ 4.5:1 light and dark, targets ≥ 44 × 44, reduced motion honoured, no
  * banned words on labels, and no third-party scheduler anywhere.
@@ -187,60 +187,94 @@ async function setDark(page, on) {
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 
-test('Today: greeting, cards, gap banner, week strip, layout', async ({ page }, testInfo) => {
+// The Today tab moved to My Tasks: approvals, posts due, today's posts, drafts
+// without a time, gaps and accounts to connect. Content Studio opens on Calendar.
+const tasksPage = async (page, view = '') => {
+  await page.goto(`/tasks${view ? `?view=${view}` : ''}`);
+  await expect(page.getByRole('heading', { level: 1, name: 'My Tasks' })).toBeVisible();
+};
+const MOCK_POSTS = async (page) => (await (await page.request.get(`${MOCK}/api/content-studio/posts?limit=200`)).json()).data.posts;
+
+test('Content Studio opens on Calendar; there is no Today tab', async ({ page }, testInfo) => {
   await open(page);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/2 sample posts are lined up for today\. 1 needs your approval\./);
-  await expect(root(page).getByRole('article')).toHaveCount(2);
-  await expect(root(page).getByText(/Next week has \d+ empty days?/)).toBeVisible();
-  await expect(root(page).getByText(/fill them from your .+ pillar\?/)).toBeVisible();
-  await expect(root(page).getByRole('list', { name: 'Posts in the next 7 days' }).getByRole('listitem')).toHaveCount(7);
-  await expect(root(page).getByText('Sample data').first()).toBeVisible();
-  const ov = await overflowX(page);
-  expect(ov.doc, 'page must not scroll sideways').toBeLessThanOrEqual(0);
-  expect(ov.rootRight).toBeLessThanOrEqual(0);
-  expect(await smallTargets(page)).toEqual([]);
-  await shot(page, 'today', testInfo);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Calendar');
+  await expect(root(page).locator('[data-area="today"]')).toHaveCount(0);
+  await page.goto('/content-studio?tab=today');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Calendar');
+  // "Where posts go out" moved to Plan.
+  await open(page, '?tab=plan');
+  await expect(root(page).getByText('Where posts go out')).toBeVisible();
+  expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
+  await shot(page, 'calendar-home', testInfo);
 });
 
-test('Approve takes 1 tap from Today', async ({ page }) => {
-  await open(page);
+test('My Tasks: Content Studio items, with chat sections hidden for a Content-only workspace', async ({ page }, testInfo) => {
+  await page.request.post(`${MOCK}/__own`);
+  await tasksPage(page);
+  const tabs = page.getByRole('tablist', { name: 'Task categories' }).getByRole('tab');
+  await expect(tabs).toHaveText([/All/, /Approvals/, /Content/]);
+  await expect(page.getByText('Needs your approval')).toBeVisible();
+  await expect(page.getByText('Content to put out')).toBeVisible();
+  await expect(page.getByText(/Next week has \d+ empty days?/).first()).toBeVisible();
+  await page.getByRole('tab', { name: /^Content/ }).click();
+  const gaps = page.getByRole('listitem').filter({ hasText: /Next week has/ });
+  await gaps.getByRole('button', { name: 'Fill the gaps' }).click();
+  await expect(page.getByText('Mr LAD is filling the gaps.', { exact: false })).toBeVisible();
+  await shot(page, 'my-tasks', testInfo);
+});
+
+test('Approve takes 1 tap from My Tasks; showcase samples never show up there', async ({ page }) => {
+  // Samples never go out, so a fresh workspace has nothing to approve.
+  await tasksPage(page, 'approvals');
+  await expect(page.getByRole('listitem').filter({ hasText: 'Content Studio post' })).toHaveCount(0);
+  await page.request.post(`${MOCK}/__own`);
+  await page.reload();
   const t = tapper();
-  const card = root(page).getByRole('article').filter({ hasText: 'Needs approval' });
+  const card = page.getByRole('listitem').filter({ hasText: 'Content Studio post' });
+  await expect(card).toHaveCount(1);
   await t.tap(card.getByRole('button', { name: 'Approve' }));
-  await expect(page.getByText('Approved. It goes out on time.')).toBeVisible();
-  await expect(root(page).getByRole('article').filter({ hasText: 'Needs approval' })).toHaveCount(0);
-  // Approving a showcase sample makes it the client's own post, so it now goes out.
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/1 post goes out today, plus 1 sample\./);
-  expect(t.n).toBeLessThanOrEqual(3);
+  await expect(page.getByText('Approved.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Content Studio post' })).toHaveCount(0);
   expect(t.n).toBe(1);
+  expect((await MOCK_POSTS(page)).filter((x) => x.approvalState === 'pending')).toEqual([]);
 });
 
-test('Reschedule takes 2 taps from Today', async ({ page }) => {
+test('A post due now: Mark as posted from My Tasks, and Connect LinkedIn when it is not', async ({ page, request }) => {
+  await request.post(`${MOCK}/__due`);
+  await request.post(`${MOCK}/__linkedin`, { data: { connected: false } });
+  await tasksPage(page, 'content');
+  const due = page.getByRole('listitem').filter({ hasText: 'Time to post on Instagram' });
+  await due.getByRole('button', { name: 'Mark as posted' }).click();
+  await expect(page.getByText('Marked as posted.')).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Time to post on Instagram' })).toHaveCount(0);
+  const connect = page.getByRole('listitem').filter({ hasText: 'Connect LinkedIn' });
+  await expect(connect.getByRole('link', { name: 'Connect' })).toHaveAttribute('href', '/settings?tab=integrations');
+});
+
+test('Reschedule takes 3 taps or fewer from Calendar', async ({ page }) => {
   await open(page);
   const t = tapper();
-  const card = root(page).getByRole('article').filter({ hasText: 'Carousel' });
-  await t.tap(card.getByRole('button', { name: 'Move time' }));
+  await t.tap(root(page).getByRole('button', { name: 'Day', exact: true }));
+  await t.tap(root(page).getByRole('button', { name: 'Move time' }).first());
   const dialog = page.getByRole('dialog', { name: 'Move time' });
   await expect(dialog).toBeVisible();
   await t.tap(dialog.locator('p:has-text("Suggested times") ~ button').first());
   await expect(page.getByText('Moved', { exact: true })).toBeVisible();
-  expect(t.n).toBe(2);
+  expect(t.n).toBeLessThanOrEqual(3);
 });
 
-test('Downloads from a Today card are real files (2 taps each)', async ({ page }) => {
-  await open(page);
-  const card = root(page).getByRole('article').filter({ hasText: 'Carousel' });
+test('Downloads from a post are real files', async ({ page }) => {
+  await openComposerFor(page, 'LinkedIn · Carousel');
+  const menu = () => root(page).getByRole('button', { name: /^Download: / }).first();
 
   // Slides as PNG: 6 files, each a real 1080x1080 PNG.
-  const t = tapper();
   const pngs = [];
   const onDl = (d) => pngs.push(d);
   page.on('download', onDl);
-  await t.tap(card.getByRole('button', { name: /^Download/ }));
-  await t.tap(page.getByRole('menuitem', { name: /Slides as PNG/ }));
+  await menu().click();
+  await page.getByRole('menuitem', { name: /Slides as PNG/ }).click();
   await expect.poll(() => pngs.length, { timeout: 20_000 }).toBe(6);
   page.off('download', onDl);
-  expect(t.n).toBe(2);
   for (const d of pngs) {
     expect(d.suggestedFilename()).toMatch(/-slide-0[1-6]\.png$/);
     const buf = fs.readFileSync(await d.path());
@@ -250,7 +284,7 @@ test('Downloads from a Today card are real files (2 taps each)', async ({ page }
   }
 
   // Slides as one PDF: 6 pages.
-  await card.getByRole('button', { name: /^Download/ }).click();
+  await menu().click();
   const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /Slides as one PDF/ }).click()]);
   expect(pdf.suggestedFilename()).toMatch(/-slides\.pdf$/);
   const pdfBuf = fs.readFileSync(await pdf.path()).toString('latin1');
@@ -259,27 +293,16 @@ test('Downloads from a Today card are real files (2 taps each)', async ({ page }
   expect((pdfBuf.match(/\/Type \/Page /g) || []).length).toBe(6);
 
   // Caption as TXT.
-  await card.getByRole('button', { name: /^Download/ }).click();
+  await menu().click();
   const [txt] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /Caption as TXT/ }).click()]);
   const caption = fs.readFileSync(await txt.path(), 'utf8');
   expect(caption).toContain('HOOK\nYour best lead messaged you at 11pm.');
   expect(caption).toContain('READY TO PASTE');
-
-  // This week's calendar as CSV.
-  await card.getByRole('button', { name: /^Download/ }).click();
-  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /calendar as CSV/ }).click()]);
-  const csvText = fs.readFileSync(await csv.path(), 'utf8').replace(/^﻿/, '');
-  expect(csvText.split(/\r?\n/)[0]).toBe('Date,Time,Timezone,Platform,Format,Pillar,Status,Approval,Title,Hook,Caption,Hashtags,Score,Publishing');
-  expect(csvText.split(/\r?\n/).filter(Boolean).length).toBeGreaterThan(5);
 });
 
 test('Video script downloads as TXT', async ({ page }) => {
-  await open(page);
-  const card = root(page).getByRole('article').filter({ hasText: 'Instagram · Reel' });
-  await card.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Approved. It goes out on time.')).toBeVisible();
-  const card2 = root(page).getByRole('article').filter({ hasText: 'Instagram · Reel' });
-  await card2.getByRole('button', { name: /^Download/ }).click();
+  await openComposerFor(page, 'Instagram · Reel');
+  await root(page).getByRole('button', { name: /^Download: / }).first().click();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /Video script as TXT/ }).click()]);
   const text = fs.readFileSync(await dl.path(), 'utf8');
   expect(dl.suggestedFilename()).toMatch(/-script\.txt$/);
@@ -287,11 +310,11 @@ test('Video script downloads as TXT', async ({ page }) => {
   expect(text).toMatch(/CTA \(\d+s to \d+s\)/);
 });
 
-test('Edit takes 2 taps, and every version can be restored', async ({ page }, testInfo) => {
+test('Edit takes 3 taps or fewer from Calendar, and every version can be restored', async ({ page }, testInfo) => {
   await open(page);
   const t = tapper();
-  const card = root(page).getByRole('article').filter({ hasText: 'Carousel' });
-  await t.tap(card.getByRole('button', { name: 'Edit' }));
+  await t.tap(root(page).getByRole('button', { name: 'Day', exact: true }));
+  await t.tap(root(page).getByRole('button', { name: 'Edit' }).first());
   await expect(page).toHaveURL(/tab=create&post=/);
   const hook = root(page).getByLabel('Hook', { exact: true });
   await expect(hook).toHaveValue(/Your best lead messaged you at 11pm/);
@@ -300,7 +323,7 @@ test('Edit takes 2 taps, and every version can be restored', async ({ page }, te
   await expect(root(page).getByText('Unsaved changes')).toBeVisible();
   await t.tap(root(page).getByRole('button', { name: 'Save', exact: true }));
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-  expect(t.n).toBe(2);
+  expect(t.n).toBeLessThanOrEqual(3);
   await expect(root(page).getByText('Now on v2')).toBeVisible();
   await expect(root(page).getByText('All changes saved')).toBeVisible();
   await shot(page, 'composer', testInfo);
@@ -333,8 +356,7 @@ test('Create takes 3 taps with Help me post something', async ({ page }) => {
 });
 
 test('Carousel builder, script storyboard and duplicate', async ({ page }) => {
-  await open(page);
-  await root(page).getByRole('article').filter({ hasText: 'Carousel' }).getByRole('button', { name: 'Edit' }).click();
+  await openComposerFor(page, 'LinkedIn · Carousel');
   await expect(root(page).getByText('Carousel · 6 slides')).toBeVisible();
   await root(page).getByRole('button', { name: 'Slide', exact: true }).click();
   await expect(root(page).getByText('Carousel · 7 slides')).toBeVisible();
@@ -342,8 +364,7 @@ test('Carousel builder, script storyboard and duplicate', async ({ page }) => {
   await root(page).getByRole('button', { name: 'Duplicate' }).click();
   await expect(page.getByText('Duplicated')).toBeVisible();
   // open the reel and switch to storyboard
-  await page.goto('/content-studio');
-  await root(page).getByRole('article').filter({ hasText: 'Instagram · Reel' }).getByRole('button', { name: 'Edit' }).click();
+  await openComposerFor(page, 'Instagram · Reel');
   await root(page).getByRole('button', { name: 'Storyboard' }).click();
   await expect(root(page).getByText(/0s to 2s/)).toBeVisible();
   await expect(root(page).getByText('Short video · 38s')).toBeVisible();
@@ -449,8 +470,8 @@ test('Contrast is 4.5:1 or better in light and dark', async ({ page }, testInfo)
       await setDark(page, dark);
       await page.waitForTimeout(150);
       const fails = await contrastFailures(page);
-      expect(fails, `${dark ? 'dark' : 'light'} ${tab || 'today'}`).toEqual([]);
-      if (dark && tab === '') await shot(page, 'today-dark', testInfo);
+      expect(fails, `${dark ? 'dark' : 'light'} ${tab || 'calendar'}`).toEqual([]);
+      if (dark && tab === '') await shot(page, 'calendar-dark', testInfo);
     }
     await setDark(page, false);
   }
@@ -459,9 +480,15 @@ test('Contrast is 4.5:1 or better in light and dark', async ({ page }, testInfo)
 test('Motion respects prefers-reduced-motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page);
-  // motion-reduce:transition-none removes the transition entirely.
-  const props = await root(page).locator('button').evaluateAll((els) => els.slice(0, 20).map((e) => getComputedStyle(e).transitionProperty));
-  expect(props.every((p) => p === 'none')).toBe(true);
+  // motion-reduce:transition-none removes the transition entirely. A button
+  // with no transition reports property 'all' with a 0s duration: no motion either.
+  const still = await root(page).locator('button').evaluateAll((els) =>
+    els.slice(0, 20).map((e) => {
+      const cs = getComputedStyle(e);
+      return cs.transitionProperty === 'none' || cs.transitionDuration.split(',').every((d) => parseFloat(d) === 0);
+    })
+  );
+  expect(still.every(Boolean)).toBe(true);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.reload();
   const normal = await root(page).locator('button').first().evaluate((e) => getComputedStyle(e).transitionProperty);
@@ -470,14 +497,14 @@ test('Motion respects prefers-reduced-motion', async ({ page }) => {
 
 test('Labels never say AI, agentic, virality or ICP', async ({ page }) => {
   const banned = /\b(AI|agentic|virality|ICP)\b/i;
-  for (const tab of ['', '?tab=plan', '?tab=calendar', '?tab=create', '?tab=library', '?tab=media', '?tab=downloads', '?tab=analytics']) {
+  for (const tab of ['', '?tab=plan', '?tab=create', '?tab=library', '?tab=media', '?tab=downloads', '?tab=analytics']) {
     await open(page, tab);
     const labels = await root(page).evaluate((el) =>
       Array.from(el.querySelectorAll('button, a, label, h1, h2, h3, legend, th, [role=tab], [aria-label]'))
         .map((n) => `${n.getAttribute('aria-label') || ''} ${n.textContent || ''}`)
         .join('\n')
     );
-    expect(labels.match(banned), `banned word on ${tab || 'today'}`).toBeNull();
+    expect(labels.match(banned), `banned word on ${tab || 'calendar'}`).toBeNull();
   }
 });
 
@@ -494,19 +521,22 @@ test('No third-party scheduler: code and network', async ({ page }) => {
     all.push(r.url());
     if (['fetch', 'xhr'].includes(r.resourceType())) calls.push(r.url());
   });
+  await page.request.post(`${MOCK}/__own`);
   await open(page);
   const loaded = calls.length;
-  await root(page).getByRole('article').filter({ hasText: 'Needs approval' }).getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Approved. It goes out on time.')).toBeVisible();
-  await root(page).getByRole('article').filter({ hasText: 'Carousel' }).getByRole('button', { name: 'Move time' }).click();
+  await root(page).getByRole('button', { name: 'Day', exact: true }).click();
+  await root(page).getByRole('button', { name: 'Move time' }).first().click();
   await page.getByRole('dialog', { name: 'Move time' }).locator('p:has-text("Suggested times") ~ button').first().click();
   await expect(page.getByText('Moved', { exact: true })).toBeVisible();
+  await tasksPage(page, 'approvals');
+  await page.getByRole('listitem').filter({ hasText: 'Content Studio post' }).getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('Approved.', { exact: true })).toBeVisible();
   // The shell may still be pulling in scripts (e.g. the billing SDK) while the
   // actions run; those aren't calls the actions made, so only API calls count.
   const actions = calls.slice(loaded).filter((u) => !u.startsWith('data:'));
-  // every API call the approve + reschedule made stayed on Mr LAD's own origin
+  // every API call the reschedule + approve made stayed on Mr LAD's own origin
   expect(actions.map((u) => new URL(u).hostname).filter((h) => h !== 'localhost' && h !== '127.0.0.1')).toEqual([]);
-  expect(actions.some((u) => /\/api\/content-studio\/posts\/[^/]+\/approve$/.test(u))).toBe(true);
+  expect(actions.some((u) => /\/api\/approvals\/content_post\/[^/]+\/decision$/.test(u))).toBe(true);
   expect(actions.some((u) => /\/api\/content-studio\/posts\/[^/]+\/schedule$/.test(u))).toBe(true);
   expect(all.filter((u) => PUBLISHERS.test(u))).toEqual([]);
   expect(all.map((u) => new URL(u).hostname).filter((h) => !isShell(h) && !h.startsWith('data'))).toEqual([]);
@@ -530,8 +560,10 @@ const audience = (page) => root(page).locator('[aria-label="Test with your audie
 const BANNED = /\b(AI|agentic|virality|ICP)\b/i;
 
 async function openComposerFor(page, cardText) {
-  await open(page);
-  await root(page).getByRole('article').filter({ hasText: cardText }).getByRole('button', { name: 'Edit' }).click();
+  // 'LinkedIn · Carousel' / 'Instagram · Reel': the two showcase posts going out today.
+  const [platform, format] = cardText === 'Instagram · Reel' ? ['instagram', 'video_script'] : ['linkedin', 'carousel'];
+  const post = (await MOCK_POSTS(page)).find((x) => x.platform === platform && x.format === format);
+  await page.goto(`/content-studio?tab=create&post=${post.id}`);
   await expect(audience(page)).toBeVisible();
 }
 
@@ -621,17 +653,6 @@ test('Audience test: a calibrated range for LinkedIn only, and Analytics shows p
   expect((await overflowX(page)).doc).toBeLessThanOrEqual(0);
   await cal.scrollIntoViewIfNeeded();
   await shot(page, 'audience-calibration', testInfo);
-});
-
-test('Audience test: the approval card shows the result for the current version', async ({ page }) => {
-  await openComposerFor(page, 'Instagram · Reel');
-  await buildPanel(page);
-  await audience(page).getByRole('button', { name: 'Run the test' }).click();
-  await expect(audience(page).getByText(/^\d+ of 20 stopped scrolling$/)).toBeVisible();
-  await open(page);
-  const card = root(page).getByRole('article').filter({ hasText: 'Needs approval' });
-  await expect(card.getByText(/Audience test:/)).toBeVisible();
-  await expect(card.getByText('(simulated)', { exact: false })).toBeVisible();
 });
 
 // ── Media (the Media Hub, moved into Content Studio) ─────────────────────────

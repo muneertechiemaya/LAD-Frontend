@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useBottomNavHidden } from '@/lib/bottom-nav';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useMyTasksCount } from '@lad/frontend-features/tasks';
+import { useTaskSources } from '@/components/tasks/useTaskSources';
 
 export interface BottomNavSourceItem {
   href: string;
@@ -74,7 +75,8 @@ export function MobileBottomNav({ nav }: { nav: BottomNavSourceItem[] }) {
   // can open My Tasks at all. Shares the My Tasks page's query cache.
   const phone = usePhoneWidth();
   const hasTasksTab = tabs.some((t) => t.href === TASKS_HREF);
-  const { count: taskCount, capped: taskCapped } = useMyTasksCount(phone && visible && hasTasksTab);
+  const taskSources = useTaskSources();
+  const { count: taskCount, capped: taskCapped } = useMyTasksCount(phone && visible && hasTasksTab, taskSources);
   const badge = taskCount ? (taskCount > 99 ? '99+' : `${taskCount}${taskCapped ? '+' : ''}`) : null;
 
   useEffect(() => {

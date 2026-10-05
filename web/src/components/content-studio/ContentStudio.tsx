@@ -2,10 +2,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
-import type { ContentPost, TodaySummary } from '@lad/frontend-features/content-studio';
-import { useStudioSettings, useToday } from '@lad/frontend-features/content-studio';
-import { greeting, longDate, todayLocal } from '@/lib/content-studio/time';
-import { TodayView } from './TodayView';
+import type { ContentPost } from '@lad/frontend-features/content-studio';
+import { useStudioSettings } from '@lad/frontend-features/content-studio';
+import { longDate, todayLocal } from '@/lib/content-studio/time';
 import { PlanView } from './PlanView';
 import { CalendarView } from './CalendarView';
 import { Composer } from './Composer';
@@ -14,16 +13,14 @@ import { MediaHub } from './media/MediaHub';
 import { DownloadsView } from './DownloadsView';
 import { AnalyticsView } from './AnalyticsView';
 import { MoveTimeDialog } from './MoveTimeDialog';
-import { PreviewDialog } from './PreviewDialog';
 import { BriefDialog } from './BriefDialog';
 import { CoachDialog } from './CoachDialog';
-import { Card, CsButton, ErrorNote, Label, SectionTitle, tone } from './ui';
+import { Card, CsButton, Label, SectionTitle, tone } from './ui';
 import { cn } from '@/lib/utils';
 
-export type AreaId = 'today' | 'plan' | 'calendar' | 'create' | 'library' | 'media' | 'downloads' | 'analytics';
+export type AreaId = 'plan' | 'calendar' | 'create' | 'library' | 'media' | 'downloads' | 'analytics';
 
 const AREAS: { id: AreaId; label: string }[] = [
-  { id: 'today', label: 'Today' },
   { id: 'plan', label: 'Plan' },
   { id: 'calendar', label: 'Calendar' },
   { id: 'create', label: 'Create' },
@@ -34,7 +31,6 @@ const AREAS: { id: AreaId; label: string }[] = [
 ];
 
 const TITLES: Record<AreaId, string> = {
-  today: '',
   plan: 'Your 30-day plan',
   calendar: 'Calendar',
   create: 'Create and edit',
@@ -43,20 +39,6 @@ const TITLES: Record<AreaId, string> = {
   downloads: 'Downloads',
   analytics: 'Analytics',
 };
-
-/**
- * "2 posts go out today." Showcase samples never publish until the client acts
- * on them, so they are counted separately rather than claimed as going out.
- */
-function outLine(t: TodaySummary): string {
-  const sampleOut = t.posts.filter((p) => p.isSample && p.status === 'scheduled').length;
-  const realOut = Math.max(0, t.goingOut - sampleOut);
-  const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
-  if (!realOut && !sampleOut) return 'Nothing goes out today.';
-  if (!sampleOut) return `${n(realOut, 'post goes', 'posts go')} out today.`;
-  if (!realOut) return `${n(sampleOut, 'sample post is', 'sample posts are')} lined up for today.`;
-  return `${n(realOut, 'post goes', 'posts go')} out today, plus ${n(sampleOut, 'sample', 'samples')}.`;
-}
 
 function isArea(v: string | null): v is AreaId {
   return !!v && AREAS.some((a) => a.id === v);
@@ -67,16 +49,16 @@ export function ContentStudio() {
   const pathname = usePathname();
   const params = useSearchParams();
   const tabParam = params.get('tab');
-  const area: AreaId = isArea(tabParam) ? tabParam : 'today';
+  // Today's items now live in My Tasks, so Content Studio opens on the calendar
+  // (old ?tab=today links land here too).
+  const area: AreaId = isArea(tabParam) ? tabParam : 'calendar';
   const postId = params.get('post');
   const dateParam = params.get('date');
 
   const settings = useStudioSettings();
-  const today = useToday();
-  const tz = settings.data?.timezone || today.data?.timezone || 'Asia/Dubai';
+  const tz = settings.data?.timezone || 'Asia/Dubai';
 
   const [moveTime, setMoveTime] = useState<ContentPost | null>(null);
-  const [preview, setPreview] = useState<ContentPost | null>(null);
   const [briefOpen, setBriefOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
 
@@ -108,15 +90,7 @@ export function ContentStudio() {
     strip.scrollTo({ left: btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2, behavior: tapped.current ? 'smooth' : 'auto' });
   }, [area]);
 
-  const t = today.data;
-  const headline =
-    area === 'today'
-      ? t
-        ? `${greeting(tz)}. ${outLine(t)}${
-            t.needsApproval ? ` ${t.needsApproval} ${t.needsApproval === 1 ? 'needs' : 'need'} your approval.` : ''
-          }`
-        : `${greeting(tz)}.`
-      : TITLES[area];
+  const headline = TITLES[area];
 
   const briefMissing = settings.data && !settings.data.brandBrief;
 
@@ -181,22 +155,6 @@ export function ContentStudio() {
       ) : null}
 
       <main className="min-w-0">
-        {area === 'today' ? (
-          today.isLoading ? (
-            <p className={cn('text-sm', tone.soft)}>Loading today…</p>
-          ) : today.data ? (
-            <TodayView
-              today={today.data}
-              settings={settings.data}
-              onEdit={edit}
-              onPreview={setPreview}
-              onMoveTime={setMoveTime}
-              onOpenCalendar={(d) => go('calendar', { date: d || null, view: d ? 'day' : null })}
-            />
-          ) : (
-            <ErrorNote error={today.error || new Error("Couldn't load today. Refresh to try again.")} />
-          )
-        ) : null}
         {area === 'plan' ? <PlanView settings={settings.data} settingsError={settings.error} /> : null}
         {area === 'calendar' ? (
           <CalendarView tz={tz} initialDate={dateParam} onEdit={edit} onMoveTime={setMoveTime} />
@@ -207,7 +165,7 @@ export function ContentStudio() {
             settings={settings.data}
             onOpenBrief={() => setBriefOpen(true)}
             onCreated={(p) => go('create', { post: p.id })}
-            onDone={() => go('today')}
+            onDone={() => go('calendar')}
             onNew={newPost}
           />
         ) : null}
@@ -218,7 +176,6 @@ export function ContentStudio() {
       </main>
 
       <MoveTimeDialog post={moveTime} windowTime={moveTime ? settings.data?.windows?.[moveTime.platform] : undefined} onClose={() => setMoveTime(null)} />
-      <PreviewDialog post={preview} onClose={() => setPreview(null)} onEdit={(p) => { setPreview(null); edit(p); }} />
       <BriefDialog open={briefOpen} onClose={() => setBriefOpen(false)} initial={settings.data?.brandBrief ?? null} />
       <CoachDialog
         open={coachOpen}

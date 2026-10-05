@@ -44,7 +44,8 @@ export type ApprovalType =
   | 'linkedin_invite'
   | 'linkedin_greeting'
   | 'lead_report'
-  | 'market_insight';
+  | 'market_insight'
+  | 'content_post';
 
 export interface PendingApproval {
   type: ApprovalType;
@@ -69,4 +70,31 @@ export interface ApprovalDecision {
   applied: boolean;
   status: string | null;
   message: string | null;
+}
+
+// ── Content Studio items (GET /api/content-studio/tasks) ──────────────────
+// Post approvals arrive with the other approvals (type 'content_post').
+
+export type ContentTaskKind = 'post_due' | 'post_today' | 'draft_unscheduled' | 'gaps' | 'connect_account';
+
+export interface ContentTask {
+  /** Stable across refetches. */
+  id: string;
+  kind: ContentTaskKind;
+  title: string;
+  detail: string | null;
+  platform?: 'linkedin' | 'instagram' | 'facebook' | 'x' | 'tiktok';
+  postId?: string;
+  at?: string | null;
+  /** Counts toward the My Tasks badge (post_today is information only). */
+  actionable: boolean;
+  /** gaps only: the empty days (YYYY-MM-DD) and the suggested pillar, for fill-gaps. */
+  dates?: string[];
+  pillar?: string | null;
+}
+
+export interface ContentTasks {
+  items: ContentTask[];
+  counts: { actionable: number };
+  degraded: boolean;
 }
