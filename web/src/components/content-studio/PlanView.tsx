@@ -9,6 +9,7 @@ import { GOAL_LABEL, PLATFORM_META, formatName } from '@/lib/content-studio/meta
 import { addDays, clockLabel, joinWords, shortDate, startOfWeek, todayLocal, weekdayName } from '@/lib/content-studio/time';
 import { Card, CsButton, ErrorNote, Field, Label, PlatformBadge, SectionTitle, inputCls, tone } from './ui';
 import { cn } from '@/lib/utils';
+import { ChannelsCard } from './ChannelsCard';
 
 const PILLAR_COLORS = ['#0B1957', '#0B6E73', '#2156D9', '#B3246F', '#7A4A00', '#5B2A9E'];
 const COLOR_NAMES: Record<string, string> = { '#0B1957': 'Navy', '#0B6E73': 'Teal', '#2156D9': 'Blue', '#B3246F': 'Plum', '#7A4A00': 'Bronze', '#5B2A9E': 'Violet' };
@@ -285,6 +286,7 @@ export function PlanView({ settings, settingsError }: { settings: StudioSettings
           </CsButton>
           {!valid ? <p className="text-xs font-semibold text-[#A1202B] dark:text-[#FFB3B9]">Pillar shares must add up to 100% and every pillar needs a name.</p> : null}
         </Card>
+        <ChannelsCard tz={tz} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">

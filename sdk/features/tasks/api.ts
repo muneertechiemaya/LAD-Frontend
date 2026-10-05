@@ -12,6 +12,7 @@ import type {
   ApprovalDecision,
   ApprovalType,
   AssignedConversation,
+  ContentTasks,
   HandoffChannel,
   PendingApprovals,
   TaskChannel,
@@ -25,6 +26,7 @@ export const taskKeys = {
   assigned: () => [...taskKeys.all, 'assigned'] as const,
   notifications: () => [...taskKeys.all, 'notifications'] as const,
   approvals: () => [...taskKeys.all, 'approvals'] as const,
+  content: () => [...taskKeys.all, 'content'] as const,
 };
 
 const CHANNELS: readonly TaskChannel[] = ['waba', 'personal', 'linkedin'];
@@ -117,4 +119,12 @@ export async function decideApproval(type: ApprovalType, id: string, action: App
     }
     throw err;
   }
+}
+
+/** Content Studio's to-dos: posts due, today's posts, unscheduled drafts, gaps, accounts to connect. */
+export async function getContentTasks(): Promise<ContentTasks> {
+  const res = await apiGet<{ data?: ContentTasks }>('/api/content-studio/tasks');
+  const data = res.data?.data;
+  if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response shape');
+  return { items: data.items, counts: { actionable: data.counts?.actionable ?? data.items.filter((i) => i.actionable).length }, degraded: !!data.degraded };
 }

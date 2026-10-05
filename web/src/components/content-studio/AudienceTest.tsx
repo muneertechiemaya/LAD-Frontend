@@ -508,22 +508,6 @@ function AnswersDialog({ panel, test, open, onClose }: { panel: AudiencePanel; t
   );
 }
 
-// ── one line on a Today approval card ─────────────────────────────────────
-export function AudienceLine({ post }: { post: ContentPost }) {
-  const tests = useAudienceTests(post.id);
-  const t = latestPostTest(tests.data);
-  if (!t || t.postVersion !== post.version || !t.summary.counts) return null;
-  return (
-    <p className={cn('text-[13px]', tone.ink)}>
-      <strong>Audience test:</strong> {t.summary.counts.stopped} of {t.summary.answered} stopped scrolling
-      {t.summary.objections[0] ? (
-        <span className={tone.soft}> · most held back by “{OBJECTION_LABEL[t.summary.objections[0].kind].toLowerCase()}”</span>
-      ) : null}
-      <span className={tone.soft}> (simulated)</span>
-    </p>
-  );
-}
-
 // ── Analytics: predicted vs actual ─────────────────────────────────────────
 type CalPoint = { engagementRate: number; predictedLow: number | null; predictedHigh: number | null };
 const inRange = (p: CalPoint) => p.predictedLow != null && p.predictedHigh != null && p.engagementRate >= p.predictedLow && p.engagementRate <= p.predictedHigh;

@@ -6,9 +6,11 @@ Drives the real Next.js build of `/content-studio` at 390, 768 and 1440 px again
 `LAD_backend/features/content-studio/seed/showcase.json`). Nothing touches the
 shared dev database.
 
-What it checks: the Today view and every other area render without sideways
-scroll; every control is 44 × 44 or larger; approve 1 tap, edit 2, reschedule 2,
-download 2, create 3 from Today; every download is a real file (PNG signature
+What it checks: every area renders without sideways scroll, and Content Studio
+opens on Calendar; every control is 44 × 44 or larger; My Tasks shows Content
+Studio's approvals, posts due, gaps and accounts to connect (never showcase
+samples); approve 1 tap from My Tasks, edit and reschedule 3 or fewer from
+Calendar, download 2, create 3; every download is a real file (PNG signature
 and 1080 × 1080 size, PDF header and page count, TXT, CSV header); versions
 restore; text contrast 4.5:1 or better (3:1 for large text) in light and dark;
 prefers-reduced-motion removes transitions; no label says AI, agentic, virality

@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/app-toaster';
 import { CustomizeHomeSheet } from './CustomizeHomeSheet';
 import { SECTION_BY_ID, SPAN_CLASS, resolveLayout, sameLayout } from './homeSections';
+import { useTaskSources } from '@/components/tasks/useTaskSources';
 
 // ── Opt-in widgets (from the earlier configurable dashboard) ────────────────
 // Loaded only when a user adds one, so the default Home stays light.
@@ -664,7 +665,8 @@ function SpendCard({ balance, usage, loading, failed }: { balance: number | null
 
 export function HomeDashboard() {
   const { statuses } = useConnectedChannels();
-  const { count: tasks, capped } = useMyTasksCount(true);
+  const taskSources = useTaskSources();
+  const { count: tasks, capped } = useMyTasksCount(true, taskSources);
 
   const todayRange = useMemo(() => {
     const from = startOfDay(new Date());

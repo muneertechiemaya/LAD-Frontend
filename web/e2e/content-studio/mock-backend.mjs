@@ -454,7 +454,8 @@ function mageRoute(p, m, res, req) {
 const USER = {
   id: 'e2e-user', email: 'owner@example.test', name: 'Test Owner', firstName: 'Test', role: 'owner', tenantId: 'e2e-tenant',
   capabilities: ['view_overview', 'view_campaigns', 'view_conversations', 'view_content_studio', 'view_settings'],
-  tenantFeatures: ['overview', 'campaigns', 'conversations', 'content_studio'], vertical: null, curatedWorkspace: false,
+  // No Conversations: My Tasks runs in its Content-Studio-only mode (chat sections hidden).
+  tenantFeatures: ['overview', 'campaigns', 'content_studio'], vertical: null, curatedWorkspace: false,
 };
 
 const server = http.createServer(async (req, res) => {
@@ -475,6 +476,36 @@ const server = http.createServer(async (req, res) => {
   if (p === '/api/auth/me') return send(res, 200, { success: true, user: USER });
   if (p.startsWith('/__img/')) { res.writeHead(200, { 'content-type': p.endsWith('.mp4') ? 'video/mp4' : 'image/png', 'access-control-allow-origin': '*' }); return res.end(p.endsWith('.mp4') ? Buffer.alloc(0) : PNG_1X1); }
   if (/^\/(mage|auto-media|playground-media|brand-assets)\//.test(p) || p.startsWith('/api/v1/media/')) return mageRoute(p, m, res, req);
+
+  // My Tasks › Approvals: Content Studio posts awaiting approval (mirrors features/approvals).
+  if (p === '/api/approvals/pending' && m === 'GET') {
+    const items = live().filter((x) => x.approvalState === 'pending' && !x.isSample).map((x) => ({
+      type: 'content_post', id: x.id, title: x.title || x.hook, preview: `${x.hook} · ${x.platform === 'instagram' ? 'Instagram' : 'LinkedIn'}`,
+      campaignId: null, leadId: null, at: x.scheduledAt || x.updatedAt,
+    }));
+    return send(res, 200, { success: true, data: { items, degraded: [] } });
+  }
+  const dm = p.match(/^\/api\/approvals\/content_post\/([^/]+)\/decision$/);
+  if (dm && m === 'POST') {
+    const b = await readJson(req);
+    const x = find(dm[1]);
+    if (!x || x.approvalState !== 'pending') return send(res, 409, { success: false, error: 'already_settled', message: 'This post was already decided.' });
+    if (b.action === 'approve') patchPost(x, { approvalState: 'approved' }, 'approved');
+    else patchPost(x, { approvalState: 'not_required', status: x.status === 'scheduled' ? 'ready' : x.status }, 'sent back');
+    return send(res, 200, { success: true, data: b.action === 'approve' ? { status: 'approved', message: 'Approved.' } : { status: 'rejected', message: 'Sent back. It is off the schedule until someone schedules it again.' } });
+  }
+  // Test-only: the showcase posts become the client's own (samples never reach My Tasks).
+  if (p === '/__own' && m === 'POST') {
+    for (const y of live()) y.isSample = false;
+    return send(res, 200, { success: true });
+  }
+  // Test-only: make the showcase reel the client's own and due now (a reminder waiting to be posted).
+  if (p === '/__due' && m === 'POST') {
+    const x = live().find((y) => y.platform === 'instagram' && y.format === 'video_script');
+    if (x) { x.isSample = false; x.status = 'scheduled'; x.approvalState = 'approved'; x.scheduledAt = new Date(Date.now() - 5 * 60_000).toISOString(); x.publishMode = 'reminder'; }
+    return send(res, 200, { success: true, id: x?.id || null });
+  }
+  if (p === '/__linkedin' && m === 'POST') { const b = await readJson(req); S.linkedinConnected = b.connected !== false; return send(res, 200, { success: true }); }
 
   if (!p.startsWith('/api/content-studio')) {
     // Everything else the app shell asks for (counts, notifications…): empty but valid.
@@ -520,12 +551,50 @@ const server = http.createServer(async (req, res) => {
   if (r === '/settings' && m === 'GET') return ok(res, { ...S.settings, enabledPlatforms: ENABLED });
   if (r === '/settings' && m === 'PUT') { S.settings = { ...S.settings, ...body, updatedAt: new Date().toISOString() }; return ok(res, S.settings); }
   if (r === '/channels') return ok(res, [
-    { platform: 'linkedin', mode: 'auto', connected: true, note: 'Mr LAD publishes text and single-image posts; carousels and videos get a reminder.' },
+    { platform: 'linkedin', mode: 'auto', connected: S.linkedinConnected !== false, note: 'Mr LAD publishes text and single-image posts; carousels and videos get a reminder.' },
     { platform: 'instagram', mode: 'reminder', connected: false, note: 'Mr LAD reminds you until Instagram posting is switched on.' },
     { platform: 'facebook', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
     { platform: 'x', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
     { platform: 'tiktok', mode: 'reminder', connected: false, note: 'Mr LAD reminds you at the time with the caption and files ready.' },
   ].filter((c) => isOn(c.platform)));
+
+  // My Tasks: Content Studio's to-dos (post approvals come from /api/approvals)
+  if (r === '/tasks' && m === 'GET') {
+    // Mirrors features/content-studio/services/TasksService.js: showcase samples
+    // never go out, so they are left out (they still count towards gaps).
+    const t = today();
+    const now = Date.now();
+    const own = live().filter((y) => !y.isSample);
+    const label = (pf) => (pf === 'instagram' ? 'Instagram' : 'LinkedIn');
+    const due = [];
+    const later = [];
+    for (const x of own.filter((y) => y.status === 'scheduled' && y.scheduledAt && y.approvalState !== 'pending')) {
+      const at = new Date(x.scheduledAt).getTime();
+      if (x.publishMode === 'reminder' && at <= now) {
+        due.push({ id: `post_due:${x.id}`, kind: 'post_due', title: `Time to post on ${label(x.platform)}`, detail: x.title || x.hook, platform: x.platform, postId: x.id, at: x.scheduledAt, actionable: true });
+      } else if (localDate(x.scheduledAt) === t && at > now) {
+        later.push({ id: `post_today:${x.id}`, kind: 'post_today', title: `${label(x.platform)} post at ${new Date(x.scheduledAt).toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}`, detail: x.title || x.hook, platform: x.platform, postId: x.id, at: x.scheduledAt, actionable: false });
+      }
+    }
+    const items = [...due];
+    if (S.linkedinConnected === false) items.push({ id: 'connect_account:linkedin', kind: 'connect_account', title: 'Connect LinkedIn', detail: 'Mr LAD can then publish your text and single-image LinkedIn posts for you.', platform: 'linkedin', actionable: true });
+    const drafts = own.filter((y) => (y.status === 'draft' || y.status === 'ready') && !y.scheduledAt);
+    if (drafts.length) items.push({ id: 'draft_unscheduled', kind: 'draft_unscheduled', title: `${drafts.length} ${drafts.length === 1 ? 'post is' : 'posts are'} written but not scheduled`, detail: drafts.slice(0, 3).map((d) => d.title || d.hook).join(' · '), actionable: true });
+    const week = Array.from({ length: 7 }, (_, i) => addDays(t, i + 1));
+    const empty = week.filter((d) => !live().some((x) => x.scheduledAt && localDate(x.scheduledAt) === d));
+    if (empty.length) {
+      const names = empty.map((d) => weekday(d));
+      const pillar = S.settings.pillars?.[0]?.name || null;
+      items.push({
+        id: 'gaps', kind: 'gaps',
+        title: `Next week has ${empty.length} empty ${empty.length === 1 ? 'day' : 'days'}, ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]}`,
+        detail: pillar ? `Fill ${empty.length === 1 ? 'it' : 'them'} from your ${pillar} pillar.` : 'Fill them from your plan.',
+        at: zoned(empty[0], '00:00'), dates: empty, pillar, actionable: true,
+      });
+    }
+    items.push(...later);
+    return ok(res, { items, counts: { actionable: items.filter((i) => i.actionable).length }, degraded: false });
+  }
 
   // today
   if (r === '/today') {

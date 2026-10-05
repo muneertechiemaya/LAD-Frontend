@@ -29,6 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bell,
+  CalendarRange,
   CheckCircle2,
   ChevronRight,
   FileText,
@@ -40,10 +41,13 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFillGaps, useMarkPosted } from '@lad/frontend-features/content-studio';
+import { useTaskSources } from './useTaskSources';
 import {
   taskKeys,
   WAITING_CHATS_LIMIT,
   useAssignedConversations,
+  useContentTasks,
   useDecideApproval,
   useMarkTaskNotificationRead,
   usePendingApprovals,
@@ -52,6 +56,7 @@ import {
   type ApprovalAction,
   type ApprovalType,
   type AssignedConversation,
+  type ContentTask,
   type PendingApproval,
   type TaskChannel,
   type TaskNotification,
@@ -86,6 +91,7 @@ const APPROVAL_COPY: Record<ApprovalType, { label: string; approve: string; reje
   linkedin_greeting: { label: 'LinkedIn greeting', approve: 'Send', reject: 'Skip' },
   lead_report: { label: 'Lead report', approve: 'Approve', reject: "Don't send" },
   market_insight: { label: 'Talking point for Mr LAD to use', approve: 'Let Mr LAD use it', reject: 'Dismiss' },
+  content_post: { label: 'Content Studio post', approve: 'Approve', reject: 'Send back' },
 };
 const APPROVAL_TYPE_PLURAL: Record<ApprovalType, string> = {
   linkedin_post: 'LinkedIn posts',
@@ -93,6 +99,7 @@ const APPROVAL_TYPE_PLURAL: Record<ApprovalType, string> = {
   linkedin_greeting: 'LinkedIn greetings',
   lead_report: 'lead reports',
   market_insight: 'talking points',
+  content_post: 'Content Studio posts',
 };
 const APPROVAL_TYPE_SHORT: Record<ApprovalType, string> = {
   linkedin_post: 'Posts',
@@ -100,10 +107,20 @@ const APPROVAL_TYPE_SHORT: Record<ApprovalType, string> = {
   linkedin_greeting: 'Greetings',
   lead_report: 'Reports',
   market_insight: 'Talking points',
+  content_post: 'Content',
 };
 
-type View = 'all' | 'replies' | 'approvals' | 'assigned' | 'alerts';
-const VIEWS: View[] = ['all', 'replies', 'approvals', 'assigned', 'alerts'];
+type View = 'all' | 'replies' | 'approvals' | 'content' | 'assigned' | 'alerts';
+const VIEWS: View[] = ['all', 'replies', 'approvals', 'content', 'assigned', 'alerts'];
+
+/** Where each Content Studio task opens. */
+const contentHref = (t: ContentTask): string => {
+  if (t.postId) return `/content-studio?tab=create&post=${encodeURIComponent(t.postId)}`;
+  if (t.kind === 'gaps') return '/content-studio?tab=plan';
+  if (t.kind === 'draft_unscheduled') return '/content-studio?tab=library';
+  if (t.kind === 'connect_account') return '/settings?tab=integrations';
+  return '/content-studio?tab=calendar';
+};
 
 const DIGEST_SIZE = 3;
 const PAGE_SIZE = 10;
@@ -165,10 +182,12 @@ function CountBadge({ n, capped, tone = 'primary' }: { n: number; capped?: boole
   );
 }
 
-function Avatar({ channel, type }: { channel?: TaskChannel | null; type?: ApprovalType }) {
+function Avatar({ channel, type, content }: { channel?: TaskChannel | null; type?: ApprovalType; content?: boolean }) {
   return (
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10" aria-hidden="true">
-      {type === 'lead_report' ? (
+      {content || type === 'content_post' ? (
+        <CalendarRange className="h-[18px] w-[18px] text-slate-600 dark:text-slate-300" />
+      ) : type === 'lead_report' ? (
         <FileText className="h-[18px] w-[18px] text-slate-600 dark:text-slate-300" />
       ) : type === 'market_insight' ? (
         <Lightbulb className="h-[18px] w-[18px] text-amber-600 dark:text-amber-400" />
@@ -276,6 +295,17 @@ function ApprovalCard({ item, busy, onDecide }: { item: PendingApproval; busy: b
                 </Link>
               </>
             )}
+            {item.type === 'content_post' && (
+              <>
+                {' · '}
+                <Link
+                  href={`/content-studio?tab=create&post=${encodeURIComponent(item.id)}`}
+                  className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-2 hover:underline dark:text-blue-300"
+                >
+                  Open in Content Studio
+                </Link>
+              </>
+            )}
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:flex">
             <button
@@ -295,6 +325,49 @@ function ApprovalCard({ item, busy, onDecide }: { item: PendingApproval; busy: b
             >
               {copy.reject}
             </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** A Content Studio to-do with its one direct action, plus a link into Content Studio. */
+function ContentTaskCard({ task, onMarkPosted, onFillGaps, busy }: { task: ContentTask; onMarkPosted: (t: ContentTask) => void; onFillGaps: (t: ContentTask) => void; busy: boolean }) {
+  const primary =
+    task.kind === 'post_due' && task.postId
+      ? { label: 'Mark as posted', run: () => onMarkPosted(task) }
+      : task.kind === 'gaps' && task.dates?.length
+        ? { label: 'Fill the gaps', run: () => onFillGaps(task) }
+        : null;
+  const openLabel =
+    task.kind === 'connect_account' ? 'Connect' : task.kind === 'gaps' ? 'Open the plan' : task.kind === 'draft_unscheduled' ? 'Open drafts' : 'Open';
+  return (
+    <li className="px-4 py-3">
+      <div className="flex items-start gap-3">
+        <Avatar content />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{task.title}</p>
+          {task.detail && <p className="mt-0.5 line-clamp-3 text-sm text-slate-600 dark:text-slate-300">{task.detail}</p>}
+          {task.at && <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{ago(task.at)}</p>}
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:flex">
+            {primary && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={primary.run}
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-semibold whitespace-nowrap text-white hover:bg-primary/90 disabled:opacity-60 sm:px-4 dark:bg-blue-600 dark:hover:bg-blue-500"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {primary.label}
+              </button>
+            )}
+            <Link
+              href={contentHref(task)}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50 sm:px-4 dark:border-blue-950/40 dark:text-slate-200 dark:hover:bg-white/5"
+            >
+              {openLabel}
+            </Link>
           </div>
         </div>
       </div>
@@ -409,10 +482,16 @@ function Paged<T>({ items, render, resetKey }: { items: T[]; render: (item: T) =
 
 export function MyTasks() {
   const qc = useQueryClient();
-  const waba = useWaitingChats('waba');
-  const personal = useWaitingChats('personal');
-  const assigned = useAssignedConversations();
-  const notes = useTaskNotifications();
+  // Chats need Conversations, content items need Content Studio; a tenant may have either.
+  const sources = useTaskSources();
+  const waba = useWaitingChats('waba', sources.chats);
+  const personal = useWaitingChats('personal', sources.chats);
+  const assigned = useAssignedConversations(sources.chats);
+  const notes = useTaskNotifications(sources.chats);
+  const content = useContentTasks(sources.content);
+  const markPosted = useMarkPosted();
+  const fillGaps = useFillGaps();
+  const [contentBusy, setContentBusy] = useState<string | null>(null);
   const markRead = useMarkTaskNotificationRead();
   const approvals = usePendingApprovals();
   const decide = useDecideApproval();
@@ -445,7 +524,7 @@ export function MyTasks() {
   const replySources = [
     { channel: 'waba' as const, q: waba, status: channelStatus.waba },
     { channel: 'personal' as const, q: personal, status: channelStatus.personal_whatsapp },
-  ].filter((s) => s.status !== 'disconnected');
+  ].filter((s) => sources.chats && s.status !== 'disconnected');
   const repliesLoading = replySources.some((s) => s.q.isLoading);
   const repliesFailed = replySources.filter((s) => !s.q.isLoading && !s.q.isFetching && s.q.data === undefined);
   const replies: WaitingChat[] = useMemo(
@@ -471,8 +550,46 @@ export function MyTasks() {
   );
   const unread = alerts.filter((n) => !n.isRead).length;
 
+  // ── Content Studio: things to do first, then today's posts (information only).
+  const contentFailed = sources.content && !content.isLoading && !content.isFetching && content.data === undefined;
+  const contentItems: ContentTask[] = useMemo(() => {
+    const order: Record<ContentTask['kind'], number> = { post_due: 0, connect_account: 1, gaps: 2, draft_unscheduled: 3, post_today: 4 };
+    return [...(content.data?.items ?? [])].sort((a, b) => order[a.kind] - order[b.kind] || time(a.at ?? null) - time(b.at ?? null));
+  }, [content.data]);
+  const contentTodo = contentItems.filter((t) => t.actionable).length;
+  const onMarkPosted = (t: ContentTask) => {
+    if (!t.postId) return;
+    setContentBusy(t.id);
+    markPosted.mutate(
+      { id: t.postId },
+      {
+        onSuccess: () => {
+          setDecisionNote({ tone: 'ok', text: 'Marked as posted.' });
+          qc.invalidateQueries({ queryKey: taskKeys.content() });
+        },
+        onError: () => setDecisionNote({ tone: 'error', text: `Couldn't mark "${t.title}" as posted. Try again.` }),
+        onSettled: () => setContentBusy(null),
+      },
+    );
+  };
+  const onFillGaps = (t: ContentTask) => {
+    if (!t.dates?.length) return;
+    setContentBusy(t.id);
+    fillGaps.mutate(
+      { dates: t.dates, pillar: t.pillar || undefined, draft: true },
+      {
+        onSuccess: () => {
+          setDecisionNote({ tone: 'ok', text: 'Mr LAD is filling the gaps. The new drafts are in Content Studio.' });
+          qc.invalidateQueries({ queryKey: taskKeys.content() });
+        },
+        onError: () => setDecisionNote({ tone: 'error', text: "Couldn't fill the gaps. Try again from Content Studio › Plan." }),
+        onSettled: () => setContentBusy(null),
+      },
+    );
+  };
+
   const refreshing =
-    replySources.some((s) => s.q.isFetching) || assigned.isFetching || notes.isFetching || approvals.isFetching;
+    replySources.some((s) => s.q.isFetching) || assigned.isFetching || notes.isFetching || approvals.isFetching || content.isFetching;
 
   const onDecide = (item: PendingApproval, action: ApprovalAction) => {
     setDeciding(`${item.type}:${item.id}`);
@@ -532,6 +649,9 @@ export function MyTasks() {
       unread={!n.isRead}
     />
   );
+  const contentRow = (t: ContentTask) => (
+    <Row key={t.id} href={contentHref(t)} title={t.title} sub={t.detail} meta={t.actionable ? 'Content Studio' : 'Content Studio · going out today'} badge={null} />
+  );
   const approvalDigestRow = (a: PendingApproval) => (
     <Row
       key={`${a.type}:${a.id}`}
@@ -547,20 +667,23 @@ export function MyTasks() {
   );
 
   // ── Tabs
-  const tabs: { key: View; label: string; count: number; capped?: boolean }[] = [
-    { key: 'all', label: 'All', count: replies.length + approvalItems.length + assignedItems.length + unread, capped: anyReplyCapped },
-    { key: 'replies', label: 'Replies', count: replies.length, capped: anyReplyCapped },
-    { key: 'approvals', label: 'Approvals', count: approvalItems.length },
-    { key: 'assigned', label: 'Assigned', count: assignedItems.length },
-    { key: 'alerts', label: 'Alerts', count: unread },
+  const allTabs: { key: View; label: string; count: number; capped?: boolean; on: boolean }[] = [
+    { key: 'all', label: 'All', count: replies.length + approvalItems.length + assignedItems.length + unread + contentTodo, capped: anyReplyCapped, on: true },
+    { key: 'replies', label: 'Replies', count: replies.length, capped: anyReplyCapped, on: sources.chats },
+    { key: 'approvals', label: 'Approvals', count: approvalItems.length, on: true },
+    { key: 'content', label: 'Content', count: contentTodo, on: sources.content },
+    { key: 'assigned', label: 'Assigned', count: assignedItems.length, on: sources.chats },
+    { key: 'alerts', label: 'Alerts', count: unread, on: sources.chats },
   ];
+  const tabs = allTabs.filter((t) => t.on);
 
   // ── "All clear" categories fold into one line in the digest.
   const clear: string[] = [];
-  if (!repliesLoading && repliesFailed.length === 0 && replies.length === 0) clear.push('no replies waiting');
+  if (sources.chats && !repliesLoading && repliesFailed.length === 0 && replies.length === 0) clear.push('no replies waiting');
   if (!approvals.isLoading && !approvalsFailed && approvalsDegraded.length === 0 && approvalItems.length === 0) clear.push('nothing to approve');
-  if (!assigned.isLoading && !assignedFailed && assignedItems.length === 0) clear.push('nothing assigned');
-  if (!notes.isLoading && !notesFailed && alerts.length === 0) clear.push('no alerts');
+  if (sources.chats && !assigned.isLoading && !assignedFailed && assignedItems.length === 0) clear.push('nothing assigned');
+  if (sources.chats && !notes.isLoading && !notesFailed && alerts.length === 0) clear.push('no alerts');
+  if (sources.content && !content.isLoading && !contentFailed && !content.data?.degraded && contentItems.length === 0) clear.push('no posts to put out');
 
   const repliesFailNote =
     repliesFailed.length > 0 ? <Failed what={repliesFailed.map((s) => CHANNEL_NAME[s.channel]).join(', ')} /> : null;
@@ -608,7 +731,12 @@ export function MyTasks() {
 
       {/* Tabs — pinned while the list scrolls. */}
       <div className="sticky top-0 z-10 -mx-4 mt-4 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 dark:bg-[#000724]/95">
-        <div role="tablist" aria-label="Task categories" className="grid grid-cols-5 gap-1 rounded-xl bg-slate-100 p-1 max-[359px]:gap-0.5 dark:bg-white/5">
+        <div
+          role="tablist"
+          aria-label="Task categories"
+          className="grid gap-1 rounded-xl bg-slate-100 p-1 max-[359px]:gap-0.5 dark:bg-white/5"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
           {tabs.map((t) => {
             const selected = view === t.key;
             return (
@@ -694,6 +822,24 @@ export function MyTasks() {
                   <Failed what="approvals" />
                 ) : (
                   <ul className={LIST}>{approvalItems.slice(0, DIGEST_SIZE).map(approvalDigestRow)}</ul>
+                )}
+              </DigestCard>
+            )}
+
+            {sources.content && (content.isLoading || contentItems.length > 0 || contentFailed || content.data?.degraded) && (
+              <DigestCard
+                icon={CalendarRange}
+                title="Content to put out"
+                count={contentTodo}
+                onSeeAll={() => setView('content')}
+                footerNote={content.data?.degraded ? <Failed what="some content items" /> : null}
+              >
+                {content.isLoading ? (
+                  <Loading />
+                ) : contentFailed ? (
+                  <Failed what="your content tasks" />
+                ) : (
+                  <ul className={LIST}>{contentItems.slice(0, DIGEST_SIZE).map(contentRow)}</ul>
                 )}
               </DigestCard>
             )}
@@ -785,6 +931,27 @@ export function MyTasks() {
               {approvalsFailNote}
             </section>
           </>
+        )}
+
+        {view === 'content' && (
+          <section className={CARD}>
+            {content.isLoading ? (
+              <Loading />
+            ) : contentFailed ? (
+              <Failed what="your content tasks" />
+            ) : contentItems.length === 0 ? (
+              <Empty text="Nothing to put out right now. Your plan is on track." />
+            ) : (
+              <Paged
+                items={contentItems}
+                resetKey="content"
+                render={(t) => (
+                  <ContentTaskCard key={t.id} task={t} busy={contentBusy === t.id} onMarkPosted={onMarkPosted} onFillGaps={onFillGaps} />
+                )}
+              />
+            )}
+            {content.data?.degraded ? <Failed what="some content items" /> : null}
+          </section>
         )}
 
         {view === 'assigned' && (
