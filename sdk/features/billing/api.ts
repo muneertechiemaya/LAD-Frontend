@@ -134,12 +134,18 @@ export type WalletKind = 'credits' | 'messages';
  */
 export interface TenantWalletBalance {
   kind: WalletKind;
-  balance: number;
+  balance: number | null;
   /** 'credits', or an ISO currency for a message balance. */
   unit: string | null;
   currency: string | null;
   /** No wallet row yet — a zero balance, not an error. */
   uninitialised?: boolean;
+  /**
+   * The balance could not be read. NOT the same as zero: a reader that shows
+   * 0.00 for this is stating "you have no funds" about a number it never saw.
+   * When set, `balance` is null.
+   */
+  degraded?: boolean;
 }
 
 /** Every balance the tenant holds, in one call. */

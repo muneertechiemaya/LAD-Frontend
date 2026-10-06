@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Megaphone, Plus, Loader2, Info, AlertTriangle } from 'lucide-react';
 import { getWalletBalances, topUpCredits } from '@lad/frontend-features/billing';
+import { useAuth } from '@/contexts/AuthContext';
 
 import type { TenantWalletBalance as Balance } from '@lad/frontend-features/billing';
 
@@ -24,7 +25,22 @@ import type { TenantWalletBalance as Balance } from '@lad/frontend-features/bill
  *  top-up in one would create a balance nothing can price against. */
 const FUNDABLE_CURRENCIES = ['AED', 'INR', 'USD'] as const;
 
+/**
+ * Client-side gate for UX only — the real enforcement is server-side, in the
+ * backend's /api/billing/topup. Keep in sync with SUPER_ADMIN_EMAIL there.
+ *
+ * Funding this balance is a LAD staff action, not self-service. /topup MINTS
+ * balance: it writes a 'manual' ledger entry and takes no payment, which is
+ * why the AI credits card beside this one sends customers to Stripe checkout
+ * instead. The backend's requireBillingAdmin admits a tenant's own owner, so
+ * showing this button to a customer would be offering them free credit.
+ */
+const SUPER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@techiemaya.com').toLowerCase();
+
 export const BroadcastCreditsCard: React.FC = () => {
+  const { user } = useAuth();
+  const canFund = (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
+
   const [balance, setBalance] = useState<Balance | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -36,7 +52,16 @@ export const BroadcastCreditsCard: React.FC = () => {
   const load = useCallback(async () => {
     try {
       const balances = await getWalletBalances();
-      setBalance(balances.find((b) => b.kind === 'messages') ?? null);
+      const messages = balances.find((b) => b.kind === 'messages') ?? null;
+      // The backend reports a balance it could not read as degraded rather than
+      // as zero. Failure is not emptiness — rendering 0.00 here would state
+      // "you have no funds", which is a different and alarming claim.
+      if (messages?.degraded) {
+        setBalance(null);
+        setError('Could not read the broadcast balance.');
+        return;
+      }
+      setBalance(messages);
       setError(null);
     } catch {
       // A balance we cannot read is not a zero balance. Saying "0" here would
@@ -92,13 +117,15 @@ export const BroadcastCreditsCard: React.FC = () => {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => { setOpen((v) => !v); setError(null); }}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0b1957] text-white hover:bg-[#0a1540] dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors cursor-pointer"
-        >
-          <Plus className="h-4 w-4" /> Add funds
-        </button>
+        {canFund && (
+          <button
+            type="button"
+            onClick={() => { setOpen((v) => !v); setError(null); }}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0b1957] text-white hover:bg-[#0a1540] dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            <Plus className="h-4 w-4" /> Add funds
+          </button>
+        )}
       </div>
 
       <div className="p-6 space-y-4">
@@ -110,9 +137,9 @@ export const BroadcastCreditsCard: React.FC = () => {
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : (
             <p className="text-3xl font-bold text-[#1E293B] dark:text-white tabular-nums">
-              {balance?.uninitialised || !balance
-                ? `0.00 ${unit}`
-                : `${balance.balance.toFixed(2)} ${balance.currency ?? ''}`}
+              {balance && !balance.uninitialised && balance.balance !== null
+                ? `${balance.balance.toFixed(2)} ${balance.currency ?? ''}`
+                : `0.00 ${unit}`}
             </p>
           )}
         </div>
@@ -138,7 +165,7 @@ export const BroadcastCreditsCard: React.FC = () => {
           </p>
         </div>
 
-        {open && (
+        {open && canFund && (
           <div className="pt-2 border-t border-[#E2E8F0] dark:border-gray-800 space-y-3">
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div>
