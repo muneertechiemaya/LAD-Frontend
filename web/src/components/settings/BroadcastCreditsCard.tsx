@@ -13,43 +13,78 @@
  *
  * So this balance is MONEY, in the WABA's billing currency, at Meta's published
  * rate plus 20%.
+ *
+ * HOW IT IS FUNDED
+ * Through Stripe Checkout, like AI credits. This card never moves the balance
+ * itself: it opens a checkout, and the backend credits the balance when Stripe
+ * reports the payment completed — by the amount Stripe actually collected.
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { Megaphone, Plus, Loader2, Info, AlertTriangle } from 'lucide-react';
-import { getWalletBalances, topUpCredits } from '@lad/frontend-features/billing';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Megaphone, Plus, Loader2, Info, AlertTriangle, CheckCircle2, CreditCard } from 'lucide-react';
+import { getWalletBalances, createBroadcastCheckout } from '@lad/frontend-features/billing';
 
 import type { TenantWalletBalance as Balance } from '@lad/frontend-features/billing';
 
 /** Currencies Meta's rate card is loaded for. Others have no rates yet, so a
- *  top-up in one would create a balance nothing can price against. */
+ *  balance in one could be bought but never spent. Mirrors the backend. */
 const FUNDABLE_CURRENCIES = ['AED', 'INR', 'USD'] as const;
 
-/**
- * Client-side gate for UX only — the real enforcement is server-side, in the
- * backend's /api/billing/topup. Keep in sync with SUPER_ADMIN_EMAIL there.
- *
- * Funding this balance is a LAD staff action, not self-service. /topup MINTS
- * balance: it writes a 'manual' ledger entry and takes no payment, which is
- * why the AI credits card beside this one sends customers to Stripe checkout
- * instead. The backend's requireBillingAdmin admits a tenant's own owner, so
- * showing this button to a customer would be offering them free credit.
- */
-const SUPER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@techiemaya.com').toLowerCase();
+/** Per-viewer note of a checkout in flight, so the return trip can tell when
+ *  the webhook has landed. A convenience only — the card works without it. */
+const PENDING_KEY = 'lad.broadcastCheckout.pending';
+interface Pending { before: number; amount: number; currency: string; at: number }
+
+type Return =
+  | { state: 'none' }
+  | { state: 'confirming' }
+  | { state: 'confirmed'; amount: number; currency: string }
+  | { state: 'slow' }
+  | { state: 'cancelled' };
+
+function readPending(): Pending | null {
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_KEY);
+    return raw ? (JSON.parse(raw) as Pending) : null;
+  } catch {
+    return null;
+  }
+}
+function writePending(p: Pending | null) {
+  try {
+    if (p) window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(p));
+    else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* storage unavailable — the return banner degrades to the generic message */
+  }
+}
+
+/** Drop ?payment / ?wallet so a refresh does not replay the return banner. */
+function clearReturnParams() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('payment');
+    url.searchParams.delete('wallet');
+    window.history.replaceState(null, '', url.toString());
+  } catch {
+    /* non-fatal */
+  }
+}
+
+const available = (b: Balance | null) =>
+  b && !b.uninitialised && b.balance !== null ? b.balance : 0;
 
 export const BroadcastCreditsCard: React.FC = () => {
-  const { user } = useAuth();
-  const canFund = (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
-
   const [balance, setBalance] = useState<Balance | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<string>('AED');
   const [error, setError] = useState<string | null>(null);
+  const [ret, setRet] = useState<Return>({ state: 'none' });
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<Balance | null> => {
     try {
       const balances = await getWalletBalances();
       const messages = balances.find((b) => b.kind === 'messages') ?? null;
@@ -59,55 +94,102 @@ export const BroadcastCreditsCard: React.FC = () => {
       if (messages?.degraded) {
         setBalance(null);
         setError('Could not read the broadcast balance.');
-        return;
+        return null;
       }
       setBalance(messages);
       setError(null);
+      return messages;
     } catch {
-      // A balance we cannot read is not a zero balance. Saying "0" here would
-      // read as "you have no funds", which is a different and alarming claim.
       setError('Could not read the broadcast balance.');
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  // ── Returning from Stripe ────────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isOurs = params.get('wallet') === 'broadcast';
+    const payment = params.get('payment');
 
-  const submit = async () => {
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0) {
-      setError('Enter an amount greater than zero.');
+    if (!isOurs || !payment) {
+      void load();
       return;
     }
-    setAdding(true);
-    setError(null);
-    try {
-      await topUpCredits({
-        amount: value,
-        kind: 'messages',
-        // Required by the API for a messages top-up: the balance is money in
-        // the WABA's billing currency, and a wallet created without it would
-        // default to USD and then be fed something else.
-        currency: balance?.currency ?? currency,
-        idempotencyKey: `ui_topup_messages_${Date.now()}`,
-        description: `Broadcast balance top-up (${value} ${balance?.currency ?? currency})`,
-      });
-      setOpen(false);
-      setAmount('');
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Top-up failed.');
-    } finally {
-      setAdding(false);
+    clearReturnParams();
+
+    if (payment === 'cancelled') {
+      writePending(null);
+      setRet({ state: 'cancelled' });
+      void load();
+      return;
     }
-  };
+
+    // payment === 'success'. Stripe redirects as soon as the card is charged;
+    // the webhook that credits the balance can land a few seconds later. Poll
+    // until the balance reflects it rather than showing the old number as if
+    // the payment had gone nowhere.
+    const pending = readPending();
+    setRet({ state: 'confirming' });
+    const deadline = Date.now() + 45_000;
+
+    const tick = async () => {
+      const b = await load();
+      const now = available(b);
+      if (pending && now >= pending.before + pending.amount - 0.005) {
+        writePending(null);
+        setRet({ state: 'confirmed', amount: pending.amount, currency: pending.currency });
+        return;
+      }
+      if (Date.now() > deadline) {
+        setRet({ state: 'slow' });
+        return;
+      }
+      pollRef.current = setTimeout(tick, 2_500);
+    };
+    void tick();
+
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, [load]);
 
   const unit = balance?.currency || currency;
 
+  const submit = async () => {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value < 1) {
+      setError('Enter an amount of at least 1.');
+      return;
+    }
+    // Tolerance, not equality: 10.1 * 100 is 1010.0000000000001 in floating point.
+    if (Math.abs(value * 100 - Math.round(value * 100)) > 1e-6) {
+      setError('Use at most two decimal places.');
+      return;
+    }
+    setRedirecting(true);
+    setError(null);
+    const cur = balance?.currency ?? currency;
+    const origin = window.location.origin;
+    try {
+      const { url } = await createBroadcastCheckout({
+        amount: value,
+        currency: cur,
+        successUrl: `${origin}/settings?tab=credits&payment=success&wallet=broadcast`,
+        cancelUrl: `${origin}/settings?tab=credits&payment=cancelled&wallet=broadcast`,
+      });
+      writePending({ before: available(balance), amount: value, currency: cur, at: Date.now() });
+      window.location.href = url;
+    } catch (e) {
+      setRedirecting(false);
+      setError(e instanceof Error ? e.message : 'Could not open checkout.');
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b] flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b] flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Megaphone className="h-5 w-5 text-[#0b1957] dark:text-blue-400 shrink-0" />
           <div className="min-w-0">
@@ -117,18 +199,41 @@ export const BroadcastCreditsCard: React.FC = () => {
             </p>
           </div>
         </div>
-        {canFund && (
-          <button
-            type="button"
-            onClick={() => { setOpen((v) => !v); setError(null); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0b1957] text-white hover:bg-[#0a1540] dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors cursor-pointer"
-          >
-            <Plus className="h-4 w-4" /> Add funds
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => { setOpen((v) => !v); setError(null); }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0b1957] text-white hover:bg-[#0a1540] dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors cursor-pointer"
+        >
+          <Plus className="h-4 w-4" /> Add funds
+        </button>
       </div>
 
       <div className="p-6 space-y-4">
+        {ret.state === 'confirming' && (
+          <div role="status" className="flex items-center gap-2 p-3 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/20 text-xs text-blue-800 dark:text-blue-300">
+            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+            Payment received. Updating your balance…
+          </div>
+        )}
+        {ret.state === 'confirmed' && (
+          <div role="status" className="flex items-center gap-2 p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/20 text-xs text-emerald-800 dark:text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {ret.currency} {ret.amount.toFixed(2)} added to your broadcast balance.
+          </div>
+        )}
+        {ret.state === 'slow' && (
+          <div role="status" className="flex items-center gap-2 p-3 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/20 text-xs text-blue-800 dark:text-blue-300">
+            <Info className="h-4 w-4 shrink-0" />
+            Payment received. Your balance can take a minute to update — refresh if it hasn&apos;t.
+          </div>
+        )}
+        {ret.state === 'cancelled' && (
+          <div role="status" className="flex items-center gap-2 p-3 rounded-lg border border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000724] text-xs text-[#64748B] dark:text-gray-400">
+            <Info className="h-4 w-4 shrink-0" />
+            Checkout cancelled. Nothing was charged.
+          </div>
+        )}
+
         <div>
           <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Available</p>
           {loading ? (
@@ -137,9 +242,7 @@ export const BroadcastCreditsCard: React.FC = () => {
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : (
             <p className="text-3xl font-bold text-[#1E293B] dark:text-white tabular-nums">
-              {balance && !balance.uninitialised && balance.balance !== null
-                ? `${balance.balance.toFixed(2)} ${balance.currency ?? ''}`
-                : `0.00 ${unit}`}
+              {available(balance).toFixed(2)} {unit}
             </p>
           )}
         </div>
@@ -165,17 +268,17 @@ export const BroadcastCreditsCard: React.FC = () => {
           </p>
         </div>
 
-        {open && canFund && (
+        {open && (
           <div className="pt-2 border-t border-[#E2E8F0] dark:border-gray-800 space-y-3">
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div>
                 <label htmlFor="bc-amount" className="block text-xs font-medium text-[#1E293B] dark:text-white mb-1">
-                  Amount
+                  Amount to add
                 </label>
                 <input
                   id="bc-amount"
                   type="number"
-                  min="0"
+                  min="1"
                   step="0.01"
                   inputMode="decimal"
                   value={amount}
@@ -199,14 +302,15 @@ export const BroadcastCreditsCard: React.FC = () => {
                 </select>
               </div>
             </div>
-            {balance?.currency && (
-              /* A balance holds one currency. Letting someone add INR to an AED
-                 wallet would make the number meaningless. */
-              <p className="text-[11px] text-[#64748B] dark:text-gray-500">
-                This balance is held in {balance.currency}, matching how Meta bills your
-                WhatsApp number.
-              </p>
-            )}
+
+            <p className="text-[11px] text-[#64748B] dark:text-gray-500 leading-relaxed">
+              {balance?.currency
+                ? <>This balance is held in {balance.currency}; top-ups must be in {balance.currency}. </>
+                : <>Choose the currency Meta bills your WhatsApp number in — the first purchase sets it for this balance. </>}
+              You&apos;ll pay by card on Stripe. 5% VAT and card processing are added at checkout,
+              and the full amount above goes into the balance.
+            </p>
+
             {error && (
               <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
             )}
@@ -214,10 +318,12 @@ export const BroadcastCreditsCard: React.FC = () => {
               <button
                 type="button"
                 onClick={submit}
-                disabled={adding || !amount}
+                disabled={redirecting || !amount}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#0b1957] text-white hover:bg-[#0a1540] disabled:opacity-40 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors cursor-pointer"
               >
-                {adding ? <><Loader2 className="h-4 w-4 animate-spin" /> Adding…</> : 'Add funds'}
+                {redirecting
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Opening checkout…</>
+                  : <><CreditCard className="h-4 w-4" /> Continue to payment</>}
               </button>
               <button
                 type="button"
