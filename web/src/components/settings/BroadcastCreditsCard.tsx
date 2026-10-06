@@ -195,7 +195,7 @@ export const BroadcastCreditsCard: React.FC = () => {
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-[#1E293B] dark:text-white">Broadcast balance</h3>
             <p className="text-xs text-[#64748B] dark:text-gray-400">
-              WhatsApp message spend, billed at Meta&apos;s rate plus 20%
+              WhatsApp message spend
             </p>
           </div>
         </div>
