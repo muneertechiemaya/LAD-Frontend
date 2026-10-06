@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Wallet, Plus, Loader2 } from 'lucide-react';
 import { useCreditsBalance } from '@lad/frontend-features/billing';
 import { AddCreditsModal } from '@/components/billing/AddCreditsModal';
+import { BroadcastCreditsCard } from '@/components/settings/BroadcastCreditsCard';
 
 /**
  * Monthly fee per connected channel. Must match CHANNEL_COST in LAD_backend
@@ -48,7 +49,9 @@ export const CreditsSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Wallet Balance Card */}
+      {/* Wallet Balance Card — AI, enrichment, LinkedIn. Broadcast spend is a
+          SEPARATE balance below: Meta sets that price, we do not, so it cannot
+          be denominated in plan-rated credits. */}
       <div className="bg-gradient-to-br from-primary to-primary/80 text-[#ffffff] p-6 rounded-xl shadow-lg dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
@@ -85,6 +88,8 @@ export const CreditsSettings: React.FC = () => {
         </div>
       </div>
 
+
+      <BroadcastCreditsCard />
       {/* Add Credits Modal - shared popup used by every credit CTA. */}
       <AddCreditsModal open={showAddCreditsModal} onClose={() => setShowAddCreditsModal(false)} />
 

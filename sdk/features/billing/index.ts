@@ -25,6 +25,7 @@
 // API FUNCTIONS
 // ============================================================================
 export {
+  getWalletBalances,
   // Primary API (credits-based naming)
   getCreditsBalance,
   getPricing,
@@ -71,6 +72,10 @@ export {
   useWalletBalance,
   useWalletBalanceLegacy,
 } from './hooks';
+// The message-wallet types live beside their API functions, not in ./types —
+// ./types already exports a different `WalletBalance` (the credits wallet).
+export type { WalletKind, TenantWalletBalance } from './api';
+
 // ============================================================================
 // TYPES
 // ============================================================================
