@@ -120,12 +120,48 @@ export async function chargeUsage(request: ChargeRequest): Promise<{
   return response.data;
 }
 /**
- * Top up credits (admin only)
+ * Which balance an operation touches.
+ *
+ * `credits`  the marked-up pool — AI, enrichment, LinkedIn — at the plan rate.
+ * `messages` WhatsApp spend at Meta's cost + markup, in the WABA's billing
+ *            currency. Real money, not credits; the two are never fungible.
+ */
+export type WalletKind = 'credits' | 'messages';
+
+/**
+ * One of a tenant's balances. Named apart from the existing `WalletBalance` in
+ * ./types, which describes the credits wallet alone — this one says WHICH.
+ */
+export interface TenantWalletBalance {
+  kind: WalletKind;
+  balance: number;
+  /** 'credits', or an ISO currency for a message balance. */
+  unit: string | null;
+  currency: string | null;
+  /** No wallet row yet — a zero balance, not an error. */
+  uninitialised?: boolean;
+}
+
+/** Every balance the tenant holds, in one call. */
+export async function getWalletBalances(): Promise<TenantWalletBalance[]> {
+  const response = await apiClient.get<{ balances: TenantWalletBalance[] }>('/api/billing/balances');
+  return response.data.balances ?? [];
+}
+
+/**
+ * Top up a balance (admin only).
+ *
+ * `kind` defaults to 'credits' server-side, so an existing caller that omits it
+ * tops up exactly what it always did. A 'messages' top-up MUST name its
+ * currency — the balance is money in the WABA's billing currency, and without
+ * it the wallet is created defaulted to USD and then quietly fed AED.
  */
 export async function topUpCredits(params: {
   amount: number;
   description?: string;
   idempotencyKey: string;
+  kind?: WalletKind;
+  currency?: string;
 }): Promise<LedgerTransaction> {
   const response = await apiClient.post('/api/billing/topup', params);
   return response.data.transaction;
