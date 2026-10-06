@@ -26,6 +26,7 @@
 // ============================================================================
 export {
   getWalletBalances,
+  createBroadcastCheckout,
   // Primary API (credits-based naming)
   getCreditsBalance,
   getPricing,
@@ -74,7 +75,7 @@ export {
 } from './hooks';
 // The message-wallet types live beside their API functions, not in ./types —
 // ./types already exports a different `WalletBalance` (the credits wallet).
-export type { WalletKind, TenantWalletBalance } from './api';
+export type { WalletKind, TenantWalletBalance, BroadcastCheckoutQuote } from './api';
 
 // ============================================================================
 // TYPES

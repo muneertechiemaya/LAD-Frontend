@@ -148,6 +148,35 @@ export interface TenantWalletBalance {
   degraded?: boolean;
 }
 
+/** What a broadcast top-up costs at checkout, as the server quoted it. */
+export interface BroadcastCheckoutQuote {
+  currency: string;
+  /** What lands in the balance. */
+  balance: string;
+  vat: string;
+  fee: string;
+  /** What the card is charged. */
+  total: string;
+}
+
+/**
+ * Start a Stripe Checkout for broadcast balance and return its URL.
+ *
+ * Nothing is credited by this call. The balance moves only when Stripe reports
+ * the payment completed, by the amount Stripe actually collected. VAT and card
+ * processing are added on top, so `amount` is exactly what lands in the
+ * balance.
+ */
+export async function createBroadcastCheckout(params: {
+  amount: number;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ url: string; sessionId: string; quote: BroadcastCheckoutQuote }> {
+  const response = await apiClient.post('/api/stripe/create-broadcast-checkout', params);
+  return response.data;
+}
+
 /** Every balance the tenant holds, in one call. */
 export async function getWalletBalances(): Promise<TenantWalletBalance[]> {
   const response = await apiClient.get<{ balances: TenantWalletBalance[] }>('/api/billing/balances');
