@@ -6,8 +6,8 @@
 import * as React from 'react';
 import { useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, MoreHorizontal, SendHorizontal, MapPin, TrendingUp, ChevronDown,
-  ChevronUp, Users, MousePointerClick, Route, MoonStar, Ban, Trash2, CalendarClock,
+  ArrowLeft, MapPin, TrendingUp, ChevronDown,
+  ChevronUp, Users, MousePointerClick, MoonStar, Ban, Trash2, CalendarClock,
 } from 'lucide-react';
 import {
   LadCard, LadCardHeader, CH, T, STAGE_META, rel,
@@ -24,9 +24,10 @@ import type { ProspectFollowup } from '@lad/frontend-features/prospects';
 
 interface ProspectDetailProps {
   prospect: ProspectFixture;
-  warmPath: WarmPath;
-  /** When true, render a "Sample data" caption - the warm-path graph isn't
-   *  wired to a live relationship-graph source yet (R18). */
+  /** Real introduction routes for this contact. Omit until a live source exists:
+   *  the section and its KPI tile are hidden rather than showing sample data. */
+  warmPath?: WarmPath | null;
+  /** When true, render a "Sample data" caption on a supplied warm path. */
   warmPathSample?: boolean;
   events?: ProspectEvent[];
   /** The events fetch failed — Activity/Recent activity below render off
@@ -85,11 +86,32 @@ function degreeLabel(nd?: string | null): string {
 // channel, which the heatmap maps to the "Signal" (intent) row — so an operator toggling
 // DNC twice used to read as two buying-intent signals, and inflated "Engagement · 7d" by
 // two. Keep them out of both aggregates; the timeline below still shows them as audit trail.
+// Event types in plain words ("crm quiet_set" meant nothing to a customer).
+const EVENT_LABEL: Record<string, string> = {
+  'crm.quiet_set': 'Agent replies paused',
+  'crm.quiet_cleared': 'Agent replies resumed',
+  'crm.do_not_contact_set': 'Marked do not contact',
+  'crm.do_not_contact_cleared': 'Do not contact lifted',
+  'crm.deleted': 'Removed from contacts',
+  profile_visited: 'Visited their LinkedIn profile',
+  connection_sent: 'Sent a LinkedIn connection request',
+  connection_request_sent: 'Sent a LinkedIn connection request',
+  connection_accepted: 'Accepted your connection request',
+  message_sent: 'Message sent',
+  message_received: 'Replied',
+  reply_received: 'Replied',
+};
+function eventLabel(type: string): string {
+  const t = String(type || '');
+  if (EVENT_LABEL[t]) return EVENT_LABEL[t];
+  const plain = t.replace(/^crm\./, '').replace(/[._]+/g, ' ').trim();
+  return plain ? plain.charAt(0).toUpperCase() + plain.slice(1) : 'Activity';
+}
 function isOperatorEvent(e: ProspectEvent): boolean {
   return String(e.event_type || '').startsWith('crm.');
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, followupsDegradedChannels = [], coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath = null, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, followupsDegradedChannels = [], coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -146,13 +168,14 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
     <div className="mt-6 space-y-4">
       {/* Sub-header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Row 1: Back button and Contact Name */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* Row 1: Back button and Contact Name. Phones get the same trail from
+            the TopBar crumb ("Contacts Funnel › name"), so it is hidden there. */}
+        <div className="max-md:hidden flex items-center gap-2 min-w-0">
           <button
             onClick={onClose}
-            className="h-8 px-2.5 rounded-lg text-[12.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 shrink-0"
+            className="h-8 max-lg:h-11 px-2.5 rounded-lg text-[12.5px] max-md:text-[14px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> All deals
+            <ArrowLeft className="w-3.5 h-3.5" /> Contacts
           </button>
           <span className="text-slate-300 dark:text-slate-700 shrink-0">/</span>
           <span className="text-[12.5px] font-medium text-[#172560] dark:text-white truncate">
@@ -165,29 +188,13 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
               onClick={onRemove}
               disabled={isRemoving}
               title="Remove this prospect - not a fit"
-              className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
+              className="h-9 max-lg:h-11 px-3 whitespace-nowrap md:flex-none rounded-lg text-[12.5px] max-md:text-[14px] font-medium text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
             >
-              <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Not a fit'}
+              <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Remove (not a fit)'}
             </button>
           )}
-          <button
-            disabled
-            title="Not available yet"
-            className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] inline-flex items-center justify-center md:justify-start gap-1.5 opacity-50 cursor-not-allowed"
-          >
-            <MoreHorizontal className="w-4 h-4" /> More
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Not available yet"
-            className="h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 outline-none border-none opacity-50 cursor-not-allowed
-            bg-[#0b1957]
-            dark:bg-[#2563eb]"
-          >
-            <SendHorizontal className="w-4 h-4 shrink-0 stroke-[2.5] text-white !text-white" />
-            <span className="text-white !text-white">Message</span>
-          </button>
+          {/* "More" and "Message" were permanently disabled ("Not available yet");
+              buttons that never work are noise, so they're gone until they do. */}
         </div>
       </div>
 
@@ -210,8 +217,10 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
                   {prospect.full_name}
                 </h2>
                 <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ background: `${stage.color}1a`, color: stage.color }}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium dark:!text-slate-100"
+                  // Raw stage colours (e.g. info blue) read ~2.5:1 as text on their own tint;
+                  // 60% toward black keeps the hue and clears 4.5:1.
+                  style={{ background: `${stage.color}1a`, color: `color-mix(in srgb, ${stage.color} 60%, #000)` }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: stage.color }}></span>
                   {stage.label}
@@ -227,13 +236,13 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
                   decoration as the "·" separator in tables.tsx's NameCell. The
                   network_distance block right below already guards this way. */}
               {prospect.location && String(prospect.location).trim() && (
-                <p className="text-[11.5px] text-slate-500 dark:text-slate-300 mt-1 flex items-center gap-1.5">
+                <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 flex items-center gap-1.5">
                   <MapPin className="w-3 h-3" />
                   {prospect.location}
                 </p>
               )}
               {(prospect.network_distance || (prospect.mutual_connections_count ?? 0) > 0) && (
-                <p className="text-[11px] mt-1.5 flex items-center gap-2 flex-wrap">
+                <p className="text-xs mt-1.5 flex items-center gap-2 flex-wrap">
                   {prospect.network_distance && (
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
@@ -253,15 +262,17 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
             </div>
           </div>
 
-          <div className="lg:flex-1 grid grid-cols-2 lg:grid-cols-4">
+          <div className={`lg:flex-1 grid grid-cols-2 ${warmPath ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
             <KpiFit value={prospect.fit_score} />
             <KpiSpark counts={kpis.dailyCounts} total={eventsUnavailable ? null : kpis.total7d} />
-            <KpiRoutes
-              count={kpis.routes}
-              top={kpis.topConnection}
-              onClick={toggleWarm}
-              open={warmOpen}
-            />
+            {warmPath && (
+              <KpiRoutes
+                count={kpis.routes}
+                top={kpis.topConnection}
+                onClick={toggleWarm}
+                open={warmOpen}
+              />
+            )}
             <KpiLast
               channel={prospect.last_channel}
               occurredAt={prospect.last_event_at}
@@ -271,15 +282,17 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         </div>
       </LadCard>
 
-      {/* Warm path */}
-      <div ref={sectionRef}>
-        {warmPathSample && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
-            Sample data · warm-path is not yet wired to a live source
-          </div>
-        )}
-        <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
-      </div>
+      {/* Warm path - only with real data */}
+      {warmPath && (
+        <div ref={sectionRef}>
+          {warmPathSample && (
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
+              Sample data · warm-path is not yet wired to a live source
+            </div>
+          )}
+          <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
+        </div>
+      )}
 
       {(eventsError || eventsUnavailable) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-3 text-[12.5px] text-rose-700 dark:text-rose-300">
@@ -413,11 +426,11 @@ function KpiFit({ value }: { value: number | null }) {
         </div>
       </div>
       <div className="min-w-0">
-        <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
           Fit score
         </p>
         <p className="text-[13px] font-semibold text-[#172560] dark:text-white mt-0.5">{band}</p>
-        <p className="text-[11px] text-slate-500 dark:text-slate-300">
+        <p className="text-xs text-slate-500 dark:text-slate-300">
           {scored ? 'Fit to active ICP' : 'Scored on discovery'}
         </p>
       </div>
@@ -436,7 +449,7 @@ function KpiSpark({ counts, total }: { counts: number[]; total: number | null })
   const lastY = h - (counts[n - 1] / max) * h;
   return (
     <div className="p-4 lg:p-5 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-[#1c2c4e]">
-      <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+      <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
         Engagement · 7d
       </p>
       <div className="flex items-baseline gap-2 mt-1">
@@ -446,7 +459,7 @@ function KpiSpark({ counts, total }: { counts: number[]; total: number | null })
         >
           {total ?? '—'}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">
+        <span className="text-xs text-slate-500 dark:text-slate-300">
           {total == null ? 'not loaded' : 'events'}
         </span>
       </div>
@@ -496,11 +509,11 @@ function KpiRoutes({
       className="text-left w-full p-4 lg:p-5 border-r border-slate-100 dark:border-[#1c2c4e] hover:bg-[#f1f3fb] dark:hover:bg-[#0e1d4d] transition group"
     >
       <div className="flex items-start justify-between">
-        <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
           Warm routes
         </p>
         <span
-          className="inline-flex items-center gap-1 text-[10.5px] font-medium opacity-70 group-hover:opacity-100 text-[#0B1957] dark:text-slate-400 transition-colors"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[#0B1957] dark:text-slate-300 group-hover:underline transition-colors"
         >
           {open ? 'Hide' : 'Open'}
           {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -513,7 +526,7 @@ function KpiRoutes({
           >
             {count}
           </span>
-          <span className="text-[11px] font-medium text-[#0B1957] dark:text-slate-400">
+          <span className="text-xs font-medium text-[#0B1957] dark:text-slate-400">
             paths
           </span>
       </div>
@@ -524,7 +537,7 @@ function KpiRoutes({
         >
           AM
         </div>
-        <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+        <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
           via <span className="font-semibold text-[#172560] dark:text-white">{top}</span>
         </p>
       </div>
@@ -539,7 +552,7 @@ function KpiLast({
   const Icon = c.Icon;
   return (
     <div className="p-4 lg:p-5">
-      <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+      <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
         Last touch
       </p>
       <div className="flex items-baseline gap-2 mt-1">
@@ -549,16 +562,16 @@ function KpiLast({
         >
           {rel(occurredAt)}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">ago</span>
+        <span className="text-xs text-slate-500 dark:text-slate-300">ago</span>
       </div>
       <div className="mt-2 inline-flex items-center gap-1.5">
         <span
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium dark:!text-slate-200"
           style={{ color: c.color, background: `${c.color}1a` }}
         >
           <Icon className="w-3 h-3" /> {c.label}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">
+        <span className="text-xs text-slate-500 dark:text-slate-300">
           {direction === 'inbound' ? 'reply' : 'sent'}
         </span>
       </div>
@@ -613,7 +626,7 @@ function ActivityHeatmap({ events, days = 30, unavailable = false }: { events: P
             <div key={c} className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-24 shrink-0">
                 <Icon className={`w-3.5 h-3.5 ${isIntentChannel ? 'text-[#172560] dark:text-[#60a5fa]' : ''}`}                      style={isIntentChannel ? undefined : { color: meta?.color || 'currentColor' }}/>
-                <span className="text-[11.5px] font-medium text-[#172560] dark:text-white">{meta.label}</span>
+                <span className="text-xs font-medium text-[#172560] dark:text-white">{meta.label}</span>
               </div>
               <div
                 className="flex-1 grid gap-[3px]"
@@ -634,13 +647,13 @@ function ActivityHeatmap({ events, days = 30, unavailable = false }: { events: P
                   );
                 })}
               </div>
-              <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-300 w-8 text-right">
+              <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300 w-8 text-right">
                 {sum}
               </span>
             </div>
           );
         })}
-        <div className="flex items-center justify-between pt-2 text-[10.5px] text-slate-500 dark:text-slate-300">
+        <div className="flex items-center justify-between pt-2 text-xs text-slate-500 dark:text-slate-300">
           <span>{days} days ago</span>
           <span>Today</span>
         </div>
@@ -666,8 +679,8 @@ function FitRadar({ p }: { p: ProspectFixture }) {
       <LadCard>
         <LadCardHeader title="Fit signals" subtitle="Not scored yet" />
         <div className="py-10 text-center text-[12.5px] text-slate-500 dark:text-slate-300">
-          No fit signals for this prospect yet - fit is computed when it&apos;s
-          discovered via a search (Apollo · Sales Nav · ABM).
+          No fit signals for this contact yet. Fit is worked out when a contact
+          is found through a lead search.
         </div>
       </LadCard>
     );
@@ -737,13 +750,13 @@ function FitRadar({ p }: { p: ProspectFixture }) {
         <div className="flex-1 grid grid-cols-1 gap-1.5">
           {signals.map(([k, v]) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-600 dark:text-slate-300 w-16">
+              <span className="text-xs text-slate-600 dark:text-slate-300 w-16">
                 {FIT_LABELS[k] || k}
               </span>
               <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: T.badgeBg }}>
                 <div className="h-full" style={{ width: `${v * 100}%`, background: T.primary }}></div>
               </div>
-              <span className="text-[11px] tabular-nums font-semibold text-[#172560] dark:text-white w-8 text-right">
+              <span className="text-xs tabular-nums font-semibold text-[#172560] dark:text-white w-8 text-right">
                 {Math.round(v * 100)}
               </span>
             </div>
@@ -788,7 +801,7 @@ function ChannelDonut({ p }: { p: ProspectFixture }) {
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
-              <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
+              <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold">
                 Events
               </p>
               <p
@@ -806,13 +819,13 @@ function ChannelDonut({ p }: { p: ProspectFixture }) {
             return (
               <div key={ch} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta?.color || T.primary }}></span>
-                <span className="text-[11.5px] font-medium text-[#172560] dark:text-white flex-1">
+                <span className="text-xs font-medium text-[#172560] dark:text-white flex-1">
                   {meta?.label || ch}
                 </span>
-                <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-300">
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300">
                   {rr.count}
                 </span>
-                <span className="text-[10.5px] tabular-nums text-slate-400 dark:text-slate-300/70 w-9 text-right">
+                <span className="text-xs tabular-nums text-slate-400 dark:text-slate-300/70 w-9 text-right">
                   {Math.round((rr.count / total) * 100)}%
                 </span>
               </div>
@@ -876,11 +889,11 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
                 >
                   <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-300 tabular-nums">
+                <span className="text-xs text-slate-500 dark:text-slate-300 tabular-nums">
                   {s.recency_days}d
                 </span>
               </div>
-              <p className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold mt-3">
+              <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 font-semibold mt-3">
                 {m.label}
               </p>
               <p className="text-[13px] text-[#172560] dark:text-white font-semibold mt-0.5 leading-snug">
@@ -893,7 +906,7 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
                 >
                   <div className="h-full" style={{ width: `${s.confidence * 100}%`, background: m.color }}></div>
                 </div>
-                <span className="text-[10.5px] tabular-nums text-slate-500 dark:text-slate-300">
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-300">
                   {Math.round(s.confidence * 100)}%
                 </span>
               </div>
@@ -938,7 +951,7 @@ function MiniFeed({ events, truncated = false, unavailable = false }: { events: 
             preview = `${payload.round} · $${amt.toFixed(0)}M`;
           } else if (payload.pages) preview = (payload.pages as string[]).join(', ');
           else if (payload.note) preview = String(payload.note);
-          else preview = e.event_type.replace(/\./g, ' ');
+          else preview = eventLabel(e.event_type);
           return (
             <li key={e.seq} className="flex items-start gap-3">
               <div
@@ -948,8 +961,9 @@ function MiniFeed({ events, truncated = false, unavailable = false }: { events: 
                 <Icon className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11.5px] text-slate-500 dark:text-slate-300">
-                  <span className="font-semibold text-[#172560] dark:text-white">{m.label}</span> · {e.direction}
+                <p className="text-xs text-slate-500 dark:text-slate-300">
+                  <span className="font-semibold text-[#172560] dark:text-white">{m.label}</span>
+                  {e.direction === 'outbound' ? ' · sent' : e.direction === 'inbound' ? ' · received' : ''}
                   <span className="ml-1.5 tabular-nums">{rel(e.occurred_at)} ago</span>
                 </p>
                 <p className="text-[12.5px] text-[#172560] dark:text-white mt-0.5 truncate">{preview}</p>
@@ -974,8 +988,6 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
     <LadCard>
       <LadCardHeader title="Take action" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <ActionBtn Icon={Route} label="Ask for intro" hint="Not available yet" primary disabled />
-        <ActionBtn Icon={SendHorizontal} label="Send message" hint="Not available yet" disabled />
         <ActionBtn
           Icon={MoonStar}
           label={quietActive ? 'Quieted' : 'Quiet 7d'}
@@ -999,7 +1011,7 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
           onClick={() => onAction?.({ doNotContact: !doNotContact })}
         />
       </div>
-      <p className="mt-2.5 text-[11.5px] text-slate-500 dark:text-slate-400 leading-snug">
+      <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400 leading-snug">
         Agent replies honour these. A running campaign sequence does not — pause
         the campaign to stop its steps.
       </p>
@@ -1049,7 +1061,7 @@ function ActionBtn({
       <div className="min-w-0">
         <p className="text-[13px] font-semibold">{label}</p>
         <p
-          className={`text-[11px] ${
+          className={`text-xs ${
             primary ? 'text-white/70' : 'text-slate-500 dark:text-slate-300'
           } truncate`}
         >
@@ -1138,14 +1150,14 @@ function NextFollowups({
                       <span className="font-normal text-slate-500 dark:text-slate-300"> · {desc}</span>
                     ) : null}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-300 truncate">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 truncate">
                     {when.abs}
                     {f.attempt ? ` · attempt ${f.attempt}` : ''}
                   </p>
                 </div>
                 {when.badge ? (
                   <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0"
+                    className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
                     style={{ background: T.badgeBg, color: T.primary }}
                   >
                     {when.badge}
@@ -1157,7 +1169,7 @@ function NextFollowups({
         </ul>
       )}
       {!error && !loading && followups.length > 0 && degradedChannels.length > 0 && (
-        <p className="mt-2 text-[11.5px] text-amber-700 dark:text-amber-300">
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
           {degradedChannels.join(', ')} follow-ups couldn&apos;t be read — there may be more
           than shown.
         </p>

@@ -213,7 +213,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
           onClick={handleScan}
           disabled={scanning || !connected}
           title={connected ? undefined : blockedReason}
-          className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 h-9 max-lg:h-11 px-4 rounded-lg text-sm font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {scanning ? 'Scanning…' : 'Scan open tasks'}
@@ -270,7 +270,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
             <div className="relative flex items-center w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               <input
-                className="w-full pl-9 pr-3 h-9 rounded-lg text-sm border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-slate-800/50 text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full pl-9 pr-3 h-9 max-lg:h-11 rounded-lg text-sm max-md:text-[16px] border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-slate-800/50 text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="Search a task or contact (e.g. Eric)…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

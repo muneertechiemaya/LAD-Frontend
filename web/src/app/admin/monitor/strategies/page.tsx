@@ -14,6 +14,7 @@
 import React from 'react';
 import { RefreshCw, Check, X, ShieldCheck, Inbox, AlertTriangle } from 'lucide-react';
 import { useStrategyReview, type StrategyReviewStatus } from '@lad/frontend-features/lad-monitor';
+import { VerticalPromptViewer } from '../components/VerticalPromptViewer';
 
 const TABS: { value: StrategyReviewStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
@@ -51,7 +52,7 @@ export default function MonitorStrategiesPage() {
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Shared Strategies</h2>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -70,7 +71,7 @@ export default function MonitorStrategiesPage() {
           <button
             key={t.value}
             onClick={() => setStatus(t.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`max-lg:min-h-11 max-lg:min-w-11 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               status === t.value
                 ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
@@ -115,7 +116,7 @@ export default function MonitorStrategiesPage() {
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {s.node_types.map((t) => (
-                      <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                         {t}
                       </span>
                     ))}
@@ -123,7 +124,7 @@ export default function MonitorStrategiesPage() {
                 </div>
                 <button
                   onClick={() => setExpanded(open ? null : s.id)}
-                  className="flex-shrink-0 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="max-lg:min-h-11 flex-shrink-0 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   {open ? 'Hide' : 'Inspect'}
                 </button>
@@ -140,7 +141,7 @@ export default function MonitorStrategiesPage() {
                   <div className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
                     {nodes.length} steps - full shared payload
                   </div>
-                  <pre className="max-h-80 overflow-auto rounded-lg bg-gray-50 p-2.5 text-[11px] leading-relaxed text-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                  <pre className="max-h-80 overflow-auto rounded-lg bg-gray-50 p-2.5 text-xs leading-relaxed text-gray-800 dark:bg-gray-950 dark:text-gray-200">
                     {JSON.stringify(s.shared_definition, null, 2)}
                   </pre>
                 </div>
@@ -152,19 +153,19 @@ export default function MonitorStrategiesPage() {
                     value={noteFor[s.id] || ''}
                     onChange={(e) => setNoteFor((p) => ({ ...p, [s.id]: e.target.value }))}
                     placeholder="Note (optional - shown to the author)"
-                    className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    className="max-lg:min-h-11 max-md:text-[16px] flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                   <button
                     onClick={() => act(s.id, 'reject')}
                     disabled={submittingId === s.id}
-                    className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                    className="max-lg:min-h-11 flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <X className="h-3.5 w-3.5" /> Reject
                   </button>
                   <button
                     onClick={() => act(s.id, 'approve')}
                     disabled={submittingId === s.id}
-                    className="flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+                    className="max-lg:min-h-11 flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
                   >
                     <Check className="h-3.5 w-3.5" /> Approve
                   </button>
@@ -178,6 +179,8 @@ export default function MonitorStrategiesPage() {
           );
         })}
       </div>
+
+      <VerticalPromptViewer />
     </div>
   );
 }

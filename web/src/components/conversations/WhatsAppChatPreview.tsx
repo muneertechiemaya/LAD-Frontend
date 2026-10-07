@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import {
   Phone, Video, MoreVertical, CheckCheck,
   Smile, Paperclip, Mic, Globe, Reply, FileText,
-  Play, Image as ImageIcon, CheckCircle2,
+  Play, Image as ImageIcon, CheckCircle2, Copy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusinessProfile } from '@lad/frontend-features/ai-icp-assistant';
@@ -12,7 +12,7 @@ import { useBusinessProfile } from '@lad/frontend-features/ai-icp-assistant';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type HeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
-export type ButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+export type ButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'OTP';
 
 export interface TemplatePreviewButton {
   id: string;
@@ -265,6 +265,7 @@ export function WhatsAppChatPreview({
                     {btn.type === 'QUICK_REPLY' && <Reply className="w-3 h-3 rotate-180 shrink-0" />}
                     {btn.type === 'URL' && <Globe className="w-3 h-3 shrink-0" />}
                     {btn.type === 'PHONE_NUMBER' && <Phone className="w-3 h-3 shrink-0" />}
+                    {btn.type === 'OTP' && <Copy className="w-3 h-3 shrink-0" />}
                     <span className="truncate">{btn.text}</span>
                   </div>
                 ))}

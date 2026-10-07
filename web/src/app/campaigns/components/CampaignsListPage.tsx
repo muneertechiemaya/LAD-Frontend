@@ -261,7 +261,7 @@ export default function CampaignsListPage() {
   return (
     <div className="p-3 bg-[#F8F9FE] dark:bg-[#000724] h-full overflow-auto">
       {/* Header */}
-      <div className="mb-5 flex flex-col sm:flex-row justify-between mt-10 items-stretch sm:items-center gap-2 sm:gap-0">
+      <div className="mb-5 flex flex-col lg:flex-row justify-between mt-10 items-stretch lg:items-center gap-3 lg:gap-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Goal className="w-8 h-8 text-[#1E293B] dark:text-white" />
@@ -273,28 +273,29 @@ export default function CampaignsListPage() {
             Manage your multi-channel outreach campaigns
           </p>
         </div>
-        <div className="flex gap-3 flex-col sm:flex-row">
+        <div className="flex gap-3 flex-col sm:flex-row sm:flex-wrap">
           {/* Refresh LinkedIn accepted connections */}
           <Button
             onClick={handleRefreshConnections}
             disabled={syncing}
             variant="outline"
-            className="bg-[#0b1957] dark:bg-[#2563eb] text-white dark:hover:text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60"
+            className="bg-[#0b1957] dark:bg-[#2563eb] text-white dark:hover:text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing..." : "Refresh Connections"}
+            {syncing ? "Syncing..." : "Sync LinkedIn"}
           </Button>
 
-          <div className="flex gap-2 w-full sm:w-auto">
+          {/* Phones: the three "+" actions share one row as even columns. */}
+          <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto">
             <Button
               onClick={() => navigateTo("/conversations/templates/create")}
               disabled={isNavigating}
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/conversations/templates/create" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
               Template
             </Button>
@@ -302,12 +303,12 @@ export default function CampaignsListPage() {
             <Button
               onClick={() => navigateTo("/onboarding/advanced-search-ai")}
               disabled={isNavigating}
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/onboarding/advanced-search-ai" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
               Campaign
             </Button>
@@ -317,14 +318,14 @@ export default function CampaignsListPage() {
               onClick={() => navigateTo("/campaigns/workflow")}
               disabled={isNavigating}
               variant="outline"
-              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#0b1957] dark:bg-[#2563eb] text-white rounded-xl font-semibold px-3 py-1.5 max-lg:min-h-11 max-sm:px-2 max-sm:text-[13px] min-w-0 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:flex-none sm:w-auto hover:bg-[#0a1540] dark:hover:bg-[#1d4ed8] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isNavigating && navigatingTo === "/campaigns/workflow" ? (
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-1 max-sm:mr-0.5 shrink-0" aria-hidden />
               )}
-              Custom Accelerator
+              <span className="truncate"><span className="sm:hidden">Workflow</span><span className="hidden sm:inline">Custom workflow</span></span>
             </Button>
           </div>
         </div>
@@ -332,8 +333,9 @@ export default function CampaignsListPage() {
       {/* Stats Cards */}
       {stats && <CampaignStatsCards stats={stats} />}
 
-      {/* LinkedIn Rate Limits Section */}
-      {(stats as any)?.linkedin_rate_limits && (() => {
+      {/* LinkedIn Rate Limits Section - only once a LinkedIn account is connected;
+          without one it was a screen of zeros above the campaigns themselves. */}
+      {(stats as any)?.linkedin_rate_limits?.daily?.account_count > 0 && (() => {
         const linkedinStats = (stats as any).linkedin_rate_limits;
         return (
         <div className="mb-8 mt-8 pt-8 border-t border-[#E2E8F0] dark:border-blue-950/40">
@@ -351,7 +353,7 @@ export default function CampaignsListPage() {
                 Weekly connection limits and usage tracking
               </p>
             </div>
-            <Badge className="font-semibold bg-[#0A66C2]/10 text-[#0A66C2] text-xs">
+            <Badge className="font-semibold bg-[#0A66C2]/10 text-[#0A66C2] dark:text-sky-300 text-xs">
               {linkedinStats.usage.weekly_percentage}% Used
             </Badge>
           </div>
@@ -514,7 +516,7 @@ export default function CampaignsListPage() {
                 <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-blue-950/40 grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">Total Sent</p>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                       {linkedinStats?.usage?.sent_last_7_days ??
                         0}
                     </p>
@@ -535,15 +537,15 @@ export default function CampaignsListPage() {
                               ?.weekly_percentage ?? 0,
                           ),
                         ) > 90
-                          ? "text-red-600"
+                          ? "text-red-700 dark:text-red-400"
                           : parseInt(
                                 String(
                                   linkedinStats?.usage
                                     ?.weekly_percentage ?? 0,
                                 ),
                               ) > 70
-                            ? "text-amber-600"
-                            : "text-green-600"
+                            ? "text-amber-700 dark:text-amber-400"
+                            : "text-green-700 dark:text-green-400"
                       }`}
                     >
                       {linkedinStats?.usage?.weekly_percentage ??

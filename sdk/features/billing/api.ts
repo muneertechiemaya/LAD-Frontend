@@ -4,6 +4,7 @@
  * This is the only place that makes direct HTTP calls for billing
  */
 import { apiClient } from '../../shared/apiClient';
+import type { RecurringPlan, RecurringStatus } from './types';
 export interface CreditsBalance {
   walletId: string;
   tenantId: string;
@@ -92,14 +93,14 @@ export const getWalletBalance = getCreditsBalance;
 /**
  * Get pricing for a specific component
  */
-export async function getPricing(params: {
-  category: string;
-  provider: string;
-  model: string;
-  unit: string;
-}): Promise<PricingItem> {
+export async function getPricing<T = PricingItem[] | PricingItem | any>(params?: {
+  category?: string;
+  provider?: string;
+  model?: string;
+  unit?: string;
+}): Promise<T> {
   const response = await apiClient.get('/api/billing/pricing', { params });
-  return response.data.price;
+  return response.data.price ?? response.data.prices ?? response.data.pricing ?? response.data;
 }
 /**
  * Get cost quote before charging
@@ -119,12 +120,89 @@ export async function chargeUsage(request: ChargeRequest): Promise<{
   return response.data;
 }
 /**
- * Top up credits (admin only)
+ * Which balance an operation touches.
+ *
+ * `credits`  the marked-up pool — AI, enrichment, LinkedIn — at the plan rate.
+ * `messages` WhatsApp spend at Meta's cost + markup, in the WABA's billing
+ *            currency. Real money, not credits; the two are never fungible.
+ */
+export type WalletKind = 'credits' | 'messages';
+
+/**
+ * One of a tenant's balances. Named apart from the existing `WalletBalance` in
+ * ./types, which describes the credits wallet alone — this one says WHICH.
+ */
+export interface TenantWalletBalance {
+  kind: WalletKind;
+  balance: number | null;
+  /** 'credits', or an ISO currency for a message balance. */
+  unit: string | null;
+  currency: string | null;
+  /** No wallet row yet — a zero balance, not an error. */
+  uninitialised?: boolean;
+  /**
+   * Messages balance only: whether WhatsApp messages are actually being charged
+   * to it (per-message billing is on). False means broadcasts are still on the
+   * old flat AI-credit charge and this balance is not being spent yet.
+   */
+  inUse?: boolean;
+  /**
+   * The balance could not be read. NOT the same as zero: a reader that shows
+   * 0.00 for this is stating "you have no funds" about a number it never saw.
+   * When set, `balance` is null.
+   */
+  degraded?: boolean;
+}
+
+/** What a broadcast top-up costs at checkout, as the server quoted it. */
+export interface BroadcastCheckoutQuote {
+  currency: string;
+  /** What lands in the balance. */
+  balance: string;
+  vat: string;
+  fee: string;
+  /** What the card is charged. */
+  total: string;
+}
+
+/**
+ * Start a Stripe Checkout for broadcast balance and return its URL.
+ *
+ * Nothing is credited by this call. The balance moves only when Stripe reports
+ * the payment completed, by the amount Stripe actually collected. VAT and card
+ * processing are added on top, so `amount` is exactly what lands in the
+ * balance.
+ */
+export async function createBroadcastCheckout(params: {
+  amount: number;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ url: string; sessionId: string; quote: BroadcastCheckoutQuote }> {
+  const response = await apiClient.post('/api/stripe/create-broadcast-checkout', params);
+  return response.data;
+}
+
+/** Every balance the tenant holds, in one call. */
+export async function getWalletBalances(): Promise<TenantWalletBalance[]> {
+  const response = await apiClient.get<{ balances: TenantWalletBalance[] }>('/api/billing/balances');
+  return response.data.balances ?? [];
+}
+
+/**
+ * Top up a balance (admin only).
+ *
+ * `kind` defaults to 'credits' server-side, so an existing caller that omits it
+ * tops up exactly what it always did. A 'messages' top-up MUST name its
+ * currency — the balance is money in the WABA's billing currency, and without
+ * it the wallet is created defaulted to USD and then quietly fed AED.
  */
 export async function topUpCredits(params: {
   amount: number;
   description?: string;
   idempotencyKey: string;
+  kind?: WalletKind;
+  currency?: string;
 }): Promise<LedgerTransaction> {
   const response = await apiClient.post('/api/billing/topup', params);
   return response.data.transaction;
@@ -135,16 +213,23 @@ export async function topUpCredits(params: {
 export async function listUsage(params?: {
   from?: string;
   to?: string;
+  startDate?: string;
+  endDate?: string;
   featureKey?: string;
   status?: string;
   limit?: number;
   offset?: number;
 }): Promise<{
   events: UsageEvent[];
-  summary: UsageSummary;
+  summary?: UsageSummary;
+  total?: number;
 }> {
-  const response = await apiClient.get('/api/billing/usage', { params });
-  return response.data.usage;
+  const { startDate, endDate, from, to, ...rest } = params || {};
+  const query: Record<string, any> = { ...rest };
+  if (from || startDate) query.from = from || startDate;
+  if (to || endDate) query.to = to || endDate;
+  const response = await apiClient.get('/api/billing/usage', { params: query });
+  return response.data.usage ?? response.data;
 }
 /**
  * Recharge wallet via package selection
@@ -210,10 +295,17 @@ export async function cancelRecurring(kind: 'monthly' | 'auto_recharge'): Promis
 export async function getUsageAggregation(params?: {
   from?: string;
   to?: string;
+  startDate?: string;
+  endDate?: string;
   featureKey?: string;
-}): Promise<UsageAggregation[]> {
-  const response = await apiClient.get('/api/billing/usage/aggregation', { params });
-  return response.data.aggregation;
+  groupBy?: string;
+}): Promise<any> {
+  const { startDate, endDate, from, to, ...rest } = params || {};
+  const query: Record<string, any> = { ...rest };
+  if (from || startDate) query.from = from || startDate;
+  if (to || endDate) query.to = to || endDate;
+  const response = await apiClient.get('/api/billing/usage/aggregation', { params: query });
+  return response.data.aggregation ?? response.data;
 }
 /**
  * List ledger transactions

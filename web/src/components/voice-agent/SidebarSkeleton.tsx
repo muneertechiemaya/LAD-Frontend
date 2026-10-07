@@ -55,7 +55,7 @@ export function SidebarSkeleton() {
             className="justify-center gap-2 h-10 font-medium flex-1 px-3 sm:px-4 border-border/50 dark:border-blue-950/40 text-muted-foreground opacity-75"
           >
             <Sparkles className="h-4 w-4" />
-            <span className="whitespace-nowrap">VOAG Playground</span>
+            <span className="whitespace-nowrap">Test a voice agent</span>
           </Button>
         </div>
       </div>

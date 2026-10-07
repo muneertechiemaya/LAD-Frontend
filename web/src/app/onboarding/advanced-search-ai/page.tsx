@@ -5,9 +5,13 @@ import {
 } from "@/components/ui/select";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import rehypeHighlight from 'rehype-highlight';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/app-toaster';
 import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
@@ -47,7 +51,7 @@ import {
     useVoiceAgent,
     useBilling,
     useBusinessProfile,
-    computeCompleteness,
+    computeCompletenessFor,
     computeOfferCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
@@ -91,7 +95,10 @@ interface LeadProfile {
     locked?: boolean;
     phone?: string;
     email?: string;
-    icp_score?: number;
+    // null = the model returned no verdict for this lead. Distinct from undefined,
+    // which means scoring has not finished yet (defer_icp).
+    icp_score?: number | null;
+    icp_scored?: boolean;
     match_level?: 'strong' | 'moderate' | 'weak';
     icp_reasoning?: string;
     enriched_profile?: {
@@ -264,6 +271,8 @@ interface ChatMsg {
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
     outreach_journey?: OutreachStep[];
+    abmData?: any;
+    nextBestActions?: any;
     /**
      * Live progress for an async lead-import discovery job. Rewritten in place on
      * every poll (the message keeps a stable id), so the user watches one bar
@@ -417,6 +426,7 @@ const WF_MAX_ROUNDS = 6;
 const WF_SOURCE_LABELS: Record<string, { label: string; sub: string }> = {
     linkedin_search:  { label: 'LinkedIn Search',            sub: 'Find new leads by keywords' },
     linkedin_signal:  { label: 'LinkedIn Signal Search',     sub: 'Find leads from hiring/buying signals' },
+    linkedin_connections: { label: 'Your LinkedIn connections', sub: 'Decision-makers already in your network' },
     file_import:      { label: 'File import (CSV / Excel)',  sub: 'Upload a list and map columns' },
     zoho_once:        { label: 'Zoho CRM (One-Time)',        sub: 'Import synced contacts now' },
     zoho_recurring:   { label: 'Zoho CRM (Recurring)',       sub: 'Import new contacts daily' },
@@ -434,8 +444,11 @@ function toArr(v: any): string[] {
     return [];
 }
 
-const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
-const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+const ICP_LEADS_PROMPT = 'Find leads that match my ideal customer';
+// The old wording stays recognised: it is in people's chat history and habits.
+const LEGACY_ICP_LEADS_PROMPT = 'Get leads from my active ICP';
+const isIcpLeadsPrompt = (s: string) =>
+    [ICP_LEADS_PROMPT, LEGACY_ICP_LEADS_PROMPT].some((p) => s.trim().toLowerCase() === p.toLowerCase());
 
 /** Synthetic stand-in names the pipeline can produce for a lead whose real name
  *  wasn't resolved ("Lead 1", "Prospect 3", "Unknown"). Mirrors the backend
@@ -507,7 +520,7 @@ function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
             phone: c.phone_e164 || undefined,
             icp_score: Math.round(conf * 100),
             match_level: match,
-            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ICP`,
+            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ideal customer`,
         };
     });
 }
@@ -604,6 +617,117 @@ function resolveProfileUrl(item: any): string {
  * scored 1/100 is noise either way. Idempotent, so applying it again at a
  * render site is harmless.
  */
+/** One progress tick from the prospect-search stream. */
+type ProspectProgress = { phase: string; done: number; total: number; latest?: string | null };
+
+/**
+ * POST /prospect-search, reading progress as it arrives.
+ *
+ * The search takes 73-119s in production — Claude discovery plus several
+ * sequential web lookups per company — and used to return nothing until it was
+ * finished, so the chat showed one motionless line for two minutes and read as a
+ * hang. Passing `onProgress` opts into a newline-delimited JSON stream and gets
+ * real counts as they happen.
+ *
+ * Returns the same `{ok, status, data}` a plain fetch would, so the branches at
+ * the call sites are unchanged. Without `onProgress` — or against a backend that
+ * ignores the flag — it falls back to one JSON body, which is what "Get More" and
+ * the lead-preview panel still do.
+ */
+async function runProspectSearch(
+    body: Record<string, unknown>,
+    onProgress?: (p: ProspectProgress) => void,
+): Promise<{ ok: boolean; status: number; data: any }> {
+    const resp = await fetch('/api/ai-icp-assistant/prospect-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, stream: Boolean(onProgress) }),
+    });
+
+    const ctype = resp.headers.get('content-type') || '';
+    if (!onProgress || !ctype.includes('ndjson') || !resp.body) {
+        const data = await resp.json().catch(() => null);
+        return { ok: resp.ok && data?.success !== false, status: resp.status, data };
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let final: any = null;
+
+    const consume = (line: string) => {
+        if (!line.trim()) return;
+        let evt: any;
+        // A chunk can split mid-line, so an unparseable fragment is expected —
+        // never let one throw away a search that has already been paid for.
+        try { evt = JSON.parse(line); } catch { return; }
+        if (evt.type === 'progress') onProgress(evt as ProspectProgress);
+        else if (evt.type === 'result' || evt.type === 'error') final = evt;
+    };
+
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';   // keep the trailing partial line for the next chunk
+        lines.forEach(consume);
+    }
+    consume(buf);
+
+    if (!final) {
+        // The stream ended without a verdict — a dropped connection, not an empty
+        // result. Saying "no matches" here would repeat the bug one layer down.
+        return {
+            ok: false,
+            status: resp.status,
+            data: { success: false, error: 'The search ended before returning a result.' },
+        };
+    }
+    return { ok: final.type !== 'error' && final.success !== false, status: resp.status, data: final };
+}
+
+/** Live text for the "still working" bubble. Real counts, never a fake animation. */
+function prospectProgressText(p: ProspectProgress | null): string {
+    if (!p || p.phase === 'discovering') {
+        return `🔍 **Finding specific companies and decision makers for you...**\n\nI'm using AI to identify real companies matching your description and their key contacts.\n\n⚡ *Identifying companies...*`;
+    }
+    const at = p.latest ? ` — latest: **${p.latest}**` : '';
+    return `🔍 **Finding specific companies and decision makers for you...**\n\nResearching each prospect across the web, LinkedIn and company databases.\n\n⚡ *Researched **${p.done} of ${p.total}** prospects${at}*`;
+}
+
+/**
+ * Say what the size clause did — including when it could not be verified.
+ *
+ * "…with 50 to 200 employees" was previously parsed by nothing and applied by
+ * nothing, and the silence is what made it a bug rather than a limitation. A
+ * filter that ran and a filter that never existed must not look the same.
+ */
+function sizeConstraintNote(sc: any): string {
+    if (!sc || !sc.applied) return '';
+    const bits: string[] = [`📏 **Size filter applied:** ${sc.requested}.`];
+    if (sc.excluded > 0) bits.push(`${sc.excluded} compan${sc.excluded === 1 ? 'y' : 'ies'} outside that range excluded.`);
+    if (sc.unverified > 0) {
+        bits.push(`${sc.unverified} kept without a published headcount — I could not verify their size, so check those before reaching out.`);
+    }
+    if (sc.excluded === 0 && sc.unverified === 0) bits.push('All results are within range.');
+    return `\n\n${bits.join(' ')}`;
+}
+
+/**
+ * Did the model actually judge this lead?
+ *
+ * Three states, and collapsing any two of them is how four leads came to be shown
+ * as a confident "0%" and filtered out of their own search:
+ *   number     — a verdict, including a genuine 0
+ *   null       — scoring ran and returned nothing for this person
+ *   undefined  — scoring has not finished yet (defer_icp); shown as "Scoring…"
+ */
+function isLeadUnscored(lead: { icp_score?: number | null; icp_scored?: boolean }): boolean {
+    if (lead.icp_scored === false) return true;
+    return lead.icp_score === null;
+}
+
 function normalizeIcpScore(raw: unknown): number | undefined {
     if (raw === null || raw === undefined || raw === '') return undefined;
     const n = Number(raw); // pg NUMERIC can arrive as a string
@@ -617,7 +741,7 @@ function normalizeIcpScore(raw: unknown): number | undefined {
  * Using the score directly ensures the badge colour reflects what the user sees.
  * Normalises first - a 0-1 score would otherwise never be 'strong'.
  */
-function scoreToMatchLevel(score: number | undefined): 'strong' | 'moderate' {
+function scoreToMatchLevel(score: number | null | undefined): 'strong' | 'moderate' {
     if ((normalizeIcpScore(score) ?? 0) >= 70) return 'strong';
     return 'moderate'; // yellow for everything else - never show red on lead badges
 }
@@ -1089,6 +1213,16 @@ const BEAUTIFY_TIMEOUT_MS = 4000;
 /* ═══════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════ */
+/** Recognition errors worth telling the user about, in their words. */
+const MIC_ERRORS: Record<string, string> = {
+    'not-allowed': 'Microphone access is blocked. Allow it for this site in your browser settings, then try again.',
+    'service-not-allowed': 'Voice input is turned off on this device (on iPhone, enable Siri & Dictation), or the browser blocked it.',
+    'audio-capture': 'No microphone was found, or another app is using it.',
+    'network': 'Voice input needs an internet connection to transcribe. Check your connection and try again.',
+    'no-speech': "Didn't catch anything — tap the mic and speak again.",
+    'language-not-supported': "Voice input doesn't support your browser's language yet.",
+};
+
 export default function AdvancedSearchAIPage() {
     const router = useRouter();
 
@@ -1115,11 +1249,16 @@ export default function AdvancedSearchAIPage() {
     const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
     const [beautifying, setBeautifying] = useState(false);
     const [speechSupported, setSpeechSupported] = useState(false);
+    const { push: pushToast } = useToast();
+    const micToast = (description: string) => pushToast({ title: 'Voice input', description, variant: 'warning', duration: 6000 });
     // Whatever was already in the box when dictation started, plus every
     // finalised chunk so far. onresult only replays results from resultIndex
     // onward, so without these the earlier sentences get overwritten.
     const dictationBaseRef = useRef('');
     const dictationFinalRef = useRef('');
+    // The live recogniser. Events from an older one (stopped when a new session
+    // starts) must not switch the new session off.
+    const activeRecRef = useRef<any>(null);
     // The in-flight cleanup call, so sending can cancel it. Without this a late
     // response lands in the box after the message has already gone out.
     const beautifyAbortRef = useRef<AbortController | null>(null);
@@ -1165,6 +1304,10 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // The threshold the BACKEND actually applied. The banner used to hardcode "50"
+    // while /search/unified was filtering on whatever icp_min_score we sent, so the
+    // number on screen could describe a rule nothing had run.
+    const [icpThresholdApplied, setIcpThresholdApplied] = useState<number | null>(null);
     // True between "leads rendered" and "ICP scores arrived" when the search ran
     // with defer_icp. Drives the pulsing dot that stands in for the score chip.
     const [icpScoringPending, setIcpScoringPending] = useState(false);
@@ -1467,6 +1610,24 @@ export default function AdvancedSearchAIPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
+    // Which model answers this chat. null = Auto, i.e. leave the workspace's own
+    // routing rule in charge — deliberately NOT the same as picking a model.
+    // Kept per browser: it is a personal preference, not workspace configuration.
+    const [chatModel, setChatModel] = useState<ModelChoice>(null);
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('adv-chat-model');
+            if (raw) setChatModel(JSON.parse(raw));
+        } catch { /* corrupt or unavailable storage → Auto */ }
+    }, []);
+    const pickChatModel = useCallback((c: ModelChoice) => {
+        setChatModel(c);
+        try {
+            if (c) localStorage.setItem('adv-chat-model', JSON.stringify(c));
+            else localStorage.removeItem('adv-chat-model');
+        } catch { /* storage full or blocked — the choice still applies this session */ }
+    }, []);
+
     // Contact picker modal state
     const [showContactPicker, setShowContactPicker] = useState(false);
     const [cpPickerStep, setCpPickerStep] = useState<'source' | 'contacts'>('source');
@@ -1534,7 +1695,14 @@ export default function AdvancedSearchAIPage() {
     // pipelines and is not offered the node canvas - see the builder mount
     // below, which is the single choke point every open path funnels through.
     // Presentation only; snapshotStepGuard enforces server-side.
-    const { isCuratedWorkspace } = useAuth();
+    const { isCuratedWorkspace, user: authUser } = useAuth();
+    // Landing greeting, LLM-app style: "Good evening, Naveen".
+    const heroGreeting = React.useMemo(() => {
+        const h = new Date().getHours();
+        const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+        const first = String(authUser?.name || '').trim().split(/\s+/)[0] || '';
+        return { part, first };
+    }, [authUser?.name]);
 
     // Custom Accelerator builder (node graph) - full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
@@ -1790,7 +1958,7 @@ export default function AdvancedSearchAIPage() {
     // iterates Object.keys) - any canonical key missing here is silently
     // dropped on load even when the server has it. Keep it in sync with
     // BUSINESS_PROFILE_ALL_FIELDS.
-    const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
+    const { profile: loadedProfile, loading: profileLoading, contract: profileContract } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
         productsServices: '', targetCustomers: '', icpJobTitles: '',
@@ -1849,7 +2017,7 @@ export default function AdvancedSearchAIPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ message: msg }),
+                body: JSON.stringify({ message: msg, ...(chatModel || {}) }),
             });
             const data = await res.json();
             if (data.success) {
@@ -1947,7 +2115,7 @@ export default function AdvancedSearchAIPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ message: '__init__' }),
+                body: JSON.stringify({ message: '__init__', ...(chatModel || {}) }),
             });
             const data = await res.json();
             if (data.success && data.reply) {
@@ -2906,8 +3074,8 @@ export default function AdvancedSearchAIPage() {
             setIsSearching(false);
             if (!res || res.success === false || res.error === 'no_active_icp') {
                 const msg = res?.error === 'no_active_icp'
-                    ? "You don't have an active ICP yet. Define one in Settings → ICP Search Strategy, then run this again."
-                    : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
+                    ? "You haven't set up your ideal customer yet. Tap **Ideal customer** at the top of this page and answer a few questions (or fine-tune it in **Settings → Lead search**), then run this again."
+                    : "Couldn't finish the search for people who match your ideal customer. Please try again in a minute.";
                 setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
                 return;
             }
@@ -2929,8 +3097,8 @@ export default function AdvancedSearchAIPage() {
                 ...m,
                 loading: false,
                 text: n > 0
-                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your active ICP. Review them and create your outreach campaign.`
-                    : 'No prospects matched your active ICP on this run. Try widening the ICP or raising the result cap in your search strategy.',
+                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your ideal customer. Review them and create your outreach campaign.`
+                    : 'No one matched your ideal customer on this run. Try describing your ideal customer more broadly, or ask for more results.',
                 leads: n > 0 ? mapped.slice(0, 3) : undefined,
                 targeting: n > 0 ? icpTargeting : undefined,
                 outreach_journey: n > 0 ? buildOutreachJourney(mapped, icpTargeting) : undefined,
@@ -2938,7 +3106,7 @@ export default function AdvancedSearchAIPage() {
             if (n > 0) setTimeout(() => setShowPanel('leads'), 300);
         } catch (e: any) {
             setIsSearching(false);
-            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: `ICP search failed: ${e?.message || 'unknown error'}` } : m));
+            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: "Couldn't finish the search for people who match your ideal customer. Please try again in a minute." } : m));
         } finally {
             setBusy(false);
         }
@@ -3038,7 +3206,7 @@ export default function AdvancedSearchAIPage() {
                             </div>
                             <div>
                                 <div className="text-[13px] font-bold text-[#0b1957]">Image Creation</div>
-                                <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit custom brand designs or ICP target graphics.</div>
+                                <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit custom brand designs or ideal-customer graphics.</div>
                             </div>
                         </button>
                         <button
@@ -3309,7 +3477,7 @@ export default function AdvancedSearchAIPage() {
                     const uiPhase = mb.uiPayload?.phase;
                     const isPhaseMatch = mPhase === uiPhase;
                     const mQuestion = m.payload?.question || m.payload?.title || m.text;
-                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const uiQuestion = mb.uiPayload?.question || (mb.uiPayload as any)?.title;
                     const isQuestionMatch = mQuestion === uiQuestion;
                     return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
                 });
@@ -3326,7 +3494,7 @@ export default function AdvancedSearchAIPage() {
                     const uiPhase = mb.uiPayload?.phase;
                     const isPhaseMatch = mPhase === uiPhase;
                     const mQuestion = lastMsg.payload?.question || lastMsg.payload?.title || lastMsg.text;
-                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const uiQuestion = mb.uiPayload?.question || (mb.uiPayload as any)?.title;
                     const isQuestionMatch = mQuestion === uiQuestion;
                     return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
                 })();
@@ -4539,7 +4707,7 @@ export default function AdvancedSearchAIPage() {
             if (res.status === 404 || res.status === 501) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself - the Accelerator builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
+                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself - the workflow builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -4549,7 +4717,7 @@ export default function AdvancedSearchAIPage() {
             if (!res.ok || !data?.success) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    `⚠️ I couldn't build that workflow${data?.error ? ` - ${data.error}` : ''}. You can describe it again, or build it in the Accelerator builder.`,
+                    `⚠️ I couldn't build that workflow${data?.error ? ` - ${data.error}` : ''}. You can describe it again, or build it in the workflow builder.`,
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -5056,7 +5224,7 @@ export default function AdvancedSearchAIPage() {
 
                     const dms: any[] = (c.key_decision_makers || []).sort((a: any, b: any) => (b.icp_score || 0) - (a.icp_score || 0));
                     if (dms.length > 0) {
-                        parts.push(`**Key Decision Makers & ICP Scores:**`);
+                        parts.push(`**Key decision makers and how well each one fits:**`);
                         dms.slice(0, 6).forEach((dm: any) => {
                             // Same 0-1 vs 0-100 hazard as the lead badges: the ABM
                             // company_search path stamps a 0.8 float over the real
@@ -5286,20 +5454,28 @@ export default function AdvancedSearchAIPage() {
                             setSeenProspectIds([]);
                             setLeads([]);
 
+                            // A stable id so the stream can rewrite this one bubble in
+                            // place, rather than stacking a new message per tick.
+                            const progressId = `a-gps-${Date.now()}`;
+                            setMessages(p => p.concat({
+                                id: progressId, role: 'ai', text: prospectProgressText(null), ts: new Date(),
+                            }));
+
                             try {
-                                const resp = await fetch('/api/ai-icp-assistant/prospect-search', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
+                                const { ok: respOk, status: respStatus, data: d } = await runProspectSearch(
+                                    {
                                         query: prospectQuery,
                                         icpProfile: businessProfile,
                                         sessionId: `gps-${Date.now()}`,
                                         seenIds: [],
                                         batchSize: leadCount,
-                                    }),
-                                });
-                                const d = await resp.json();
+                                    },
+                                    (prog) => setMessages(p => p.map(m => (
+                                        m.id === progressId ? { ...m, text: prospectProgressText(prog) } : m
+                                    ))),
+                                );
                                 setIsSearching(false);
+                                setMessages(p => p.filter(m => m.id !== progressId));
                                 if (d.success && Array.isArray(d.results) && d.results.length > 0) {
                                     const prospectLeads: LeadProfile[] = d.results.map((item: any, idx: number) => ({
                                         id: item.id || `gps-${idx}`,
@@ -5316,7 +5492,8 @@ export default function AdvancedSearchAIPage() {
                                         locked: idx >= 5,
                                         phone: item.phone || item.company_phone || '',
                                         email: item.email || '',
-                                        icp_score: normalizeIcpScore(item.icp_score),
+                                        icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                                        icp_scored: item.icp_scored,
                                         match_level: item.match_level || undefined,
                                         icp_reasoning: item.icp_reasoning || undefined,
                                         enriched_profile: item.enriched_profile || undefined,
@@ -5330,15 +5507,15 @@ export default function AdvancedSearchAIPage() {
                                     setTotalResults(d.total || prospectLeads.length);
                                     setMessages(p => p.concat({
                                         id: `a-sr-${Date.now()}`, role: 'ai',
-                                        text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length > 0 ? `🎯 **${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length} strong ICP matches** identified.\n\n` : ''}Results include contact details, LinkedIn profiles, and ICP scores.\n\n💡 Click **"Get More Leads"** to find additional prospects.`,
+                                        text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length > 0 ? `🎯 **${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length} strong matches** for your ideal customer.\n\n` : ''}Results include contact details, LinkedIn profiles, and how well each one matches.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to find additional prospects.`,
                                         ts: new Date(),
                                     }));
-                                } else if (!resp.ok || d.success === false) {
+                                } else if (!respOk || d?.success === false) {
                                     // A server-side failure is NOT an empty result set. The
                                     // endpoint returns JSON on 500, so resp.json() succeeds and
                                     // this used to fall through to "try rephrasing" - telling
                                     // people to reword a query that was never the problem.
-                                    console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
+                                    console.error('[ProspectSearch] server error', respStatus, d?.error, d?.detail);
                                     setMessages(p => p.concat({
                                         id: `a-err-${Date.now()}`, role: 'ai',
                                         text: `⚠️ The search failed on our side - this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
@@ -5354,7 +5531,9 @@ export default function AdvancedSearchAIPage() {
                             } catch (prospectErr) {
                                 setIsSearching(false);
                                 console.error('[ProspectSearch] error', prospectErr);
-                                setMessages(p => p.concat({
+                                // Drop the progress bubble too - a "researched 6 of 10" line
+                                // left frozen above an error reads as a partial result.
+                                setMessages(p => p.filter(m => m.id !== progressId).concat({
                                     id: `a-err-${Date.now()}`, role: 'ai',
                                     text: `⚠️ Prospect search failed. Please try again or rephrase your query.`,
                                     ts: new Date(),
@@ -5402,9 +5581,12 @@ export default function AdvancedSearchAIPage() {
                 // This catches cases where the backend classified the intent as CONTEXT_SEARCH
                 // or extracted LinkedIn keywords instead of detecting the generic pattern.
                 if (shouldRunSearch && isGenericCompanySearchQuery(text)) {
+                    // Stable id: the stream rewrites THIS bubble as prospects land, so
+                    // the two minutes stop looking like a hang.
+                    const gpsProgressId = `a-gps-${Date.now()}`;
                     setMessages(p => p.filter(m => m.id !== lid).concat({
-                        id: `a-${Date.now()}`, role: 'ai',
-                        text: `🔍 **Finding specific companies and decision makers for you...**\n\nI'm using AI to identify real companies matching your description and their key contacts. This may take a moment as I research each prospect.\n\n⚡ *Searching across the web, LinkedIn, and company databases...*`,
+                        id: gpsProgressId, role: 'ai',
+                        text: prospectProgressText(null),
                         ts: new Date(),
                     }));
                     setIsSearching(true);
@@ -5415,19 +5597,20 @@ export default function AdvancedSearchAIPage() {
                     setLeads([]);
 
                     try {
-                        const resp = await fetch('/api/ai-icp-assistant/prospect-search', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
+                        const { ok: respOk, status: respStatus, data: d } = await runProspectSearch(
+                            {
                                 query: text,
                                 icpProfile: businessProfile,
                                 sessionId: `gps-${Date.now()}`,
                                 seenIds: [],
                                 batchSize: leadCount,
-                            }),
-                        });
-                        const d = await resp.json();
+                            },
+                            (prog) => setMessages(p => p.map(m => (
+                                m.id === gpsProgressId ? { ...m, text: prospectProgressText(prog) } : m
+                            ))),
+                        );
                         setIsSearching(false);
+                        setMessages(p => p.filter(m => m.id !== gpsProgressId));
                         if (d.success && Array.isArray(d.results) && d.results.length > 0) {
                             const prospectLeads: LeadProfile[] = d.results.map((item: any, idx: number) => ({
                                 id: item.id || `gps-${idx}`,
@@ -5444,7 +5627,8 @@ export default function AdvancedSearchAIPage() {
                                 locked: idx >= 5,
                                 phone: item.phone || item.company_phone || '',
                                 email: item.email || '',
-                                icp_score: normalizeIcpScore(item.icp_score),
+                                icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                                icp_scored: item.icp_scored,
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -5458,13 +5642,13 @@ export default function AdvancedSearchAIPage() {
                             const strongMatches = prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length;
                             setMessages(p => p.concat({
                                 id: `a-sr-${Date.now()}`, role: 'ai',
-                                text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${strongMatches > 0 ? `🎯 **${strongMatches} strong ICP match${strongMatches !== 1 ? 'es' : ''}** identified.\n\n` : ''}Results include company contact details, LinkedIn profiles, and ICP scores.\n\n💡 Click **"Get More Leads"** to discover additional prospects.`,
+                                text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${strongMatches > 0 ? `🎯 **${strongMatches} strong match${strongMatches !== 1 ? 'es' : ''}** for your ideal customer.\n\n` : ''}Results include company contact details, LinkedIn profiles, and how well each one matches.${sizeConstraintNote(d.sizeConstraint)}\n\n💡 Click **"Get More Leads"** to discover additional prospects.`,
                                 ts: new Date(),
                             }));
-                        } else if (!resp.ok || d.success === false) {
+                        } else if (!respOk || d?.success === false) {
                             // See the sibling handler above: a 500 returns JSON, so this branch
                             // must be split out or a server crash reads as "no matches".
-                            console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
+                            console.error('[ProspectSearch] server error', respStatus, d?.error, d?.detail);
                             setMessages(p => p.concat({
                                 id: `a-err-${Date.now()}`, role: 'ai',
                                 text: `⚠️ The search failed on our side - this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
@@ -5480,7 +5664,9 @@ export default function AdvancedSearchAIPage() {
                     } catch (prospectErr) {
                         setIsSearching(false);
                         console.error('[ProspectSearch] error', prospectErr);
-                        setMessages(p => p.concat({
+                        // Drop the progress bubble too - a "researched 6 of 10" line left
+                        // frozen above an error reads as a partial result.
+                        setMessages(p => p.filter(m => m.id !== gpsProgressId).concat({
                             id: `a-err-${Date.now()}`, role: 'ai',
                             text: `⚠️ Prospect search failed. Please try again.`,
                             ts: new Date(),
@@ -5576,7 +5762,7 @@ export default function AdvancedSearchAIPage() {
                         setPendingLocationRequest({
                             intent: previewIntent,
                             originalQuery: text,
-                            abmType: extractedAbmType,
+                            abmType: extractedAbmType || '',
                             personName: extractedPersonName ?? undefined,
                             companyName: extractedCompanyName ?? undefined,
                         });
@@ -5863,6 +6049,9 @@ export default function AdvancedSearchAIPage() {
                     setSearchCursor(nextCursor);
                     setCursorHistory([null, nextCursor]); // page1=null(start), page2=nextCursor
                     icpWasApplied = !!d.icp_applied;
+                    setIcpThresholdApplied(
+                        typeof d.icp_min_score === 'number' ? d.icp_min_score : null,
+                    );
                     excludedAlreadyContacted = Number(d.excluded_already_contacted) || 0;
                     searchRateLimited = !!d.rate_limited;
                     searchModule = d.module_used || '';
@@ -5884,7 +6073,8 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: idx >= 5,
-                                icp_score: normalizeIcpScore(item.icp_score),
+                                icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                                icp_scored: item.icp_scored,
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -6028,7 +6218,8 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: false,
-                                icp_score: normalizeIcpScore(item.icp_score),
+                                icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                                icp_scored: item.icp_scored,
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -6113,7 +6304,7 @@ export default function AdvancedSearchAIPage() {
                         if (icpWasApplied) {
                             const strongCount = realLeads.filter(l => l.match_level === 'strong').length;
                             const moderateCount = realLeads.filter(l => l.match_level === 'moderate').length;
-                            finalText += `\n\n🎯 **ICP Qualification:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate - sorted by relevance.`;
+                            finalText += `\n\n🎯 **How well they match your ideal customer:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate - best matches first.`;
                         }
                     }
                     if (realLeads.length > 0) setTimeout(() => setShowPanel('leads'), 500);
@@ -6326,7 +6517,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         if (v === '__wf_bail__') {
-            wfBailToBuilder('🛠️ Opened the Accelerator builder - pick your steps there and configure each one.');
+            wfBailToBuilder('🛠️ Opened the workflow builder - pick your steps there and configure each one.');
             return;
         }
         if (v === '__wf_name__') {
@@ -6397,7 +6588,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
-            rolePushAi('No problem - Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
+            rolePushAi('No problem - Workflow setup cancelled. Pick another from the **Workflows** menu any time.');
             return;
         }
         if (v.startsWith('__role_builder__:')) {
@@ -6417,12 +6608,12 @@ export default function AdvancedSearchAIPage() {
             const { sourceCfg } = splitWizardAnswers(tpl, wiz.answers);
             const query = templateSearchQuery(tpl, sourceCfg);
             if (!query) {
-                rolePushAi('This Accelerator doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
+                rolePushAi('This workflow doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
                 return;
             }
             setRolePreviewing(true);
             setIsSearching(true);
-            rolePushAi(`🔍 Previewing who this Accelerator would reach - searching for **${query}**…`);
+            rolePushAi(`🔍 Previewing who this workflow would reach - searching for **${query}**…`);
             try {
                 // Same structured targeting the Accelerator's source node will run with,
                 // so the preview reflects the real audience rather than an
@@ -6464,7 +6655,8 @@ export default function AdvancedSearchAIPage() {
                         industry: item.industry || '',
                         network_distance: item.network_distance || '',
                         locked: idx >= 5,
-                        icp_score: normalizeIcpScore(item.icp_score),
+                        icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                        icp_scored: item.icp_scored,
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -6472,17 +6664,17 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 if (previewLeads.length === 0) {
-                    rolePushAi('No profiles came back for that targeting. Widen the titles or location - say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location - say **cancel** and pick the workflow again, or open it in the builder to edit the search.');
                 } else {
                     setLeads(previewLeads);
                     seedDefaultSelection(previewLeads);
                     setTotalResults(d?.total || previewLeads.length);
                     setShowPanel('leads');
-                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles - they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles - they're in the **Leads** panel on the right. Happy with them? Activate the workflow below.`);
                 }
             } catch (e) {
                 console.warn('[role-preview] search failed:', e);
-                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator - it runs its own search when it launches.');
+                rolePushAi('⚠️ The preview search failed. You can still activate the workflow - it runs its own search when it launches.');
             } finally {
                 setIsSearching(false);
                 setRolePreviewing(false);
@@ -6525,13 +6717,13 @@ export default function AdvancedSearchAIPage() {
                 // Remembered so "Open full builder" later carries the same answers.
                 setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
                 setShowPanel('workflow');
-                rolePushAi('Here\'s your Accelerator in the **Workflow** panel - every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
+                rolePushAi('Here\'s your workflow in the **Workflow** panel - every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
                 return;
             }
 
             setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
-            rolePushAi('🚀 Building and launching your Accelerator - you\'ll land on the campaigns page when it\'s live.');
+            rolePushAi('🚀 Building and launching your workflow - you\'ll land on the campaigns page when it\'s live.');
             return;
         }
         // Special action: submit lead detail form data
@@ -6813,7 +7005,8 @@ export default function AdvancedSearchAIPage() {
                         locked: (existingCount + idx) >= 5,
                         phone: item.phone || '',
                         email: item.email || '',
-                        icp_score: normalizeIcpScore(item.icp_score),
+                        icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                        icp_scored: item.icp_scored,
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -6904,7 +7097,8 @@ export default function AdvancedSearchAIPage() {
                         industry: item.industry || '',
                         network_distance: item.network_distance || '',
                         locked: (existingCount + idx) >= 5,
-                        icp_score: normalizeIcpScore(item.icp_score),
+                        icp_score: item.icp_score === null ? null : normalizeIcpScore(item.icp_score),
+                        icp_scored: item.icp_scored,
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -7114,7 +7308,7 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
                                         <div>
-                                            <div className="adv-attach-label">Custom Accelerator</div>
+                                            <div className="adv-attach-label">Custom workflow</div>
                                             <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
                                     </div>}
@@ -7181,7 +7375,7 @@ export default function AdvancedSearchAIPage() {
                 <div className="adv-chips-row adv-chips-row-2">
                     <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
-                        Get leads from my active ICP
+                        Find leads that match my ideal customer
                     </button>
                     <button className="adv-chip" onClick={handleStartMediaGeneration}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -7256,7 +7450,7 @@ export default function AdvancedSearchAIPage() {
                             if (val === "[SHOW_GALLERY]") {
                                 mb.fetchGallery();
                             } else {
-                                submitMediaInput(val, val);
+                                submitMediaInput(val || '', val);
                             }
                         }}
                     />
@@ -7392,27 +7586,26 @@ export default function AdvancedSearchAIPage() {
         } else {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                micToast("Voice input isn't supported in this browser. Try Chrome, Safari or Edge.");
                 return;
             }
 
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (err) {
-                console.error("Microphone access denied:", err);
-                alert("Microphone access is required for voice interaction.");
-                return;
-            }
-
+            // No getUserMedia preflight: recognition asks for the mic itself. The
+            // preflight broke dictation two ways — the stream it opened was never
+            // stopped, so on Android the recogniser couldn't capture ('audio-capture'),
+            // and awaiting it spent the tap's user activation, so iOS Safari refused
+            // rec.start() ('not-allowed'). start() must run synchronously in the tap.
             const rec = new SpeechRecognition();
             rec.continuous = true;
             rec.interimResults = true;
-            rec.lang = 'en-US';
+            rec.lang = navigator.language || 'en-US';
 
             dictationBaseRef.current = input.trim() ? input.trim() + ' ' : '';
             dictationFinalRef.current = '';
 
+            activeRecRef.current = rec;
             rec.onresult = (event: any) => {
+                if (activeRecRef.current !== rec) return;
                 let interim = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const result = event.results[i];
@@ -7425,16 +7618,24 @@ export default function AdvancedSearchAIPage() {
 
             rec.onerror = (event: any) => {
                 console.error("Speech recognition error:", event.error);
-                if (event.error !== 'aborted') {
-                    setIsRecording(false);
-                }
+                if (event.error === 'aborted' || activeRecRef.current !== rec) return;
+                setIsRecording(false);
+                // These used to fail silently: the mic just stopped pulsing.
+                const reason = MIC_ERRORS[event.error as string];
+                if (reason) micToast(reason);
             };
 
             rec.onend = () => {
-                setIsRecording(false);
+                if (activeRecRef.current === rec) setIsRecording(false);
             };
 
-            rec.start();
+            try {
+                rec.start();
+            } catch (err) {
+                console.error("Speech recognition failed to start:", err);
+                micToast("Couldn't start voice input. Please try again.");
+                return;
+            }
             setIsRecording(true);
             setRecognitionInstance(rec);
         }
@@ -7492,15 +7693,18 @@ export default function AdvancedSearchAIPage() {
                     
                     {!mediaMode && (
                         <>
-                            <button className="adv-chat-back" onClick={reset}>
+                            {/* Back = reset the conversation; nothing to reset on the empty landing. */}
+                            {messages.length > 0 && (
+                            <button className="adv-chat-back" onClick={reset} aria-label="New chat">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                             </button>
+                            )}
 
                     {/* AI Playground button - top-right */}
                     {(!isMobile || messages.length === 0) && (
                         <button
                             onClick={() => setShowPlayground(true)}
-                            title="Configure AI context: company, ICP, sales script, etc."
+                            title="Tell the AI about your company, your ideal customer and your sales script"
                             className={`adv-icp-discover-btn absolute top-4 right-5 z-10 flex items-center gap-2 px-4 h-9 sm:h-10 rounded-full text-xs font-bold uppercase tracking-wider text-white !text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all shadow-md active:scale-[0.98] cursor-pointer outline-none border-none ${
                               Object.values(businessProfile).some((v) => v)
                                 ? 'opacity-100 ring-2 ring-emerald-500/50 dark:ring-emerald-400/40'
@@ -7515,7 +7719,7 @@ export default function AdvancedSearchAIPage() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            ICP Discovery
+                            Ideal customer
                             {Object.values(businessProfile).some(v => v) && (
                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 2 }} />
                             )}
@@ -7527,14 +7731,21 @@ export default function AdvancedSearchAIPage() {
                     <div className={`adv-chat-msgs${hasOptionsOpen ? ' has-options-open' : ''}`} style={{ paddingBottom: mediaMode ? `${mediaInputWrapHeight + 16}px` : undefined }}>
                         {/* Landing Content - Show when no messages */}
                         {messages.length === 0 && !mediaMode && (
-                            <div className="adv-gemini-hero">
-                                <div className="adv-gemini-logo-wrap">
-                                    <img src="/logo.svg" alt="LAD" className="adv-gemini-logo" />
+                            <div className="adv-gemini-hero adv-hero-llm">
+                                {/* The animated LAD mark — same as the "LAD in Action" rows. */}
+                                <div className="adv-hero-mark" aria-hidden="true">
+                                    <AgentVisualizer state="idle" size={44} />
                                 </div>
-                                <h2 className="adv-gemini-title">
-                                    Hey! I am LAD, How can I help you today?
-                                    <Sparkles className="adv-gemini-sparkle" />
+                                <h2 className="adv-hero-greeting">
+                                    {heroGreeting.part}
+                                    {heroGreeting.first && (
+                                        <>
+                                            ,{' '}
+                                            <span className="adv-hero-name">{heroGreeting.first}</span>
+                                        </>
+                                    )}
                                 </h2>
+                                <p className="adv-hero-sub">What should we work on today?</p>
                             </div>
                         )}
 
@@ -7818,7 +8029,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
                                                             <div>
-                                                                <div className="adv-attach-label">Custom Accelerator</div>
+                                                                <div className="adv-attach-label">Custom workflow</div>
                                                                 <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
                                                         </div>}
@@ -7839,6 +8050,9 @@ export default function AdvancedSearchAIPage() {
                                     </div>
                                     {!mediaMode && (
                                         <RolesLauncher onPick={startRole} />
+                                    )}
+                                    {!mediaMode && (
+                                        <ModelPicker value={chatModel} onChange={pickChatModel} />
                                     )}
                                   </div>
                                     {/* Premium Search or Mic Button based on mediaMode */}
@@ -7875,14 +8089,14 @@ export default function AdvancedSearchAIPage() {
                                         <button
                                             className="adv-premium-btn"
                                             onClick={() => setUseSalesNav(v => !v)}
-                                            title={useSalesNav ? 'Premium Search ON - Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
+                                            title={useSalesNav ? 'Premium Search is on: also searches LinkedIn and Google for more people (1 credit per search)' : 'Turn on Premium Search: also search LinkedIn and Google for more people (1 credit per search)'}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
                                                 padding: '3px 8px', borderRadius: '12px', border: 'none',
                                                 cursor: 'pointer', fontSize: '11px', fontWeight: 600,
                                                 transition: 'all 0.15s',
                                                 background: useSalesNav ? '#0a66c2' : '#f1f5f9',
-                                                color: useSalesNav ? '#fff' : '#64748b',
+                                                color: useSalesNav ? '#fff' : '#475569', // slate-600: #64748b on #f1f5f9 was 4.34:1
                                                 boxShadow: useSalesNav ? '0 1px 4px rgba(10,102,194,.35)' : 'none',
                                             }}
                                         >
@@ -7957,7 +8171,7 @@ export default function AdvancedSearchAIPage() {
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
-                                Get leads from my active ICP
+                                Find leads that match my ideal customer
                             </button>
                             <button className="adv-gemini-chip" onClick={handleStartMediaGeneration}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -7985,9 +8199,10 @@ export default function AdvancedSearchAIPage() {
                         <button
                             className="adv-mobile-icp-btn"
                             onClick={() => setShowPlayground(true)}
-                            title="ICP Discovery"
+                            aria-label="Ideal customer"
+                            title="Ideal customer"
                         >
-                            <Sparkles size={22} color="#fff" />
+                            <Sparkles size={20} />
                         </button>
                     </div>
                 )}
@@ -8126,7 +8341,7 @@ export default function AdvancedSearchAIPage() {
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
                                         {inboundLeads.map((lead, i) => (
-                                          <div key={i} className="adv-lead-card flex items-start gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                          <div key={i} className="adv-lead-card flex items-start gap-3 p-4 rounded-xl border border-gray-100 dark:border-blue-900/40 bg-white dark:bg-[#071131] hover:bg-gray-50 dark:hover:bg-[#0b1957] transition-colors mb-2">
                                               {inboundLeadIds[i] && (
                                                   <input
                                                       type="checkbox"
@@ -8189,31 +8404,24 @@ export default function AdvancedSearchAIPage() {
                                                       </div>
                                                     )}
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <Button
                                                       variant="ghost"
                                                       size="icon"
                                                       onClick={() => openEditLead(i)}
-                                                      className="h-5 w-5"
-
+                                                      className="h-7 w-7 p-0 rounded-lg text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/80 active:scale-95 transition-all cursor-pointer"
+                                                      title="Edit lead"
                                                     >
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                       variant="ghost"
                                                       size="icon"
-                                                        onClick={() => openDeleteConfirmation(i)}
-                                                        className="h-5 w-5 text-destructive"
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#fecaca';
-                                                            e.currentTarget.style.borderColor = '#fca5a5';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#fee2e2';
-                                                            e.currentTarget.style.borderColor = '#fecaca';
-                                                        }}
+                                                      onClick={() => openDeleteConfirmation(i)}
+                                                      className="h-7 w-7 p-0 rounded-lg bg-transparent text-red-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer border-0 shadow-none"
+                                                      title="Delete lead"
                                                     >
-                                                        <Trash2 className="h-5 w-5" />
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -8225,7 +8433,7 @@ export default function AdvancedSearchAIPage() {
                                 {!inboundMode && (
                                     <div className="adv-leads-list">
                                         {leads.map((lead, i) => (
-                                            <div key={i} className={`adv-lead-card flex items-center gap-[14px] p-[14px_16px] border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${lead.locked ? 'adv-lead-locked' : ''}`}>
+                                            <div key={i} className={`adv-lead-card flex items-center gap-[14px] p-[14px_16px] rounded-xl border border-gray-100 dark:border-blue-900/40 bg-white dark:bg-[#071131] hover:bg-gray-50 dark:hover:bg-[#0b1957] transition-colors mb-2 ${lead.locked ? 'adv-lead-locked' : ''}`}>
                                                 {lead.profile_picture ? (
                                                     <img src={lead.profile_picture} alt={lead.name} className="w-[42px] h-[42px] rounded-full object-cover flex-shrink-0" />
                                                 ) : (
@@ -8242,7 +8450,18 @@ export default function AdvancedSearchAIPage() {
                                                         ) : (
                                                             <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-[14px]">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
                                                         )}
-                                                        {!targetingFiltersActive && lead.icp_score !== undefined && (
+                                                        {/* The model returned no verdict for this lead. Showing "0%" here
+                                                            claimed a judgement that was never made — and the same coercion
+                                                            filtered the lead out of its own search. */}
+                                                        {!targetingFiltersActive && isLeadUnscored(lead) && (
+                                                          <span
+                                                            className="inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                                            title="The AI did not return a score for this lead. It has not been judged either way — review it yourself."
+                                                          >
+                                                            ○ Not scored
+                                                          </span>
+                                                        )}
+                                                        {!targetingFiltersActive && typeof lead.icp_score === 'number' && (
                                                           <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
                                                                 {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
                                                             </span>
@@ -8252,7 +8471,7 @@ export default function AdvancedSearchAIPage() {
                                                         {!targetingFiltersActive && lead.icp_score === undefined && icpScoringPending && (
                                                           <span
                                                             className="adv-icp-pending inline-flex items-center gap-[5px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                                                            title="Scoring this lead against your ICP…"
+                                                            title="Checking how well this lead matches your ideal customer…"
                                                           >
                                                             <span className="adv-icp-pending-dot" />
                                                             Scoring
@@ -8400,7 +8619,7 @@ export default function AdvancedSearchAIPage() {
                                         }}>
                                             <span style={{ fontSize: '12px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                                                Filtered {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} below ICP threshold of 50
+                                                Filtered {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} the AI scored below {icpThresholdApplied ?? 50}
                                             </span>
                                             <button
                                                 onClick={() => setShowFilteredLeads(v => !v)}
@@ -8450,7 +8669,7 @@ export default function AdvancedSearchAIPage() {
                                                                         background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
                                                                         color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
                                                                     }}>
-                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
+                                                                        {isLeadUnscored(lead) ? '○' : (scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡')} {isLeadUnscored(lead) ? 'Not scored' : `${normalizeIcpScore(lead.icp_score)}%`}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -8571,10 +8790,10 @@ export default function AdvancedSearchAIPage() {
                               {/* Workflow panel header */}
                               <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
                                   <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
-                                      Campaign Accelerator
+                                      Your workflow
                                   </div>
                                   <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
-                                      Live preview of your outreach sequence
+                                      Live preview of every step, including outreach
                                   </div>
                               </div>
 
@@ -8610,9 +8829,9 @@ export default function AdvancedSearchAIPage() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">ICP Discovery</div>
+                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">Your ideal customer</div>
                                             <div className="text-[11.5px] font-semibold text-[#0b1957] dark:text-blue-300">
-                                                {pgIsComplete ? '✅ ICP profile complete!' : 'Answer questions to power smarter lead discovery'}
+                                                {pgIsComplete ? '✅ Ideal customer profile complete!' : 'Answer questions to power smarter lead discovery'}
                                             </div>
                                         </div>
                                     </div>
@@ -8640,7 +8859,7 @@ export default function AdvancedSearchAIPage() {
                                     the wizard / Settings / this drawer always agree. When pgIsComplete
                                     we lock to 100% regardless of trailing blank optional fields. */}
                                 {(() => {
-                                    const c = computeCompleteness(businessProfile as BusinessProfile);
+                                    const c = computeCompletenessFor(businessProfile as BusinessProfile, profileContract);
                                     const filled = pgIsComplete ? c.total : c.filled;
                                     const total = c.total;
                                     const pct = pgIsComplete ? 100 : c.pct;
@@ -9572,6 +9791,259 @@ function RoleChain({ tpl, compact = false }: { tpl: WorkflowTemplate; compact?: 
  *  NOTE: the component and its CSS keep the older `roles` naming - renaming those
  *  is churn with no user-visible effect, and `.adv-roles-btn` is referenced in
  *  four style blocks. */
+/** A model the user may pick, as returned by GET /api/ai-playground/models. */
+type PickableModel = { model: string; input: number | null; output: number | null };
+type ModelChoice = { provider: string; model: string } | null;
+
+/** Display names. Anything not listed falls back to the raw provider key. */
+const PROVIDER_LABEL: Record<string, string> = {
+    anthropic: 'Claude',
+    openai: 'GPT',
+    gemini: 'Gemini',
+    deepseek: 'DeepSeek',
+};
+
+/** "claude-sonnet-4-6" → "Sonnet 4 6" — the family, without the vendor prefix. */
+function modelLabel(model: string): string {
+    return model
+        .replace(/^(claude|gpt|gemini|deepseek)-?/i, '')
+        .replace(/-/g, ' ')
+        .trim() || model;
+}
+
+/**
+ * Model picker for the chat composer.
+ *
+ * The options come from the server, never a hardcoded list here: the backend
+ * serves only models it can actually price, and an unpriced id would bill the
+ * tenant at a $5/$15 "unknown model" rate. A list duplicated in the client would
+ * drift out of that guarantee the first time anyone added a model.
+ *
+ * "Auto" (no pick) is the default and is not the same as choosing a model — it
+ * leaves the tenant's own routing rule in charge.
+ */
+function ModelPicker({ value, onChange }: { value: ModelChoice; onChange: (c: ModelChoice) => void }) {
+    const [open, setOpen] = React.useState(false);
+    const [providers, setProviders] = React.useState<Record<string, PickableModel[]>>({});
+
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch('/api/ai-playground/models', { credentials: 'include' });
+                const data = await res.json();
+                if (!cancelled && data?.success) setProviders(data.providers || {});
+            } catch {
+                // Non-fatal: with no list the chip stays on Auto and the chat
+                // works exactly as it did before the picker existed.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    React.useEffect(() => {
+        if (!open) return;
+        const h = () => setOpen(false);
+        document.addEventListener('click', h);
+        return () => document.removeEventListener('click', h);
+    }, [open]);
+
+    const label = value ? `${PROVIDER_LABEL[value.provider] || value.provider}` : 'AI: Auto';
+    const hasOptions = Object.keys(providers).length > 0;
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <button type="button" className="adv-roles-btn" aria-label={`Model: ${label}`}
+                title={value ? `Answers come from ${value.provider}/${value.model}` : 'Model chosen automatically for this workspace'}
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 0 1 5 5v1a4 4 0 0 1 0 8v1a5 5 0 0 1-10 0v-1a4 4 0 0 1 0-8V7a5 5 0 0 1 5-5Z" /></svg>
+                <span className="adv-roles-label">{label}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            {open && (
+                <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="px-2.5 pt-1.5 pb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Answer with</span>
+                    </div>
+                    <button type="button"
+                        className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                        onClick={() => { setOpen(false); onChange(null); }}>
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">Auto</span>
+                            <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">Use this workspace&apos;s configured model</span>
+                        </span>
+                        {!value && <svg className="mt-1 flex-shrink-0 text-emerald-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                    </button>
+                    {!hasOptions && (
+                        <div className="px-2.5 py-2 text-[11px] text-slate-400 dark:text-slate-500">No other models available</div>
+                    )}
+                    {Object.entries(providers).map(([provider, models]) => (
+                        <React.Fragment key={provider}>
+                            <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{PROVIDER_LABEL[provider] || provider}</span>
+                                <span className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                            </div>
+                            {models.map((m) => {
+                                const selected = value?.provider === provider && value?.model === m.model;
+                                return (
+                                    <button key={m.model} type="button"
+                                        className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                        onClick={() => { setOpen(false); onChange({ provider, model: m.model }); }}>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{modelLabel(m.model)}</span>
+                                            <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{m.model}</span>
+                                        </span>
+                                        {selected && <svg className="mt-1 flex-shrink-0 text-emerald-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                                    </button>
+                                );
+                            })}
+                        </React.Fragment>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Recursively pull the plain text out of a rendered node tree. */
+function nodeText(node: React.ReactNode): string {
+    if (node == null || typeof node === 'boolean') return '';
+    if (typeof node === 'string' || typeof node === 'number') return String(node);
+    if (Array.isArray(node)) return node.map(nodeText).join('');
+    if (React.isValidElement(node)) {
+        return nodeText((node.props as { children?: React.ReactNode }).children);
+    }
+    return '';
+}
+
+/**
+ * A fenced code block, with the header + copy affordance people expect.
+ *
+ * The copy target is derived by walking the rendered tree, because
+ * rehype-highlight has already replaced the raw string with <span> tokens by
+ * the time this renders — reading `children` as text would copy nothing.
+ */
+function ChatCodeBlock({ children }: { children?: React.ReactNode }) {
+    const [copied, setCopied] = React.useState(false);
+
+    // react-markdown hands <pre> a single <code> child carrying the language
+    // class that rehype-highlight resolved (e.g. "hljs language-sql").
+    const codeEl = React.Children.toArray(children).find(
+        (c) => React.isValidElement(c) && c.type === 'code'
+    ) as React.ReactElement<{ className?: string; children?: React.ReactNode }> | undefined;
+
+    const className = codeEl?.props?.className || '';
+    const lang = (className.match(/language-([\w-]+)/) || [])[1] || '';
+    const raw = nodeText(codeEl?.props?.children ?? children);
+
+    const copy = React.useCallback(() => {
+        navigator.clipboard?.writeText(raw).then(
+            () => { setCopied(true); setTimeout(() => setCopied(false), 1600); },
+            () => { /* clipboard blocked — the code is still selectable */ }
+        );
+    }, [raw]);
+
+    return (
+        <div className="adv-code-block">
+            <div className="adv-code-head">
+                <span className="adv-code-lang">{lang || 'code'}</span>
+                <button type="button" className="adv-code-copy" onClick={copy} title="Copy code">
+                    {copied ? (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>Copied</>
+                    ) : (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copy</>
+                    )}
+                </button>
+            </div>
+            <pre className="adv-code-pre">{children}</pre>
+        </div>
+    );
+}
+
+/**
+ * The assistant message body.
+ *
+ * REPLACES a hand-rolled line-by-line parser that split on '\n' and regexed for
+ * **bold** / ### / bullets. That could never render a fenced code block, a
+ * table, a link or a nested list — a ``` block came out as literal backticks,
+ * one <p> per line, and `[text](url)` shipped as raw markdown.
+ *
+ * Plugin choices, each for a specific reason:
+ *   remarkGfm    — tables, strikethrough, task lists, autolinks. This product
+ *                  answers with lead tables constantly.
+ *   remarkBreaks — a single newline stays a line break. Standard markdown
+ *                  collapses it into the paragraph, which would have visibly
+ *                  reflowed every existing answer.
+ *   rehypeHighlight — the colour highlighting, with ignoreMissing so an
+ *                  unknown language label renders plain instead of throwing.
+ *
+ * The component map deliberately reuses the existing adv-ai-* classes for
+ * headings, bullets and numbered items, so the elements that already looked
+ * right are untouched and only the missing ones are new.
+ */
+function MarkdownMessage({ text }: { text: string }) {
+    // The agent emits "• " bullets in places. Markdown does not know that
+    // character, so they would render as literal text in a paragraph.
+    const src = React.useMemo(() => text.replace(/^([ \t]*)•[ \t]+/gm, '$1- '), [text]);
+
+    return (
+        <div className="adv-md">
+            <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkBreaks]}
+                rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+                components={{
+                    /* eslint-disable @typescript-eslint/no-unused-vars --
+                       `node` and `ref` are destructured purely to keep them OFF the
+                       DOM element; naming them is the only way to exclude them from
+                       the rest spread. */
+                    // Two props from react-markdown must not reach the DOM element:
+                    //   node — its hast element, not a DOM attribute
+                    //   ref  — typed LegacyRef, which permits a string ref; React 19's
+                    //          intrinsic elements accept only Ref, so spreading it is
+                    //          a type error on EVERY entry. This is the real cause;
+                    //          dropping `node` alone changes nothing.
+                    // Real heading tags rather than divs: the types then line up,
+                    // and a screen reader gets the document structure for free.
+                    h1: ({ node, ref, ...props }) => <h1 className="adv-ai-h3 adv-md-h1" {...props} />,
+                    h2: ({ node, ref, ...props }) => <h2 className="adv-ai-h3" style={{ fontSize: '14.5px' }} {...props} />,
+                    h3: ({ node, ref, ...props }) => <h3 className="adv-ai-h3" {...props} />,
+                    h4: ({ node, ref, ...props }) => <h4 className="adv-ai-h3" style={{ fontSize: '12.5px' }} {...props} />,
+                    p:  ({ node, ref, ...props }) => <p className="adv-md-p" {...props} />,
+                    hr: ({ node, ref, ...props }) => <hr className="adv-ai-hr" {...props} />,
+                    ul: ({ node, ref, ...props }) => <ul className="adv-md-ul" {...props} />,
+                    ol: ({ node, ref, ...props }) => <ol className="adv-md-ol" {...props} />,
+                    li: ({ node, ref, ...props }) => <li className="adv-md-li" {...props} />,
+                    a:  ({ node, ref, ...props }) => (
+                        // Untrusted: this text comes from a model and from scraped
+                        // pages. noopener/noreferrer so a link can never reach back
+                        // into this tab via window.opener.
+                        <a className="adv-md-a" target="_blank" rel="noopener noreferrer nofollow" {...props} />
+                    ),
+                    blockquote: ({ node, ref, ...props }) => <blockquote className="adv-md-quote" {...props} />,
+                    table: ({ node, ref, ...props }) => (
+                        // Wrapped so a wide table scrolls itself instead of pushing
+                        // the whole conversation column sideways.
+                        <div className="adv-md-table-wrap"><table className="adv-md-table" {...props} /></div>
+                    ),
+                    th: ({ node, ref, ...props }) => <th className="adv-md-th" {...props} />,
+                    td: ({ node, ref, ...props }) => <td className="adv-md-td" {...props} />,
+                    pre: ({ children }) => <ChatCodeBlock>{children}</ChatCodeBlock>,
+                    code: ({ node, ref, className, ...props }) =>
+                        // A block's <code> carries the language class from
+                        // rehype-highlight; inline code has none. That is the
+                        // discriminator, since react-markdown v9 dropped `inline`.
+                        className
+                            ? <code className={className} {...props} />
+                            : <code className="adv-md-code-inline" {...props} />,
+                    /* eslint-enable @typescript-eslint/no-unused-vars */
+                }}
+            >
+                {src}
+            </ReactMarkdown>
+        </div>
+    );
+}
+
 function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     const [open, setOpen] = React.useState(false);
     React.useEffect(() => {
@@ -9582,16 +10054,16 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     }, [open]);
     return (
         <div style={{ position: 'relative' }}>
-            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline"
+            <button type="button" className="adv-roles-btn" title="Start from a ready-made workflow" aria-label="Workflows"
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                Accelerators
+                <span className="adv-roles-label">Workflows</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
                 <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
                     <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick an Accelerator</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick a workflow</span>
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
                     </div>
                     {(() => {
@@ -9657,7 +10129,7 @@ function roleQuickReplies(
         locations: icp?.icpLocations || icp?.geographicFocus,
     };
     const fromIcp = (icpFor[q.key] || '').trim();
-    if (fromIcp) out.push({ label: 'Use my ICP', value: fromIcp, hint: fromIcp });
+    if (fromIcp) out.push({ label: 'Use my ideal customer', value: fromIcp, hint: fromIcp });
 
     // Skipping keeps whatever the template already carries, so say what that is
     // rather than making "skip" a blind choice.
@@ -9696,7 +10168,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <span className="text-[14px] font-bold text-slate-900 dark:text-white leading-tight">{tpl.name}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Accelerator</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Workflow</span>
                     </div>
                     <div className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{tpl.tagline}</div>
                 </div>
@@ -9718,7 +10190,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                     {card.nudge && (
                         <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-amber-600 dark:text-amber-400 mb-1.5">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
-                            This one&apos;s required to launch the Accelerator
+                            This one&apos;s required to launch the workflow
                         </div>
                     )}
                     {/* The question itself - highlighted in the same navy as the
@@ -9788,7 +10260,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
             {card.stage === 'file' && (
                 <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
-                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built. Upload your CSV/Excel in the source node and hit Launch.
+                        This workflow starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built. Upload your spreadsheet in the first step and press Launch.
                     </div>
                     <div className="flex items-center gap-2 mt-3.5">
                         <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
@@ -9843,7 +10315,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                             })}
                         </div>
                     ) : (
-                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure. This Accelerator is ready to go.</div>
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure. This workflow is ready to go.</div>
                     )}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
@@ -9950,50 +10422,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
 
                 {/* ── Rich markdown-aware renderer ── */}
                 <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0", display: msg.roleCard && !msg.text ? 'none' : undefined }}>
-                    {msg.text.split('\n').map((line, i) => {
-                        // ── Inline rich text parser: **bold**, *italic*, `code` ──────
-                        const renderInline = (raw: string) => {
-                            const tokens = raw.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-                            return tokens.map((t, j) => {
-                                if (t.startsWith('**') && t.endsWith('**')) return <strong key={j}>{t.slice(2, -2)}</strong>;
-                                if (t.startsWith('*') && t.endsWith('*')) return <em key={j} className="adv-ai-em">{t.slice(1, -1)}</em>;
-                                if (t.startsWith('`') && t.endsWith('`')) return <code key={j} style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontSize: '13px', fontFamily: 'monospace', color: '#0b1957' }}>{t.slice(1, -1)}</code>;
-                                return t;
-                            });
-                        };
-
-                        const trimmed = line.trim();
-                        if (!trimmed) return <div key={i} style={{ height: '6px' }} />;
-
-                        // ### Heading
-                        if (trimmed.startsWith('### ')) return <div key={i} className="adv-ai-h3">{renderInline(trimmed.slice(4))}</div>;
-                        if (trimmed.startsWith('## ')) return <div key={i} className="adv-ai-h3" style={{ fontSize: '14.5px' }}>{renderInline(trimmed.slice(3))}</div>;
-
-                        // --- Divider
-                        if (/^-{3,}$/.test(trimmed)) return <hr key={i} className="adv-ai-hr" />;
-
-                        // Numbered list  1. Item
-                        const numMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
-                        if (numMatch) return (
-                            <div key={i} className="adv-ai-num-item">
-                                <span className="adv-ai-num-badge">{numMatch[1]}</span>
-                                <span style={{ flex: 1, lineHeight: '1.65' }}>{renderInline(numMatch[2])}</span>
-                            </div>
-                        );
-
-                        // Bullet list  • or - or *
-                        if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || /^\* [^*]/.test(trimmed)) {
-                            const content = trimmed.replace(/^[•\-\*]\s+/, '');
-                            return (
-                                <div key={i} className="adv-ai-bullet">
-                                    <span className="adv-ai-bullet-dot" />
-                                    <span style={{ flex: 1, lineHeight: '1.65' }}>{renderInline(content)}</span>
-                                </div>
-                            );
-                        }
-
-                        return <p key={i} style={{ margin: '3px 0' }}>{renderInline(trimmed)}</p>;
-                    })}
+                    <MarkdownMessage text={msg.text} />
                 </div>
 
                 {/* ── Web search source links ── */}
@@ -10089,7 +10518,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                                   {leadsCount > 0
                                     ? `${leadsCount} Leads found`
                                     : filteredLeadsCount && filteredLeadsCount > 0
-                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
+                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (not a close enough match)`
                                       : '0 Leads found'}
                               </div>
                           </div>
@@ -10100,7 +10529,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                           </div>
                           <div className="flex-1">
-                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Accelerator</div>
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
                               <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
@@ -10125,13 +10554,13 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       )}
                       <div className="adv-action-btns flex flex-nowrap gap-2 justify-between">
                           <button
-                            className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-blue-900/50 bg-white dark:bg-[#071131] text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600/30 hover:text-gray-900 dark:hover:text-white transition-colors"
                             onClick={() => onOpt('Refine my targeting criteria')}
                           >
                               Refine
                           </button>
                           <button
-                            className="adv-act-btn adv-act-btn-journey flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-[#0b1957] dark:border-blue-400 bg-white dark:bg-gray-800 text-[12.5px] font-bold text-[#0b1957] dark:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors tracking-[0.01em]"
+                            className="adv-act-btn adv-act-btn-journey flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-[#0b1957] dark:border-blue-400/60 bg-white dark:bg-[#071131] text-[12.5px] font-bold text-[#0b1957] dark:text-blue-300 hover:bg-gray-50 dark:hover:bg-blue-600 dark:hover:text-white transition-colors tracking-[0.01em]"
                             onClick={onStartCheckpoints}
                           >
                               Configure manually
@@ -10594,7 +11023,7 @@ const TRIGGER_OPTIONS_MAP: Record<string, Array<{ id: string; label: string; des
     linkedin: [
         { id: 'connection_accepted', label: 'After connection accepted', desc: 'Trigger when the lead accepts your LinkedIn connection' },
         { id: 'message_replied', label: 'After responding to message', desc: 'Trigger when the lead replies to your LinkedIn message' },
-        { id: 'profile_visited', label: 'After profile visit', desc: 'Trigger for all visited profiles with ICP score above your threshold' },
+        { id: 'profile_visited', label: 'After profile visit', desc: 'For every visited profile that matches your ideal customer well enough' },
     ],
     email: [
         { id: 'email_read', label: 'After Email Read', desc: 'Trigger when the lead opens your email' },
@@ -10616,7 +11045,7 @@ const TRIGGER_OPTIONS_MAP: Record<string, Array<{ id: string; label: string; des
 const CHANNEL_PRIORITY = ['linkedin', 'email', 'whatsapp', 'voice_call'];
 
 const CP_QUESTIONS = [
-    { id: 'icp_threshold', question: 'What minimum ICP score should leads have?', type: 'select' },
+    { id: 'icp_threshold', question: 'How closely should leads match your ideal customer?', type: 'select' },
     { id: 'next_channels', question: 'Configure your campaign channels', type: 'multi' },
     { id: 'trigger_condition', question: 'When should the next channel step trigger?', type: 'select' },
     { id: 'duration', question: 'How many days should this campaign run?', type: 'select' },
@@ -10639,16 +11068,26 @@ function AiPersoToggle({ checked, onChange, accent = 'indigo', size = 'sm', disa
     return (
         <button type="button" role="switch" aria-checked={checked} disabled={disabled}
             onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
+            className={`relative rounded-full p-0 flex-shrink-0 border-none transition-all ${
+                disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+            } ${
+                checked
+                    ? accent === 'indigo' ? 'bg-[#4338ca] dark:bg-blue-600' : 'bg-[#7c3aed] dark:bg-purple-600'
+                    : 'bg-slate-300 dark:bg-slate-700'
+            }`}
             style={{
-                width: W, height: H, borderRadius: 99, border: 'none', padding: 0, flexShrink: 0,
-                background: checked ? a.on : '#cbd5e1', position: 'relative',
-                cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background .2s',
+                width: W, height: H,
                 boxShadow: checked ? `0 0 0 3px ${a.on}22` : 'none',
             }}>
-            <span style={{
-                position: 'absolute', top: 2, left: checked ? W - TH - 2 : 2, width: TH, height: TH,
-                borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-            }} />
+            <span
+                className="absolute bg-white rounded-full transition-all duration-200 shadow-sm"
+                style={{
+                    top: 2,
+                    left: checked ? W - TH - 2 : 2,
+                    width: TH,
+                    height: TH,
+                }}
+            />
         </button>
     );
 }
@@ -10657,22 +11096,28 @@ function AiPersoRow({ icon, title, desc, checked, onChange, accent = 'indigo', d
     icon: React.ReactNode; title: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
     accent?: 'indigo' | 'violet'; disabled?: boolean;
 }) {
-    const a = AI_PERSO_ACCENTS[accent];
     return (
         <div role="button" aria-pressed={checked} onClick={() => { if (!disabled) onChange(!checked); }}
-            style={{
-                display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
-                background: checked ? a.tint : '#fff', border: `1px solid ${checked ? a.border : '#e5e7eb'}`,
-                borderRadius: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1,
-                transition: 'background .15s, border-color .15s',
-            }}>
-            <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'grid', placeItems: 'center',
-                background: checked ? a.chip : '#f3f4f6', color: checked ? a.on : '#94a3b8', transition: 'background .15s, color .15s',
-            }}>{icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{title}</div>
-                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1, lineHeight: 1.35 }}>{desc}</div>
+            className={`flex items-center gap-3 p-2.5 sm:p-3 rounded-xl transition-all border ${
+                disabled ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'
+            } ${
+                checked
+                    ? accent === 'indigo'
+                        ? 'bg-[#eef2ff] dark:bg-blue-950/40 border-[#c7d2fe] dark:border-blue-800/60'
+                        : 'bg-[#f5f3ff] dark:bg-purple-950/30 border-[#ddd6fe] dark:border-purple-800/60'
+                    : 'bg-white dark:bg-[#000c3b] border-gray-200 dark:border-blue-900/40 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+            }`}
+        >
+            <div className={`w-[30px] h-[30px] rounded-lg flex-shrink-0 grid place-items-center transition-colors ${
+                checked
+                    ? accent === 'indigo'
+                        ? 'bg-[#e0e7ff] dark:bg-blue-900/50 text-[#4338ca] dark:text-blue-300'
+                        : 'bg-[#ede9fe] dark:bg-purple-900/50 text-[#7c3aed] dark:text-purple-300'
+                    : 'bg-gray-100 dark:bg-blue-950/50 text-gray-400 dark:text-slate-400'
+            }`}>{icon}</div>
+            <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-gray-900 dark:text-white">{title}</div>
+                <div className="text-[11.5px] text-gray-500 dark:text-slate-400 mt-0.5 leading-snug">{desc}</div>
             </div>
             <AiPersoToggle checked={checked} onChange={onChange} accent={accent} disabled={disabled} />
         </div>
@@ -11154,9 +11599,37 @@ function CheckpointFormInline({
             ? (inboundLeadIds.filter(id => selectedLeadIds.has(id)).length || inboundLeadIds.length || inboundLeads.length)
             : (inboundLeadIds.length || inboundLeads.length))
         : null;
+
+    // What the user actually enrolls: checked, minus thumbs-down - the same set
+    // launchCampaign sends as goodMatchLeads. Declared here because the daily
+    // lead target is derived from it (below) as well as the credit gate.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+
+    // Leads whose ICP verdict is IN and clears the threshold.
+    // `(l.icp_score ?? 0)` was wrong here: a lead still being scored has
+    // `undefined` ("Scoring..." / defer_icp) and one the model gave no answer for
+    // has `null` - neither is a verdict of zero, but both were counted as a miss,
+    // so launching before the panel finished scoring deflated this number.
+    // Three states, not two - see the ICP contract in LAD-Backend#777.
+    const thresholdMatchCount = leads.filter(
+        l => typeof l.icp_score === 'number' && l.icp_score >= (parseInt(icpThreshold) || 0)
+    ).length;
+
+    // The per-day fetch target the backend will use FOREVER (leads_per_day,
+    // daily_lead_limit, leadGenerationLimit). It follows the user's SELECTION,
+    // not a threshold-filtered snapshot of one search.
+    //
+    // Incident 2026-09-22 (Dot2Design, campaign 3b229edc): a search returned 29
+    // leads and the user enrolled 12, but only 2 carried a scored verdict >= the
+    // 75 threshold at that instant, so the campaign was sized at 2 leads/day and
+    // ran a week at 6% of the LinkedIn allowance - 12 connections against a 190
+    // weekly cap. A strict threshold was being charged twice: it shrank the
+    // snapshot AND made each day's search paginate ~100 profiles to find those 2.
+    // The selection is what the user decided; fall back to the threshold match
+    // only when nothing is checked yet.
     const qualifiedLeadCount = inboundSelectedCount != null && inboundSelectedCount > 0
         ? inboundSelectedCount
-        : leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
+        : (enrolledCount || thresholdMatchCount);
 
     // Compute LinkedIn capacity based on campaign duration
     const campaignDays = parseInt(days) || 30;
@@ -11175,9 +11648,9 @@ function CheckpointFormInline({
 
     // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down - mirrors
     // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // (`enrolledCount` is declared above, with the daily-target computation.)
     // creditBalance === null (billing fetch failed) fails OPEN - never block launch
     // on a billing-fetch error.
-    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
     const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
     const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
@@ -11602,7 +12075,7 @@ function CheckpointFormInline({
                 const fb = leadFeedback[l.id];
                 if (fb) acc.push({ lead_id: l.id, name: l.name, headline: l.headline, company: l.current_company, rating: fb, icp_score: l.icp_score });
                 return acc;
-            }, [] as { lead_id: string; name: string; headline: string; company: string; rating: string; icp_score?: number }[]);
+            }, [] as { lead_id: string; name: string; headline: string; company: string; rating: string; icp_score?: number | null }[]);
 
             // Build checkpoint selections object
             const checkpointSelections = buildCheckpointSelections();
@@ -11818,7 +12291,7 @@ function CheckpointFormInline({
                 // destructive replace) - otherwise the edited workflow silently doesn't
                 // save and the campaign shows "No actions". Status + leads are left
                 // untouched so the running/draft state and existing leads are preserved.
-                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config });
+                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config } as any);
                 // The steps endpoint passes steps straight to CampaignStepModel.bulkCreate,
                 // which reads step.type + step.order (NOT order_index). The create path maps
                 // these first; mirror that here so step_type/step_order aren't NULL → 500.
@@ -11975,15 +12448,14 @@ function CheckpointFormInline({
 
                 {/* Question header */}
                 <div
-                  className="text-gray-900 dark:text-gray-100"
-                  style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', lineHeight: 1.4 }}
+                  className="text-[15px] font-semibold text-gray-900 dark:text-white mb-4 leading-[1.4]"
                 >
                     {q.question}
                 </div>
-                <div className="adv-checkpoint-box" style={baseBox}>
+                <div className="adv-checkpoint-box bg-white dark:bg-[#071131] border border-[#e0eaf5] dark:border-blue-900/50 rounded-2xl p-6 max-w-[520px] w-full shadow-[0_4px_20px_rgba(23,37,96,0.06)] dark:shadow-2xl animate-[fadeUp_0.3s_ease_both]">
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
-                        <div className="flex flex-col dark:bg-[#000724]" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {[
                                 { value: '80', label: 'Above 80%', desc: 'Only top-tier matches' },
                                 { value: '75', label: 'Above 75%', desc: 'High quality leads' },
@@ -11992,7 +12464,14 @@ function CheckpointFormInline({
                                 { value: '0', label: 'All Leads - Within the LinkedIn Account Limits', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day based on your account limit` : 'No filtering - include everyone' },
                             ].map((opt, i) => {
                                 const selected = icpThreshold === opt.value;
-                                const count = leads.filter(l => (l.icp_score ?? 0) >= parseInt(opt.value)).length;
+                                // Same three-state rule as the daily target above: a lead still
+                                // being scored (`undefined`) or with no verdict (`null`) is not a
+                                // zero, so it must not be counted as a miss at 25/50/75. It DOES
+                                // belong to "All Leads" (threshold 0), which is everyone.
+                                const optMin = parseInt(opt.value);
+                                const count = leads.filter(
+                                    l => (typeof l.icp_score === 'number' ? l.icp_score >= optMin : optMin === 0)
+                                ).length;
                                 const displayCount = opt.value === '0' && linkedInDailyLimit && count > linkedInDailyLimit
                                     ? linkedInDailyLimit
                                     : count;
@@ -12002,12 +12481,18 @@ function CheckpointFormInline({
                                     onClick={() => setIcpThreshold(opt.value)}
                                     className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
                                       selected
-                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
-                                        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
+                                        ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                        : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] hover:border-gray-300 dark:hover:border-blue-700/60'
                                     }`}
                                   >
-                                      <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
-                                      <div style={{ flex: 1 }}>
+                                      <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                          selected
+                                              ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                              : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                      }`}>
+                                          {selected ? '✓' : i + 1}
+                                      </div>
+                                      <div className="flex-1">
                                           <div className="font-semibold text-gray-900 dark:text-gray-100">
                                               {opt.label}
                                           </div>
@@ -12030,8 +12515,7 @@ function CheckpointFormInline({
 
                     {/* Step 1: Campaign Channels */}
                     {step === 1 && (
-                        <div className="flex flex-col gap-2 dark:bg-[#000724]"
-                             style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {/* "Let Agent Deal" - one-click auto-build across connected channels */}
                             {!isDirectContact && (
                                 <div style={{ marginBottom: '2px' }}>
@@ -12086,7 +12570,7 @@ function CheckpointFormInline({
                             {/* Channel Configuration Sequential UI */}
                             {isInChannelConfiguration && (
                               <div
-                                className="bg-gray-50 dark:bg-[#000724] border-gray-200 dark:border-gray-800"
+                                className="bg-gray-50 dark:bg-[#000c3b] border-gray-200 dark:border-blue-900/50"
                                 style={{ marginTop: '12px', padding: '16px', borderRadius: '12px', border: '2px solid' }}
                               >
                                   {/* Step indicator */}
@@ -12129,21 +12613,29 @@ function CheckpointFormInline({
                                 { id: 'email', label: 'Email', desc: isDirectContact ? 'Send an email to this contact' : 'Send a follow-up email to the lead', icon: '✉️', disabled: isDirectContact && !hasEmail },
                                 { id: 'whatsapp', label: 'WhatsApp', desc: isDirectContact ? 'Send a WhatsApp message to this contact' : 'Send a WhatsApp message', icon: '💬', disabled: isDirectContact && !hasPhone },
                                 { id: 'voice_call', label: 'Voice Call', desc: isDirectContact ? 'Trigger an AI voice call to this contact' : 'Trigger an AI voice call', icon: '📞', disabled: isDirectContact && !hasPhone },
-                            ].filter(ch => !ch.disabled).map((ch, i) => (
-                              <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
-                                  nextChannels.includes(ch.id)
-                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]'
-                                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
-                                }`}
-                              >
-                                  <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
-                                  <div style={{ flex: 1 }}>
-                                      <div className="font-semibold text-gray-900 dark:text-slate-300">{ch.icon} {ch.label}</div>
-                                      <div className="text-[12px] text-gray-500 dark:text-slate-300 mt-[2px]">{ch.desc}</div>
-                                  </div>
-                              </div>
-                            ))}
-
+                            ].filter(ch => !ch.disabled).map((ch, i) => {
+                              const isSelected = nextChannels.includes(ch.id);
+                              return (
+                                <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70'
+                                      : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] hover:border-gray-300 dark:hover:border-blue-700/60'
+                                  }`}
+                                >
+                                    <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                        isSelected
+                                            ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                            : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                    }`}>
+                                        {isSelected ? '✓' : i + 1}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="font-semibold text-gray-900 dark:text-gray-100">{ch.icon} {ch.label}</div>
+                                        <div className="text-[12px] text-gray-500 dark:text-slate-400 mt-[2px]">{ch.desc}</div>
+                                    </div>
+                                </div>
+                              );
+                            })}
 
                             {/* Email Config (inline when email selected) */}
                             {nextChannels.includes('email') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'email' : true) && (
@@ -12315,11 +12807,9 @@ function CheckpointFormInline({
                               >
                                   {/* Per-Channel Delay Configuration */}
                                   <div
-                                    className="dark:border-gray-800"
-                                    style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}
+                                    className="dark:border-blue-900/50 mb-4 pb-4 border-b border-gray-200"
                                   >
                                       <div
-                                        className="dark:text-gray-300 text-[#374151]"
                                         style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '10px' }}
                                       >⏱️ Delay before next step (Optional)</div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -12361,19 +12851,23 @@ function CheckpointFormInline({
                                                 if (channelConfigStep > 0) setChannelConfigStep(channelConfigStep - 1);
                                             }}
                                             disabled={channelConfigStep === 0}
-                                            style={{ padding: '10px 16px', background: channelConfigStep === 0 ? '#f3f4f6' : '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: channelConfigStep === 0 ? '#9ca3af' : '#374151', cursor: channelConfigStep === 0 ? 'not-allowed' : 'pointer' }}>
+                                            className={`px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all border ${
+                                                channelConfigStep === 0
+                                                    ? 'bg-gray-100 dark:bg-[#000c3b]/50 border-gray-200 dark:border-blue-900/30 text-gray-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                                    : 'bg-white dark:bg-[#000c3b] border-gray-300 dark:border-blue-900/50 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/60 cursor-pointer shadow-sm'
+                                            }`}>
                                             ← Back
                                         </button>
                                         {channelConfigStep < selectedChannelsList.length - 1 ? (
                                             <button
                                                 onClick={() => setChannelConfigStep(channelConfigStep + 1)}
-                                                style={{ padding: '10px 16px', background: '#0b1957', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                                                className="px-4 py-2.5 bg-[#0b1957] dark:bg-blue-600 hover:bg-[#122479] dark:hover:bg-blue-500 text-white rounded-lg text-[13px] font-semibold cursor-pointer transition-all border-none shadow-sm">
                                                 Next → ({selectedChannelsList.length - channelConfigStep - 1} remaining)
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={() => setStep(step + 1)}
-                                                style={{ padding: '10px 16px', background: '#10b981', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                                                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[13px] font-semibold cursor-pointer transition-all border-none shadow-sm">
                                                 Continue →
                                             </button>
                                         )}
@@ -12425,7 +12919,7 @@ function CheckpointFormInline({
 
                                                             <div className="flex items-center gap-2">
                                                                 <span>{acc.display_name}</span>
-                                                                <span className="text-[10px] opacity-70 bg-gray-100 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+                                                                <span className="text-[10px] bg-slate-100 text-slate-600 dark:bg-emerald-900/70 dark:text-emerald-200 px-1.5 py-0.5 rounded border border-slate-200 dark:border-emerald-700/60 group-data-[highlighted]:!bg-white/20 group-data-[highlighted]:!text-white group-data-[highlighted]:!border-white/25 group-data-[state=checked]:!bg-white/20 group-data-[state=checked]:!text-white group-data-[state=checked]:!border-white/25">
             {acc.account_type === 'business_api' ? 'Business API' : 'Personal'}
           </span>
                                                             </div>
@@ -13503,63 +13997,58 @@ function CheckpointFormInline({
                                             setEnableAiPersonalization(next);
                                         };
                                         return (
-                                            <div style={{ marginTop: '16px' }}>
+                                            <div className="mt-4">
                                                 {/* Master header - one tap toggles the whole feature */}
                                                 <div role="button" aria-pressed={anyOn} onClick={toggleAll}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer',
-                                                        borderRadius: anyOn ? '14px 14px 0 0' : 14,
-                                                        background: anyOn ? 'linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%)' : '#f8fafc',
-                                                        border: `1px solid ${anyOn ? '#c7d2fe' : '#e5e7eb'}`,
-                                                        borderBottom: anyOn ? '1px solid transparent' : '1px solid #e5e7eb',
-                                                        transition: 'background .2s',
-                                                    }}>
-                                                    <div style={{
-                                                        width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'grid', placeItems: 'center',
-                                                        background: anyOn ? 'linear-gradient(135deg,#4338ca,#7c3aed)' : '#eef2ff',
-                                                        boxShadow: anyOn ? '0 2px 8px rgba(67,56,202,0.30)' : 'none', transition: 'background .2s',
-                                                    }}>
-                                                        <img src={anyOn ? '/logo-white.svg' : '/logo.svg'} alt="LAD" style={{ width: 20, height: 20, display: 'block' }} />
+                                                    className={`flex items-center gap-3 p-3 transition-all cursor-pointer border ${
+                                                        anyOn
+                                                            ? 'rounded-t-2xl border-b-transparent bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-blue-950/60 dark:to-purple-950/40 border-indigo-200 dark:border-blue-900/60'
+                                                            : 'rounded-2xl bg-[#f8fafc] dark:bg-[#000c3b] border-gray-200 dark:border-blue-900/40'
+                                                    }`}
+                                                >
+                                                    <div className={`w-[34px] h-[34px] rounded-xl flex-shrink-0 grid place-items-center transition-all ${
+                                                        anyOn
+                                                            ? 'bg-gradient-to-br from-[#4338ca] to-[#7c3aed] shadow-[0_2px_8px_rgba(67,56,202,0.3)]'
+                                                            : 'bg-[#eef2ff] dark:bg-blue-950/80'
+                                                    }`}>
+                                                        <img src={anyOn ? '/logo-white.svg' : '/logo.svg'} alt="LAD" className="w-5 h-5 block" />
                                                     </div>
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#4338ca' }}>AI Daily Personalisation</div>
-                                                        <div style={{ fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>Unique messages per lead, powered by live data</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-[13.5px] font-bold text-[#4338ca] dark:text-blue-300">AI Daily Personalisation</div>
+                                                        <div className="text-[11.5px] text-gray-500 dark:text-slate-400 mt-0.5">Unique messages per lead, powered by live data</div>
                                                     </div>
                                                     <AiPersoToggle checked={anyOn} onChange={toggleAll} accent="indigo" size="lg" />
                                                 </div>
 
                                                 {anyOn && (
-                                                    <div style={{
-                                                        border: '1px solid #c7d2fe', borderTop: 'none', borderRadius: '0 0 14px 14px',
-                                                        background: '#fcfcff', padding: 13, display: 'flex', flexDirection: 'column', gap: 16,
-                                                    }}>
+                                                    <div className="border border-t-0 border-indigo-200 dark:border-blue-900/60 rounded-b-2xl bg-[#fcfcff] dark:bg-[#071131] p-3.5 flex flex-col gap-4">
                                                         {/* Group 1 - live data the agent gathers per lead */}
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#4338ca' }}>Live data sources</div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="text-[10.5px] font-bold tracking-wider uppercase text-[#4338ca] dark:text-blue-400">Live data sources</div>
                                                             <AiPersoRow icon={<Globe size={16} />} title="Refresh web presence daily" desc="Re-runs Google search for articles, news & social profiles per lead" checked={enableDailyWebPresence} onChange={setEnableDailyWebPresence} accent="indigo" />
                                                             <AiPersoRow icon={<Newspaper size={16} />} title="Fetch live LinkedIn posts" desc="Pulls the lead's recent LinkedIn posts before each send" checked={enableDailyPosts} onChange={setEnableDailyPosts} accent="indigo" />
                                                         </div>
 
                                                         {/* Group 2 - how the agent writes each message */}
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#7c3aed' }}>AI message generation</div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="text-[10.5px] font-bold tracking-wider uppercase text-[#7c3aed] dark:text-purple-400">AI message generation</div>
                                                             <AiPersoRow icon={<Sparkles size={16} />} title="AI-generate unique message per lead"
                                                                 desc={noSource ? 'Enable a live data source above first' : 'AI writes a personalised connect + follow-up from live web & post data'}
                                                                 checked={enableAiPersonalization} onChange={setEnableAiPersonalization} accent="violet" disabled={noSource} />
 
                                                             {enableAiPersonalization && !noSource && (
                                                                 <>
-                                                                    <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
-                                                                        <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                                                                    <div className="flex gap-2 text-[11.5px] text-[#6d28d9] dark:text-purple-300 bg-[#faf5ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-xl p-3 leading-relaxed">
+                                                                        <Check size={15} className="flex-shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
                                                                         <span>Leave the message box empty and each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. <strong>Write a message and it is sent as written</strong> - AI only fills the <code>{'{{web_insight}}'}</code>-style placeholders inside it.</span>
                                                                     </div>
 
                                                                     {/* Nested granular control - clearly a child of the toggle above */}
-                                                                    <div style={{ marginLeft: 8, paddingLeft: 14, borderLeft: '2px solid #ddd6fe', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                                        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7c3aed' }}>Which messages?</div>
+                                                                    <div className="ml-2 pl-3.5 border-l-2 border-[#ddd6fe] dark:border-purple-800/60 flex flex-col gap-2">
+                                                                        <div className="text-[10.5px] font-bold tracking-wider uppercase text-[#7c3aed] dark:text-purple-400">Which messages?</div>
                                                                         <AiPersoRow icon={<UserPlus size={16} />} title="Connection request" desc="Personalised connect note per lead" checked={enableAiConnectionPersonalization} onChange={setEnableAiConnectionPersonalization} accent="violet" />
                                                                         <AiPersoRow icon={<MessageSquare size={16} />} title="Connection acceptance message" desc="Personalised acceptance message per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
-                                                                        <div style={{ fontSize: 11, color: '#9ca3af', paddingLeft: 2 }}>Unchecked messages use your static template.</div>
+                                                                        <div className="text-[11px] text-gray-400 dark:text-slate-400 pl-0.5">Unchecked messages use your static template.</div>
                                                                     </div>
                                                                 </>
                                                             )}
@@ -13634,7 +14123,7 @@ function CheckpointFormInline({
                                   : (inboundMode
                                       ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
                                       : capped
-                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount} selected; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
                                           : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
                               return (
                                 <div
@@ -13676,7 +14165,7 @@ function CheckpointFormInline({
                                 padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
                                 background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
                             }}>
-                                <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                <strong>LinkedIn safe-limit cap:</strong> You selected {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
                                 The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                             </div>
                           )}
@@ -13692,13 +14181,11 @@ function CheckpointFormInline({
                                 value={name}
                                 onChange={e => setName(e.target.value)}
                                 placeholder="e.g. Q3 Outreach Strategy"
-                                className="flex-1 border border-[#e0eaf5] rounded-[10px] px-[14px] py-[10px] text-[14px] outline-none bg-[#fafbff] font-inherit min-w-0
-                       dark:bg-[#060b21] dark:border-[#1e3a8a] dark:text-gray-100 dark:placeholder-gray-600"
+                                className="flex-1 border border-[#e0eaf5] dark:border-blue-900/50 rounded-[10px] px-[14px] py-[10px] text-[14px] outline-none bg-[#fafbff] dark:bg-[#000c3b] dark:text-gray-100 dark:placeholder-gray-500 font-inherit min-w-0"
                               />
                               <button
                                 onClick={suggestName}
-                                className="bg-[#e8ecfa] border-[1.5px] border-[#0b1957] rounded-[10px] px-[14px] text-[12px] font-bold text-[#0b1957] cursor-pointer whitespace-nowrap flex-shrink-0 transition-all
-                       dark:bg-[#2563eb] dark:border-blue-500 dark:text-slate-300 hover:bg-[#dbeafe] dark:hover:bg-blue-900/50"
+                                className="bg-[#e8ecfa] border-[1.5px] border-[#0b1957] rounded-[10px] px-[14px] text-[12px] font-bold text-[#0b1957] cursor-pointer whitespace-nowrap flex-shrink-0 transition-all dark:bg-blue-600 dark:border-blue-500 dark:text-white hover:bg-[#dbeafe] dark:hover:bg-blue-500"
                               >
                                   ✨ Suggest
                               </button>
@@ -13771,42 +14258,40 @@ function CheckpointFormInline({
                     const isFirstStep = skipsIcp ? step <= 1 : step <= 0;
                     return (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', maxWidth: '520px' }}>
-                            <div style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>{dispStep}/{dispTotal}</div>
+                            <div style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>{`${dispStep}/${dispTotal}`}</div>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 <button
                                     disabled={isFirstStep}
                                     onClick={handleBack}
-                                    style={{
-                                        width: '36px', height: '36px', borderRadius: '10px', border: '1px solid #e5e7eb',
-                                        background: isFirstStep ? '#f9fafb' : '#fff', cursor: isFirstStep ? 'default' : 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                                    }}
+                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+                                        isFirstStep
+                                            ? 'border-gray-200 dark:border-blue-900/30 bg-gray-50 dark:bg-[#000c3b]/50 text-gray-400 dark:text-slate-600 cursor-default opacity-50'
+                                            : 'border-gray-200 dark:border-blue-900/50 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-blue-950/60 cursor-pointer shadow-sm'
+                                    }`}
                                 >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isFirstStep ? '#d1d5db' : '#0b1957'} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
                                 </button>
                                 {step < totalSteps - 1 ? (
                                     <button
                                         disabled={!canNext()}
                                         onClick={handleNext}
-                                        style={{
-                                            width: '36px', height: '36px', borderRadius: '10px', border: 'none',
-                                            background: canNext() ? '#0b1957' : '#e5e7eb', cursor: canNext() ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                                        }}
+                                        className={`w-9 h-9 rounded-xl border-none flex items-center justify-center transition-all ${
+                                            canNext()
+                                                ? 'bg-[#0b1957] dark:bg-blue-600 hover:bg-[#122479] dark:hover:bg-blue-500 text-white cursor-pointer shadow-sm'
+                                                : 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-default'
+                                        }`}
                                     >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
                                     </button>
                                 ) : (
                                     <button
                                         disabled={!canNext() || launching || !creditsOk}
                                         onClick={launchCampaign}
-                                        style={{
-                                            padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching && creditsOk ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching && creditsOk ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching && creditsOk ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
-                                        }}
+                                        className={`px-5 py-2.5 rounded-xl border-none text-[13px] font-bold transition-all flex items-center gap-1.5 ${
+                                            canNext() && !launching && creditsOk
+                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-md'
+                                                : 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-default'
+                                        }`}
                                     >
                                         {launching ? 'Launching...' : 'Launch Campaign'}
                                     </button>
@@ -13863,24 +14348,6 @@ function TargetingFormInline({
     // Sync skillsRaw when the component re-opens with pre-existing skills
     React.useEffect(() => { setSkillsRaw(skills.join(', ')); }, [step === 5]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const baseBox: React.CSSProperties = {
-        background: '#fff', border: '1px solid #e0eaf5', borderRadius: '16px', padding: '24px',
-        maxWidth: '520px', boxShadow: '0 4px 20px rgba(23,37,96,0.06)', animation: 'fadeUp 0.3s ease both',
-    };
-
-    const optStyle = (selected: boolean): React.CSSProperties => ({
-        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-        border: `2px solid ${selected ? '#0b1957' : '#e5e7eb'}`, background: selected ? '#e8ecfa' : '#fff',
-        borderRadius: '12px', cursor: 'pointer', transition: 'all 0.15s', width: '100%',
-        fontSize: '14px', fontWeight: 500, color: selected ? '#0b1957' : '#374151',
-    });
-
-    const numBadge = (n: number, selected: boolean): React.CSSProperties => ({
-        width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '12px', fontWeight: 700, flexShrink: 0, border: `2px solid ${selected ? '#0b1957' : '#d1d5db'}`,
-        background: selected ? '#0b1957' : 'transparent', color: selected ? '#fff' : '#6b7280',
-    });
-
     const toggleSelection = (arr: string[], item: string, setter: any) => {
         if (arr.includes(item)) {
             setter(arr.filter(x => x !== item));
@@ -13894,42 +14361,44 @@ function TargetingFormInline({
     );
 
     return (
-        <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
+        <div className="adv-bubble adv-bubble-ai fadeUp mb-4">
             <div className="adv-ai-avatar adv-ai-avatar-viz"><AgentVisualizer state="idle" size={36} /></div>
-            <div style={{ flex: 1, maxWidth: '540px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div className="adv-ai-name">Targeting Filters</div>
+            <div className="flex-1 max-w-[540px]">
+                <div className="flex justify-between items-center mb-2">
+                    <div className="adv-ai-name text-xs font-bold text-[#0b1957] dark:text-blue-300 uppercase tracking-wider">Targeting Filters</div>
                     <button onClick={() => setStep(-1)}
-                        style={{
-                            background: 'none', border: 'none', cursor: 'pointer', padding: '0',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'
-                        }}>
+                        className="bg-transparent border-0 cursor-pointer p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
                         <X size={20} />
                     </button>
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px', lineHeight: 1.4 }}>
+                <div className="text-[15px] font-semibold text-gray-900 dark:text-white mb-4 leading-[1.4]">
                     {q.question}
                 </div>
 
-                <div style={baseBox}>
+                <div className="bg-white dark:bg-[#071131] border border-[#e0eaf5] dark:border-blue-900/50 rounded-2xl p-6 max-w-[520px] shadow-[0_4px_20px_rgba(23,37,96,0.06)] dark:shadow-2xl animate-[fadeUp_0.3s_ease_both]">
                     {/* Step 0: Nationality */}
                     {step === 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="flex flex-col gap-3">
                             <input
                                 type="text" placeholder="Search nationalities..." value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                style={{
-                                    width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px',
-                                    fontSize: '14px', marginBottom: '8px'
-                                }}
+                                className="w-full px-3 py-2.5 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white border border-gray-200 dark:border-blue-900/50 rounded-lg text-sm mb-2 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
                             />
-                            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
                                 {filteredNationalities.slice(0, 10).map((nat) => {
                                     const selected = nationality.includes(nat);
                                     return (
                                         <div key={nat} onClick={() => toggleSelection(nationality, nat, setNationality)}
-                                            style={optStyle(selected)}>
-                                            <div style={numBadge(nationality.indexOf(nat) + 1 || 0, selected)}>
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-sm font-medium border-2 ${
+                                                selected
+                                                    ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                                    : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+                                            }`}>
+                                            <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                                selected
+                                                    ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                                    : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                            }`}>
                                                 {selected ? '✓' : '○'}
                                             </div>
                                             <div>{nat}</div>
@@ -13942,13 +14411,21 @@ function TargetingFormInline({
 
                     {/* Step 1: Experience Level */}
                     {step === 1 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {EXPERIENCE_LEVELS.map((level) => {
                                 const selected = experienceLevel.includes(level);
                                 return (
                                     <div key={level} onClick={() => toggleSelection(experienceLevel, level, setExperienceLevel)}
-                                        style={optStyle(selected)}>
-                                        <div style={numBadge(experienceLevel.indexOf(level) + 1 || 0, selected)}>
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-sm font-medium border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                                : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+                                        }`}>
+                                        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                                : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                        }`}>
                                             {selected ? '✓' : '○'}
                                         </div>
                                         <div>{level}</div>
@@ -13960,13 +14437,21 @@ function TargetingFormInline({
 
                     {/* Step 2: Company Size */}
                     {step === 2 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {COMPANY_SIZES.map((size) => {
                                 const selected = companySize.includes(size);
                                 return (
                                     <div key={size} onClick={() => toggleSelection(companySize, size, setCompanySize)}
-                                        style={optStyle(selected)}>
-                                        <div style={numBadge(companySize.indexOf(size) + 1 || 0, selected)}>
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-sm font-medium border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                                : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+                                        }`}>
+                                        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                                : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                        }`}>
                                             {selected ? '✓' : '○'}
                                         </div>
                                         <div>{size}</div>
@@ -13978,13 +14463,21 @@ function TargetingFormInline({
 
                     {/* Step 3: Company Age */}
                     {step === 3 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {COMPANY_AGES.map((age) => {
                                 const selected = companyAge.includes(age);
                                 return (
                                     <div key={age} onClick={() => toggleSelection(companyAge, age, setCompanyAge)}
-                                        style={optStyle(selected)}>
-                                        <div style={numBadge(companyAge.indexOf(age) + 1 || 0, selected)}>
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-sm font-medium border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                                : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+                                        }`}>
+                                        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                                : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                        }`}>
                                             {selected ? '✓' : '○'}
                                         </div>
                                         <div>{age}</div>
@@ -13996,13 +14489,21 @@ function TargetingFormInline({
 
                     {/* Step 4: Education */}
                     {step === 4 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {EDUCATION_OPTIONS.map((edu) => {
                                 const selected = education.includes(edu);
                                 return (
                                     <div key={edu} onClick={() => toggleSelection(education, edu, setEducation)}
-                                        style={optStyle(selected)}>
-                                        <div style={numBadge(education.indexOf(edu) + 1 || 0, selected)}>
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-sm font-medium border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70 text-[#0b1957] dark:text-blue-200'
+                                                : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-blue-950/30'
+                                        }`}>
+                                        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                                            selected
+                                                ? 'border-[#0b1957] dark:border-blue-500 bg-[#0b1957] dark:bg-blue-600 text-white'
+                                                : 'border-gray-300 dark:border-slate-600 bg-transparent text-gray-500 dark:text-slate-400'
+                                        }`}>
                                             {selected ? '✓' : '○'}
                                         </div>
                                         <div>{edu}</div>
@@ -14020,12 +14521,9 @@ function TargetingFormInline({
                                 value={skillsRaw}
                                 onChange={e => setSkillsRaw(e.target.value)}
                                 onBlur={e => setSkills(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                style={{
-                                    width: '100%', minHeight: '100px', padding: '12px', border: '1px solid #e5e7eb',
-                                    borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical'
-                                }}
+                                className="w-full min-h-[100px] p-3 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white border border-gray-200 dark:border-blue-900/50 rounded-lg text-sm font-sans resize-y placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
                             />
-                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px' }}>
+                            <div className="text-[11px] text-gray-400 dark:text-slate-400 mt-1.5">
                                 Separate multiple skills with commas - e.g. <em>Gas Detector, HVAC Controls, BMS</em>
                             </div>
                         </div>
@@ -14033,42 +14531,32 @@ function TargetingFormInline({
 
                     {/* Step 6: Posted Recently */}
                     {step === 6 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="flex flex-col gap-4">
                             {/* Toggle card */}
                             <div
                                 onClick={() => setPostedRecently(!postedRecently)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '16px 18px', borderRadius: '12px', cursor: 'pointer',
-                                    border: `2px solid ${postedRecently ? '#0b1957' : '#e5e7eb'}`,
-                                    background: postedRecently ? '#e8ecfa' : '#fff',
-                                    transition: 'all 0.15s',
-                                }}
+                                className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                                    postedRecently
+                                        ? 'border-[#0b1957] dark:border-blue-500 bg-[#e8ecfa] dark:bg-blue-950/70'
+                                        : 'border-gray-200 dark:border-blue-900/40 bg-white dark:bg-[#000c3b]'
+                                }`}
                             >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: postedRecently ? '#0b1957' : '#111827' }}>
+                                <div className="flex flex-col gap-1">
+                                    <div className={`text-sm font-semibold ${postedRecently ? 'text-[#0b1957] dark:text-blue-200' : 'text-gray-900 dark:text-white'}`}>
                                         📢 Posted on LinkedIn in last 3 months
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.4 }}>
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">
                                         Only show leads who have been active - posted, shared, or commented recently.
                                         <br />
-                                        <span style={{ color: '#f59e0b', fontWeight: 500 }}>⚠ Sales Navigator only</span> - ignored for Classic API accounts.
+                                        <span className="text-amber-500 font-medium">⚠ Sales Navigator only</span> - ignored for Classic API accounts.
                                     </div>
                                 </div>
                                 {/* Toggle switch */}
-                                <div style={{
-                                    width: '44px', height: '24px', borderRadius: '12px', flexShrink: 0, marginLeft: '16px',
-                                    background: postedRecently ? '#0b1957' : '#d1d5db', transition: 'background 0.2s', position: 'relative',
-                                }}>
-                                    <div style={{
-                                        width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
-                                        position: 'absolute', top: '3px', transition: 'left 0.2s',
-                                        left: postedRecently ? '23px' : '3px',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                    }} />
+                                <div className={`w-11 h-6 rounded-full shrink-0 ml-4 transition-colors relative ${postedRecently ? 'bg-[#0b1957] dark:bg-blue-600' : 'bg-gray-300 dark:bg-slate-700'}`}>
+                                    <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm ${postedRecently ? 'left-[23px]' : 'left-[3px]'}`} />
                                 </div>
                             </div>
-                            <div style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
+                            <div className="text-[11px] text-gray-400 dark:text-slate-400 leading-relaxed">
                                 This filter is <strong>not saved</strong> between sessions - you must re-enable it each time you want it applied. It will not be auto-applied to campaigns or prospecting.
                             </div>
                         </div>
@@ -14076,28 +14564,25 @@ function TargetingFormInline({
 
                     {/* Step 7: Review */}
                     {step === 7 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {nationality.length > 0 && <div><strong>Nationalities:</strong> {nationality.join(', ')}</div>}
-                            {experienceLevel.length > 0 && <div><strong>Experience Level:</strong> {experienceLevel.join(', ')}</div>}
-                            {companySize.length > 0 && <div><strong>Company Size:</strong> {companySize.join(', ')}</div>}
-                            {companyAge.length > 0 && <div><strong>Company Age:</strong> {companyAge.join(', ')}</div>}
-                            {education.length > 0 && <div><strong>Education:</strong> {education.join(', ')}</div>}
-                            {skills.length > 0 && <div><strong>Skills:</strong> {skills.join(', ')}</div>}
-                            {postedRecently && <div><strong>Activity:</strong> Posted on LinkedIn in last 3 months ✅</div>}
+                        <div className="flex flex-col gap-3 text-sm text-gray-800 dark:text-slate-200">
+                            {nationality.length > 0 && <div><strong className="text-gray-900 dark:text-white">Nationalities:</strong> {nationality.join(', ')}</div>}
+                            {experienceLevel.length > 0 && <div><strong className="text-gray-900 dark:text-white">Experience Level:</strong> {experienceLevel.join(', ')}</div>}
+                            {companySize.length > 0 && <div><strong className="text-gray-900 dark:text-white">Company Size:</strong> {companySize.join(', ')}</div>}
+                            {companyAge.length > 0 && <div><strong className="text-gray-900 dark:text-white">Company Age:</strong> {companyAge.join(', ')}</div>}
+                            {education.length > 0 && <div><strong className="text-gray-900 dark:text-white">Education:</strong> {education.join(', ')}</div>}
+                            {skills.length > 0 && <div><strong className="text-gray-900 dark:text-white">Skills:</strong> {skills.join(', ')}</div>}
+                            {postedRecently && <div><strong className="text-gray-900 dark:text-white">Activity:</strong> Posted on LinkedIn in last 3 months ✅</div>}
                             {nationality.length === 0 && experienceLevel.length === 0 && companySize.length === 0 && companyAge.length === 0 && education.length === 0 && skills.length === 0 && !postedRecently && (
-                                <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>No additional filters selected</div>
+                                <div className="text-gray-400 dark:text-slate-400 italic">No additional filters selected</div>
                             )}
                         </div>
                     )}
 
                     {/* Skip Button - Inside the box */}
                     {step < totalSteps - 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <div className="flex justify-end mt-3 pt-3 border-t border-gray-200 dark:border-blue-900/40">
                             <button onClick={() => setStep(step + 1)}
-                                style={{
-                                    padding: '8px 14px', background: '#f9fafb', border: '1px solid #e5e7eb',
-                                    borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#6b7280', cursor: 'pointer'
-                                }}>
+                                className="px-3.5 py-2 bg-gray-50 dark:bg-[#000c3b] border border-gray-200 dark:border-blue-900/50 rounded-lg text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-blue-950/60 cursor-pointer transition-colors">
                                 Skip this
                             </button>
                         </div>
@@ -14105,44 +14590,32 @@ function TargetingFormInline({
                 </div>
 
                 {/* Navigation Buttons */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                <div className="flex gap-3 mt-4 justify-between items-center max-w-[520px]">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                         Step {step + 1} of {totalSteps}
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div className="flex gap-2.5">
                         {step > 0 && (
                             <button onClick={() => setStep(step - 1)}
-                                style={{
-                                    padding: '10px 14px', background: '#f3f4f6', border: '1px solid #e5e7eb',
-                                    borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#374151', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
+                                className="p-2.5 bg-gray-100 dark:bg-[#000c3b] border border-gray-200 dark:border-blue-900/50 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-blue-950/60 cursor-pointer flex items-center justify-center transition-colors">
                                 <ChevronLeft size={18} />
                             </button>
                         )}
                         {step < totalSteps - 1 && (
                             <button onClick={() => setStep(step + 1)}
-                                style={{
-                                    padding: '10px 14px', background: '#0b1957', color: '#fff', border: 'none',
-                                    borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
+                                className="px-4 py-2.5 bg-[#0b1957] dark:bg-blue-600 hover:bg-[#122479] dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center transition-colors">
                                 <ChevronRight size={18} />
                             </button>
                         )}
                         {step === totalSteps - 1 && (
                             <button onClick={onConfirm} disabled={loading}
-                                style={{
-                                    padding: '8px 16px', background: loading ? '#d1d5db' : '#10b981', color: '#fff', border: 'none',
-                                    borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: loading ? 'default' : 'pointer'
-                                }}>
+                                className={`px-4 py-2 text-white rounded-lg text-xs font-semibold transition-colors ${loading ? 'bg-gray-400 cursor-default' : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer'}`}>
                                 {loading ? 'Refining...' : 'Confirm & Refine'}
                             </button>
                         )}
                     </div>
                 </div>
             </div>
-
         </div>
     );
 }
@@ -14622,10 +15095,10 @@ function AgentBuilderTrendOptions({
                                                 <div className="text-[11px] text-slate-600 leading-relaxed font-medium markdown-content">
                                                     <ReactMarkdown
                                                         components={{
-                                                            h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
-                                                            p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
-                                                            ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                                                            li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                            h3: ({ node, ...props }: any) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                            p: ({ node, ...props }: any) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                            ul: ({ node, ...props }: any) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                            li: ({ node, ...props }: any) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
                                                         }}
                                                     >
                                                         {sec.content}
@@ -14661,10 +15134,10 @@ function AgentBuilderTrendOptions({
                                                     >
                                                         <ReactMarkdown
                                                             components={{
-                                                                h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
-                                                                p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
-                                                                ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                                                                li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                                h3: ({ node, ...props }: any) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                                p: ({ node, ...props }: any) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                                ul: ({ node, ...props }: any) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                                li: ({ node, ...props }: any) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
                                                             }}
                                                         >
                                                             {sec.content}
@@ -14725,7 +15198,7 @@ function MediaStepWidget({
     msg: any; 
     isActive: boolean; 
     mb: any; 
-    submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+    submitMediaInput: (text: string, valueToSend?: string | string[], customRefs?: any[]) => void; 
     userSelectionText?: string;
 }) {
     switch (msg.step) {
@@ -15248,6 +15721,55 @@ const css = `
             .adv-ai-bullet-dot {width:5px; height:5px; border-radius:50%; background:#0b1957; flex-shrink:0; margin-top:8px; opacity:.6; }
             .adv-ai-num-item {display:flex; align-items:flex-start; gap:9px; margin:5px 0; }
             .adv-ai-num-badge {min-width:22px; height:22px; border-radius:50%; background:linear-gradient(135deg,#e8ecfa,#dce3f5); color:#0b1957; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+            /* ── RICH MARKDOWN MESSAGE ──────────────────────────────────────
+               Everything below renders elements the previous hand-rolled parser
+               could not produce at all: fenced code, tables, links, quotes,
+               nested lists. Headings/bullets/numbers keep their original
+               adv-ai-* classes, so nothing that already looked right moved. */
+            .adv-md {font-size:13.5px; line-height:1.65; color:#374151; }
+            .adv-md-p {margin:6px 0; }
+            .adv-md-p:first-child {margin-top:0; }
+            .adv-md-p:last-child {margin-bottom:0; }
+            .adv-md-h1 {font-size:16px; }
+            .adv-md-ul, .adv-md-ol {margin:6px 0 8px; padding-left:20px; display:flex; flex-direction:column; gap:3px; }
+            .adv-md-ul {list-style:disc; }
+            .adv-md-ol {list-style:decimal; }
+            .adv-md-li {line-height:1.65; padding-left:2px; }
+            .adv-md-li::marker {color:#0b1957; opacity:.65; font-weight:600; }
+            /* Nested lists tighten up rather than inheriting the top gap. */
+            .adv-md-li > .adv-md-ul, .adv-md-li > .adv-md-ol {margin:3px 0 2px; }
+            .adv-md-a {color:#1a3a8f; font-weight:500; text-decoration:none; border-bottom:1px solid rgba(26,58,143,.28); transition:border-color .15s, color .15s; }
+            .adv-md-a:hover {color:#2563eb; border-bottom-color:#2563eb; }
+            .adv-md-quote {margin:8px 0; padding:6px 0 6px 12px; border-left:3px solid #dce3f5; color:#4b5563; font-style:italic; }
+            .adv-md-code-inline {background:#f3f4f6; padding:1.5px 5px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#0b1957; border:1px solid #ececf1; }
+            /* Tables: the wrapper scrolls, so a wide result set never widens the
+               conversation column. */
+            .adv-md-table-wrap {margin:10px 0; overflow-x:auto; border:1px solid #e9ecf5; border-radius:10px; }
+            .adv-md-table {border-collapse:collapse; width:100%; font-size:12.5px; }
+            .adv-md-th {background:#f7f9fd; color:#0b1957; font-weight:700; text-align:left; padding:8px 12px; border-bottom:1px solid #e9ecf5; white-space:nowrap; }
+            .adv-md-td {padding:8px 12px; border-bottom:1px solid #f1f3f9; color:#374151; vertical-align:top; }
+            .adv-md-table tr:last-child .adv-md-td {border-bottom:none; }
+            .adv-md-table tbody tr:nth-child(even) {background:#fcfdff; }
+            /* ── CODE BLOCK ── */
+            .adv-code-block {margin:10px 0; border:1px solid #e9ecf5; border-radius:10px; overflow:hidden; background:#fbfcfe; }
+            .adv-code-head {display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 12px; background:#f7f9fd; border-bottom:1px solid #e9ecf5; }
+            .adv-code-lang {font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6b7280; }
+            .adv-code-copy {display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:#4b5563; background:transparent; border:1px solid transparent; border-radius:6px; padding:3px 8px; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
+            .adv-code-copy:hover {background:#fff; border-color:#e0e7ff; color:#0b1957; }
+            .adv-code-pre {margin:0; padding:12px 14px; overflow-x:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; line-height:1.6; }
+            .adv-code-pre code {background:none; border:none; padding:0; font-size:inherit; color:#1f2937; }
+            /* Syntax colours. Scoped to this block rather than importing a full
+               highlight.js theme, which would be a global stylesheet fighting
+               the app's own palette. */
+            .adv-code-pre .hljs-comment, .adv-code-pre .hljs-quote {color:#8b93a7; font-style:italic; }
+            .adv-code-pre .hljs-keyword, .adv-code-pre .hljs-selector-tag, .adv-code-pre .hljs-literal, .adv-code-pre .hljs-doctag {color:#7c3aed; font-weight:600; }
+            .adv-code-pre .hljs-string, .adv-code-pre .hljs-attr, .adv-code-pre .hljs-addition {color:#0f7b52; }
+            .adv-code-pre .hljs-number, .adv-code-pre .hljs-symbol, .adv-code-pre .hljs-bullet {color:#c2410c; }
+            .adv-code-pre .hljs-title, .adv-code-pre .hljs-name, .adv-code-pre .hljs-section, .adv-code-pre .hljs-title\.function_ {color:#1a3a8f; font-weight:600; }
+            .adv-code-pre .hljs-built_in, .adv-code-pre .hljs-type, .adv-code-pre .hljs-class {color:#0369a1; }
+            .adv-code-pre .hljs-variable, .adv-code-pre .hljs-template-variable, .adv-code-pre .hljs-attribute {color:#0e7490; }
+            .adv-code-pre .hljs-deletion {color:#b91c1c; }
+            .adv-code-pre .hljs-meta {color:#6b7280; }
             .adv-web-searched {display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; color:#6b7280; background:#f8faff; border:1px solid #e0e7ff; padding:3px 10px 3px 8px; border-radius:20px; margin-bottom:10px; }
             /* ── THINKING STATE ── */
             .adv-thinking-wrap{display:flex;align-items:center;gap:8px;height:22px;overflow:hidden;padding-top:2px}
@@ -15524,7 +16046,7 @@ const css = `
                     flex: 0 0 auto !important;
                 }
                 /* FIXED: Extracted background color overrides so dark utility classes do not get blocked by media reset queries */
-                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; }
+                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 16px !important; padding: 12px 12px 8px !important; border: none !important; box-shadow: none !important; outline: none !important; }
                 .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 10 !important; }
                 .adv-leads-panel {width: 100% !important; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; border-left: none; }
                 
@@ -15536,26 +16058,51 @@ const css = `
                 .adv-chat-left-empty { justify-content: center !important; padding-bottom: 40px !important; gap: 20px; }
                 .adv-chat-left-empty .adv-chat-msgs { flex: 0 0 auto !important; display: flex; flex-direction: column; justify-content: center; padding: 0 !important; height: auto !important; margin-bottom: 0 !important; }
                 .adv-chat-left-empty .adv-msgs-inner { display: none !important; }
-                .adv-chat-left-empty .adv-chat-input-wrap { padding-bottom: 0 !important; flex: 0 0 auto !important; }
-                .adv-chat-left-empty .adv-chat-input-box { padding: 24px 30px !important; max-width: 90% !important; margin: 0 auto !important; }
-                .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
-                .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 12px !important; top: 82px !important; }
+                .adv-chat-left-empty .adv-chat-input-wrap { padding: 0 20px !important; flex: 0 0 auto !important; }
+                .adv-chat-left-empty .adv-chat-input-box { padding: 14px 12px 8px !important; width: 100% !important; max-width: 100% !important; margin: 0 auto !important; border-radius: 16px !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 16px !important; line-height: 1.4 !important; }
+                .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 10px !important; top: 72px !important; }
                 /* Decrease width for a more contained look on mobile */
                 .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; }
                 .adv-msgs-inner { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 20px !important; box-sizing: border-box !important; }
-                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 16px 20px !important; box-sizing: border-box !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
-                .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; }
+                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 20px 20px !important; box-sizing: border-box !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
+                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; border-radius: 16px !important; padding: 12px 12px 8px !important; }
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-                .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
-                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
-                /* Mobile keeps the tuned space-between layout and reduces Premium
-                   Search to its icon so the chatbox controls cannot overflow. */
+                .adv-chat-input-foot, .dark .adv-chat-input-foot { padding: 0 !important; margin-top: 10px !important; border-top: none !important; border: none !important; background: none !important; justify-content: flex-start !important; gap: 8px !important; }
+                /* Mobile: place star icon next to mic icon on right flank */
                 .adv-foot-side { flex: 0 1 auto !important; }
-                .adv-premium-btn { width: 30px !important; height: 30px !important; min-width: 30px !important; justify-content: center !important; padding: 0 !important; margin: 0 !important; }
+                .adv-chat-input-foot > .adv-foot-side:first-child { margin-right: auto !important; }
+                /* With 44px touch targets the footer needs ~405px; at 320-390px the
+                   Premium toggle, mic and Send sat outside the box (unreachable).
+                   Wrap instead: pickers on row 1, actions right-aligned on row 2. */
+                .adv-chat-input-foot, .dark .adv-chat-input-foot { flex-wrap: wrap !important; row-gap: 8px !important; }
+                .adv-chat-input-foot > .adv-premium-btn,
+                .adv-chat-input-foot > :last-child { margin-left: auto !important; }
+                .adv-premium-btn, .adv-chat-attach-btn, .adv-send-sm, .adv-send-circle.adv-send-sm, .adv-mic-btn { 
+                    width: 30px !important; 
+                    height: 30px !important; 
+                    min-width: 30px !important; 
+                    max-width: 30px !important; 
+                    min-height: 30px !important;
+                    max-height: 30px !important;
+                    border-radius: 50% !important; 
+                    display: flex !important; 
+                    align-items: center !important; 
+                    justify-content: center !important; 
+                    padding: 0 !important; 
+                    margin: 0 !important; 
+                    flex-shrink: 0 !important; 
+                }
                 .adv-premium-btn .adv-premium-label { display: none !important; }
-                .adv-premium-btn svg { width: 13px !important; height: 13px !important; }
-                .adv-chat-attach-btn, .adv-send-sm, .adv-mic-btn { width: 30px !important; height: 30px !important; flex-shrink: 0 !important; }
-                .adv-chat-attach-btn svg, .adv-send-sm svg, .adv-mic-btn svg { width: 13px !important; height: 13px !important; }
+                .adv-premium-btn svg, .adv-chat-attach-btn svg, .adv-send-sm svg, .adv-send-circle.adv-send-sm svg, .adv-mic-btn svg { 
+                    width: 14px !important; 
+                    height: 14px !important; 
+                    min-width: 14px !important;
+                    min-height: 14px !important;
+                    max-width: 14px !important;
+                    max-height: 14px !important;
+                    flex-shrink: 0 !important;
+                }
                 .adv-roles-btn { padding: 5px 10px !important; font-size: 11px !important; max-width: 120px !important; flex-shrink: 0 !important; text-overflow: ellipsis !important; overflow: hidden !important; white-space: nowrap !important; }
                 .adv-roles-menu { position: fixed !important; bottom: 85px !important; left: 16px !important; right: 16px !important; transform: none !important; width: auto !important; max-width: calc(100vw - 32px) !important; max-height: min(400px, calc(100vh - 140px)) !important; z-index: 1000 !important; }
                 .adv-attach-menu { position: fixed !important; bottom: 85px !important; left: 16px !important; right: 16px !important; transform: none !important; width: auto !important; max-width: calc(100vw - 32px) !important; max-height: min(360px, calc(100vh - 140px)) !important; z-index: 1000 !important; }
@@ -15624,13 +16171,13 @@ const css = `
                 .adv-rc { display: flex !important; width: 100% !important; }
                 .adv-rc-leads { display: none !important; }
                 .adv-icp-discover-btn { display: none !important; }
-                .adv-mobile-icp-box { top: 90px !important; }
+                .adv-mobile-icp-box { top: 72px !important; }
                 .adv-mobile-icp-btn {
                     background: #172560;
                     color: #fff;
-                    width: 50px;
-                    height: 50px;
-                    border-radius: 16px;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 12px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -15638,6 +16185,10 @@ const css = `
                     cursor: pointer;
                     box-shadow: 0 4px 14px rgba(23, 37, 96, 0.3);
                     transition: all 0.2s;
+                }
+                .adv-mobile-icp-btn svg {
+                    width: 16px;
+                    height: 16px;
                 }
                 .adv-mobile-icp-btn:hover {
                     background: #0f1842;
@@ -15744,7 +16295,9 @@ const css = `
             @media (max-width: 480px) {
                 .adv-gemini-title {font-size: 18px; margin-bottom: 20px; }
                 .adv-gemini-chips { gap: 8px !important; padding: 0 12px 12px !important; }
-                .adv-gemini-chip { padding: 10px 8px !important; font-size: 11px !important; gap: 6px !important; min-height: 56px !important; }
+                .adv-gemini-chip { padding: 10px 8px !important; font-size: 12px !important; gap: 6px !important; min-height: 56px !important; }
+                /* Two visible lines, so the rotating example prompt isn't cut mid-line. */
+                .adv-chat-left-empty .adv-chat-ta { min-height: 3.1em !important; }
 
                 /* ── MOBILE DARK MODE OVERRIDES (EXTRA SMALL DEVICES) ── */
                 .dark .adv-gemini-chip { background: #0e1834 !important; border-color: #1e2a4a !important; }
@@ -15819,6 +16372,32 @@ const css = `
             .dark .adv-ai-name { color: #60a5fa; }
             .dark .adv-ai-text { color: #e5e7eb; }
             .dark .adv-ai-h3 { color: #f3f4f6; }
+            /* Dark variants for the rich-markdown elements. Without these the
+               code block and table keep their light backgrounds and go
+               unreadable the moment the app is in dark mode. */
+            .dark .adv-md {color:#cbd5e1; }
+            .dark .adv-md-li::marker {color:#93a4d4; }
+            .dark .adv-md-a {color:#93b4ff; border-bottom-color:rgba(147,180,255,.3); }
+            .dark .adv-md-a:hover {color:#bfd3ff; border-bottom-color:#bfd3ff; }
+            .dark .adv-md-quote {border-left-color:#27324f; color:#9fb0c9; }
+            .dark .adv-md-code-inline {background:#111a35; border-color:#1e2a4d; color:#c7d6ff; }
+            .dark .adv-md-table-wrap {border-color:#1e2a4d; }
+            .dark .adv-md-th {background:#0d1630; color:#c7d6ff; border-bottom-color:#1e2a4d; }
+            .dark .adv-md-td {color:#cbd5e1; border-bottom-color:#16203d; }
+            .dark .adv-md-table tbody tr:nth-child(even) {background:#0b142e; }
+            .dark .adv-code-block {background:#0a1229; border-color:#1e2a4d; }
+            .dark .adv-code-head {background:#0d1630; border-bottom-color:#1e2a4d; }
+            .dark .adv-code-lang {color:#8fa0c0; }
+            .dark .adv-code-copy {color:#a9b8d4; }
+            .dark .adv-code-copy:hover {background:#111a35; border-color:#27324f; color:#dbe6ff; }
+            .dark .adv-code-pre code {color:#dbe4f7; }
+            .dark .adv-code-pre .hljs-comment, .dark .adv-code-pre .hljs-quote {color:#6b7a99; }
+            .dark .adv-code-pre .hljs-keyword, .dark .adv-code-pre .hljs-selector-tag, .dark .adv-code-pre .hljs-literal, .dark .adv-code-pre .hljs-doctag {color:#c4a4ff; }
+            .dark .adv-code-pre .hljs-string, .dark .adv-code-pre .hljs-attr, .dark .adv-code-pre .hljs-addition {color:#6ee7a8; }
+            .dark .adv-code-pre .hljs-number, .dark .adv-code-pre .hljs-symbol, .dark .adv-code-pre .hljs-bullet {color:#ffb27a; }
+            .dark .adv-code-pre .hljs-title, .dark .adv-code-pre .hljs-name, .dark .adv-code-pre .hljs-section {color:#93b4ff; }
+            .dark .adv-code-pre .hljs-built_in, .dark .adv-code-pre .hljs-type, .dark .adv-code-pre .hljs-class {color:#7dd3fc; }
+            .dark .adv-code-pre .hljs-variable, .dark .adv-code-pre .hljs-template-variable, .dark .adv-code-pre .hljs-attribute {color:#5eead4; }
             .dark .adv-ai-bullet {
                 color: #e5e7eb; 
             }
@@ -15839,8 +16418,8 @@ const css = `
             .dark .adv-panel-body { background: #000724; }
             .dark .adv-panel-title { color: #ffffff; }
             .dark .adv-panel-desc { background: #1A2A43; color: #e5e7eb; border-color: #000724; }
-            .dark .adv-lead-card { background: transparent; }
-            .dark .adv-lead-card:hover { background: #253456; }
+            .dark .adv-lead-card { background: #071131; }
+            .dark .adv-lead-card:hover { background: #0b1957; }
             .dark .adv-lead-name { color: #ffffff; }
             .dark .adv-lead-title { color: #7a8ba3; }
             .dark .adv-lead-company { color: #b8c4d6; }
@@ -15991,7 +16570,7 @@ const css = `
             }
             
             .dark .adv-chat-input-foot {
-                border-top: 1px solid #1e293b !important;
+                border-top: 1px solid #1e293b;
             }
             
             .dark .journey-tip {
@@ -16380,8 +16959,231 @@ const css = `
                     margin-bottom: -24px;
                     padding-bottom: 32px;
                 }
-                .adv-chat-input-box.has-extension {
+                .adv-chat-input-box,
+                .adv-chat-input-box.has-extension,
+                .adv-chat-left-empty .adv-chat-input-box {
+                    width: 100% !important;
+                    max-width: 100% !important;
                     border-radius: 16px !important;
                 }
+                :root:not(.dark) .adv-chat-input-box::before,
+                :root:not(.dark) .adv-chat-input-box:focus-within::before,
+                :root:not(.dark) .adv-chat-input-box.has-extension::before {
+                    border-radius: 17.5px !important;
+                }
+                .adv-chat-input-foot,
+                .dark .adv-chat-input-foot {
+                    border-top: none !important;
+                    border: none !important;
+                }
+            }
+
+            /* Keep the live AI Assistant composer free of the global field focus treatment. */
+            .adv-chat-input-box,
+            .adv-chat-input-box:focus,
+            .adv-chat-input-box:focus-within,
+            .adv-chat-input-box:focus-visible,
+            textarea.adv-chat-ta,
+            textarea.adv-chat-ta:focus,
+            textarea.adv-chat-ta:focus-visible {
+                border: none !important;
+                border-color: transparent !important;
+                outline: none !important;
+                box-shadow: none !important;
+                --tw-ring-color: transparent !important;
+                --tw-ring-shadow: 0 0 #0000 !important;
+                --tw-ring-offset-shadow: 0 0 #0000 !important;
+            }
+            .adv-chat-input-box,
+            .adv-chat-input-box:focus,
+            .adv-chat-input-box:focus-within,
+            .adv-chat-input-box:focus-visible {
+                box-shadow: 0 4px 18px rgba(11, 25, 87, 0.12) !important;
+            }
+            .dark .adv-chat-input-box,
+            .dark textarea.adv-chat-ta,
+            .dark textarea.adv-chat-ta:focus,
+            .dark textarea.adv-chat-ta:focus-visible {
+                background: #071131 !important;
+            }
+            .dark .adv-chat-input-box,
+            .dark .adv-chat-input-box:focus,
+            .dark .adv-chat-input-box:focus-within,
+            .dark .adv-chat-input-box:focus-visible {
+                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5) !important;
+            }
+
+            /* Restore the original animated blue gradient frame in light mode. */
+            :root:not(.dark) .adv-chat-input-box {
+                border: 1.5px solid transparent !important;
+                position: relative;
+                z-index: 0;
+            }
+            :root:not(.dark) .adv-chat-input-box::before,
+            :root:not(.dark) .adv-chat-input-box:focus-within::before {
+                display: block !important;
+                content: '' !important;
+                position: absolute;
+                inset: -1.5px;
+                padding: 1.5px;
+                border-radius: 25.5px;
+                background: linear-gradient(90deg, #0b1957, #1a3a8f, #2563eb, #3b82f6, #0b1957);
+                background-size: 300% 100%;
+                animation: adv-border-move 4s linear infinite;
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                opacity: 1 !important;
+                pointer-events: none;
+                z-index: -1;
+            }
+            :root:not(.dark) .adv-chat-input-box:focus-within::before {
+                animation-duration: 2s;
+            }
+            @keyframes adv-border-move {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 300% 50%; }
+            }
+            /* Touch targets: 44px minimum below the desktop breakpoint. Last in the
+               sheet (and min-* rather than width/height) so it wins over the compact
+               sizes set by the rules above without changing anything at >=1024px. */
+            @media (max-width: 1023.98px) {
+                .adv-chat-back,
+                .adv-chat-attach-btn,
+                .adv-mic-btn,
+                .adv-send-circle,
+                .adv-send-sm { min-width: 44px !important; min-height: 44px !important; }
+                .adv-premium-btn { min-width: 44px !important; min-height: 44px !important; }
+                .adv-roles-btn { min-height: 44px; }
+                .adv-icp-discover-btn { min-height: 44px; }
+                /* the <=768px rule above pins the prompt to 11px / 24px tall with
+                   !important: 11px makes iOS zoom on focus, 24px is under the target size */
+                .adv-chat-ta, textarea.adv-chat-ta { font-size: 16px !important; min-height: 44px !important; height: auto !important; line-height: 24px !important; padding: 10px 0 !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
+                /* Empty state is vertically centred in an overflow:hidden column; on a
+                   short phone the content is taller than the column, so centring pushed
+                   the greeting and back button up under the app's top bar. safe center
+                   falls back to top alignment when it would overflow; the column scrolls. */
+                .adv-chat-left-empty { justify-content: safe center !important; overflow-y: auto !important; }
+            }
+            /* Phones (app shell shows its fixed 56px top bar below md). The <=768px
+               rules above zero <main>'s padding-top and size the chat to 100vh-64px,
+               so the column started UNDER the top bar and hand-placed offsets tried to
+               compensate. Keep main's padding, fill it exactly, and shift those offsets
+               up by the same 56px so everything stays where it was on screen. */
+            @media (max-width: 767.98px) {
+                main { padding-top: 3.5rem !important; }
+                .adv-chat-root, .adv-chat-left { height: 100% !important; min-height: 0 !important; }
+                .adv-chat-back { top: 26px !important; }
+                .adv-mobile-icp-box { top: 34px !important; } /* effective value above is 90px */
+                .adv-chat-msgs { padding-top: 16px !important; }
+            }
+
+            /* ══ LLM-style landing (empty state) ═════════════════════════════════
+               Claude / Gemini / Grok pattern: animated mark, a personal greeting,
+               a quiet subline, slim suggestion pills and one roomy composer — on
+               phones the composer sits at the bottom (thumb reach) with the pills
+               scrolling just above it. Scoped to .adv-chat-left-empty / the hero,
+               and last in the sheet so it wins over the older landing rules. */
+            .adv-hero-llm { flex: 0 0 auto; }
+            .adv-hero-mark { display: flex; justify-content: center; margin-bottom: 18px; }
+            .adv-hero-greeting {
+                margin: 0;
+                font-family: 'Space Grotesk', system-ui, sans-serif;
+                font-size: 36px; font-weight: 500; line-height: 1.15; letter-spacing: -0.025em;
+                color: #0b1957;
+            }
+            .adv-hero-name {
+                background: linear-gradient(90deg, #0b1957 0%, #2563eb 100%);
+                -webkit-background-clip: text; background-clip: text; color: transparent;
+            }
+            .adv-hero-sub { margin: 8px 0 28px; font-size: 17px; line-height: 1.5; color: #64748b; }
+            .dark .adv-hero-greeting { color: #ffffff; }
+            .dark .adv-hero-name { background-image: linear-gradient(90deg, #bfdbfe 0%, #60a5fa 100%); }
+            .dark .adv-hero-sub { color: #94a3b8; }
+
+            .adv-chat-left-empty .adv-chat-input-box { border-radius: 28px !important; }
+            .adv-chat-left-empty .adv-gemini-chips { gap: 8px !important; max-width: 760px !important; padding: 4px 20px 24px !important; }
+            .adv-chat-left-empty .adv-gemini-chip {
+                padding: 8px 14px !important; border-radius: 999px !important; gap: 7px !important;
+                font-size: 13px !important; font-weight: 500 !important; color: #334155 !important;
+                background: transparent !important; border: 1px solid #e2e8f0 !important;
+                box-shadow: none !important; transform: none !important; min-height: 0 !important;
+            }
+            .adv-chat-left-empty .adv-gemini-chip svg { width: 14px !important; height: 14px !important; padding: 0 !important; background: none !important; color: #64748b; flex-shrink: 0; }
+            .adv-chat-left-empty .adv-gemini-chip:hover { background: #f8fafc !important; border-color: #cbd5e1 !important; color: #0b1957 !important; }
+            .dark .adv-chat-left-empty .adv-gemini-chip { color: #cbd5e1 !important; border-color: #1e293b !important; }
+            .dark .adv-chat-left-empty .adv-gemini-chip svg { color: #94a3b8; }
+            .dark .adv-chat-left-empty .adv-gemini-chip:hover { background: #0b1433 !important; border-color: #334155 !important; color: #ffffff !important; }
+
+            /* ICP Discovery on phones: a quiet outlined icon, not a bright tile. */
+            .adv-mobile-icp-btn {
+                width: 44px !important; height: 44px !important; border-radius: 999px !important;
+                background: transparent !important; border: 1px solid #e2e8f0 !important;
+                color: #0b1957 !important; box-shadow: none !important;
+            }
+            .adv-mobile-icp-btn svg { color: currentColor !important; stroke: currentColor !important; }
+            .dark .adv-mobile-icp-btn { background: transparent !important; border-color: #1e293b !important; color: #93c5fd !important; }
+
+            @media (max-width: 767.98px) {
+                /* Greeting fills the space, pills + composer sit at the bottom. */
+                .adv-chat-left-empty { justify-content: flex-end !important; padding-bottom: 12px !important; gap: 0 !important; }
+                .adv-chat-left-empty .adv-chat-msgs { order: 1; flex: 1 1 auto !important; justify-content: center !important; }
+                .adv-chat-left-empty .adv-gemini-chips { order: 2; }
+                .adv-chat-left-empty .adv-chat-input-wrap { order: 3; padding: 0 12px !important; }
+                .adv-hero-llm { align-items: flex-start !important; text-align: left !important; padding: 0 24px !important; }
+                .adv-hero-mark { margin-bottom: 14px; }
+                .adv-hero-greeting { font-size: 30px; }
+                .adv-hero-sub { font-size: 16px; margin-bottom: 0; }
+
+                .adv-chat-left-empty .adv-gemini-chips {
+                    display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important;
+                    grid-template-columns: none !important; justify-content: flex-start !important;
+                    max-width: none !important; margin: 0 !important; padding: 0 12px 10px !important;
+                    scroll-padding-inline: 12px;
+                }
+                .adv-chat-left-empty .adv-gemini-chip {
+                    width: auto !important; flex: 0 0 auto !important; white-space: nowrap !important;
+                    min-height: 44px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1.2 !important;
+                }
+                .adv-chat-left-empty .adv-chat-input-box { border-radius: 24px !important; padding: 10px 10px 6px 14px !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 8px 28px -14px rgba(11,25,87,.28) !important; }
+                .dark .adv-chat-left-empty .adv-chat-input-box { border-color: #1e293b !important; }
+                /* Compact landing composer: one 24px line that scrolls sideways
+                   (search-bar style) instead of wrapping, 16px so iOS doesn't zoom
+                   on focus, tighter padding, 40px tools. */
+                .adv-chat-left-empty textarea.adv-chat-ta {
+                    font-size: 16px !important; line-height: 24px !important;
+                    height: 24px !important; min-height: 24px !important; max-height: 24px !important;
+                    padding: 2px 0 !important; white-space: nowrap !important;
+                    overflow-x: auto !important; overflow-y: hidden !important; scrollbar-width: none;
+                }
+                .adv-chat-left-empty textarea.adv-chat-ta::-webkit-scrollbar { display: none; }
+                .adv-chat-left-empty .adv-chat-input-box { padding: 10px 8px 6px 14px !important; }
+                .adv-chat-left-empty .adv-chat-input-foot { margin-top: 4px !important; }
+                .adv-chat-left-empty .adv-chat-input-foot .adv-chat-attach-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-premium-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-mic-btn,
+                .adv-chat-left-empty .adv-chat-input-foot .adv-send-circle.adv-send-sm {
+                    width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important;
+                    max-width: 40px !important; max-height: 40px !important;
+                }
+                .adv-chat-left-empty .adv-chat-input-foot .adv-roles-btn { height: 40px !important; min-height: 40px !important; }
+                /* ICP Discovery sat across the blue rule under the app header
+                   (box at 34px, rule at 56-60px). Sit it 12px below the rule. */
+                .adv-mobile-icp-box { top: 72px !important; right: 12px !important; left: auto !important; transform: none !important; }
+                .adv-chat-input-foot { gap: 4px !important; margin-top: 6px !important; }
+                /* An older <=768px rule pins Send to 30px with a two-class selector,
+                   which outranks the later 44px touch-target fix. */
+                .adv-chat-input-foot .adv-send-circle.adv-send-sm {
+                    width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important;
+                    max-width: 44px !important; max-height: 44px !important;
+                }
+                .adv-chat-input-foot .adv-foot-side { gap: 4px !important; }
+            }
+            /* One toolbar row on narrow phones: Accelerators + model go icon-only
+               (they keep aria-labels); the menus are unchanged. */
+            @media (max-width: 479.98px) {
+                .adv-roles-label { display: none; }
+                .adv-roles-btn { padding-left: 10px !important; padding-right: 8px !important; gap: 4px !important; }
             }
             `;

@@ -19,9 +19,11 @@ import { useRelationshipHeatmap } from '@lad/frontend-features/community-roi';
 import { RecommendationPairs } from './RecommendationPairs';
 
 const COLORS = {
-  M:  { bg: '#EF444420', border: '#EF4444', badge: '#EF4444', label: 'Meeting Only' },
-  R:  { bg: '#EAB30820', border: '#EAB308', badge: '#EAB308', label: 'Referral Only' },
-  MR: { bg: '#10B98120', border: '#10B981', badge: '#10B981', label: 'Both' },
+  // badge = 700 shades: white text on them, and the counts on the 12% tint,
+  // need >= 4.5:1 (the 500s were 1.9-3.8:1). Borders keep the bright hue.
+  M:  { bg: '#EF444420', border: '#EF4444', badge: '#B91C1C', label: 'Meeting Only' },
+  R:  { bg: '#EAB30820', border: '#EAB308', badge: '#A16207', label: 'Referral Only' },
+  MR: { bg: '#10B98120', border: '#10B981', badge: '#047857', label: 'Both' },
 } as const;
 
 type CombinationType = 'M' | 'R' | 'MR';
@@ -63,9 +65,9 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
 }) => {
   if (!cell) {
     return (
-      <td className="border border-slate-100 p-0">
-        <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center">
-          <span className="text-[11px] font-semibold text-slate-400">0</span>
+      <td className="border border-slate-100 p-0 dark:border-slate-800">
+        <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center dark:bg-white/10">
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">0</span>
         </div>
       </td>
     );
@@ -83,7 +85,7 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
     .join('\n');
 
   return (
-    <td className="border border-slate-100 p-0">
+    <td className="border border-slate-100 p-0 dark:border-slate-800">
       <div
         className="min-w-[72px] min-h-[48px] flex flex-col items-center justify-center gap-1 px-2 py-1.5 cursor-default transition-all hover:brightness-95"
         style={{ backgroundColor: palette.bg, borderLeft: `3px solid ${palette.border}` }}
@@ -91,14 +93,14 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
       >
         {/* Type badge */}
         <span
-          className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded leading-none"
+          className="text-xs font-bold text-white px-1.5 py-0.5 rounded leading-none"
           style={{ backgroundColor: palette.badge }}
         >
           {cell.combinationType}
         </span>
 
         {/* Counts */}
-        <div className="flex gap-1 text-[9px] font-semibold leading-none" style={{ color: palette.badge }}>
+        <div className="flex gap-1 text-[11px] font-semibold leading-none dark:!text-slate-200" style={{ color: palette.badge }}>
           {cell.meetingCount > 0 && <span>M:{cell.meetingCount}</span>}
           {cell.referralCount > 0 && <span>R:{cell.referralCount}</span>}
           {cell.bothCount > 0 && <span>B:{cell.bothCount}</span>}
@@ -111,9 +113,9 @@ const MatrixCell: React.FC<{ cell: CellData | null; rowName: string; colName: st
 // ─── Diagonal Cell ──────────────────────────────────────────────────────────
 
 const DiagonalCell: React.FC = () => (
-  <td className="border border-slate-100 p-0">
-    <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center">
-      <span className="text-slate-300 text-xs font-bold select-none">-</span>
+  <td className="border border-slate-100 p-0 dark:border-slate-800">
+    <div className="min-w-[72px] min-h-[48px] bg-slate-100 flex items-center justify-center dark:bg-white/10">
+      <span className="text-slate-500 text-xs font-bold select-none dark:text-slate-400">-</span>
     </div>
   </td>
 );
@@ -133,13 +135,13 @@ const Legend: React.FC<LegendProps> = ({ selectedMember, breakdownData, onClearS
         {/* Selected Member Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Selected:</span>
-            <span className="text-sm font-bold text-slate-900">{selectedMember.name}</span>
-            <span className="text-xs text-slate-500">({breakdownData.totalRelationships} total)</span>
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider dark:text-slate-300">Selected:</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-white">{selectedMember.name}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">({breakdownData.totalRelationships} total)</span>
           </div>
           <button
             onClick={onClearSelection}
-            className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+            className="max-lg:min-h-11 px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors dark:text-slate-300 dark:hover:bg-white/10"
           >
             Clear
           </button>
@@ -160,13 +162,13 @@ const Legend: React.FC<LegendProps> = ({ selectedMember, breakdownData, onClearS
                     className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: type.color_code }}
                   />
-                  <span className="text-[10px] font-semibold text-slate-600 truncate">
+                  <span className="text-[10px] font-semibold text-slate-600 truncate dark:text-slate-300">
                     {type.label}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-sm font-bold text-slate-900">{type.count}</span>
-                  <span className="text-xs text-slate-500">({percentage}%)</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{type.count}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">({percentage}%)</span>
                 </div>
               </div>
             );
@@ -179,8 +181,8 @@ const Legend: React.FC<LegendProps> = ({ selectedMember, breakdownData, onClearS
   // Default legend
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-slate-400 italic">👆 Click a member name to see their relationship breakdown</p>
-      <div className="flex items-center gap-5 text-[11px] font-semibold text-slate-500 flex-wrap">
+      <p className="text-xs text-slate-500 italic dark:text-slate-400">👆 Click a member name to see their relationship breakdown</p>
+      <div className="flex items-center gap-5 text-[11px] font-semibold text-slate-500 flex-wrap dark:text-slate-400">
         {(Object.entries(COLORS) as [CombinationType, (typeof COLORS)[CombinationType]][]).map(
           ([key, val]) => (
             <div key={key} className="flex items-center gap-1.5">
@@ -193,7 +195,7 @@ const Legend: React.FC<LegendProps> = ({ selectedMember, breakdownData, onClearS
           )
         )}
         <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm bg-slate-100 border border-slate-200" />
+          <span className="inline-block w-3 h-3 rounded-sm bg-slate-100 border border-slate-200 dark:bg-white/10 dark:border-slate-700" />
           <span className="uppercase tracking-wide">No interaction</span>
         </div>
       </div>
@@ -313,11 +315,11 @@ export const RelationshipHeatmap: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-        <h2 className="text-lg font-bold text-slate-800 mb-6">Relationship Matrix</h2>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 mb-6 dark:text-slate-100">Relationship Matrix</h2>
         <div className="flex items-center justify-center h-48 gap-3">
           <div className="w-5 h-5 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />
-          <span className="text-sm text-slate-500 font-medium">Building matrix…</span>
+          <span className="text-sm text-slate-500 font-medium dark:text-slate-400">Building matrix…</span>
         </div>
       </div>
     );
@@ -325,10 +327,10 @@ export const RelationshipHeatmap: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Relationship Matrix</h2>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-sm text-red-600">{error?.message ?? 'Failed to load heatmap data.'}</p>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 dark:text-slate-100">Relationship Matrix</h2>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-500/10">
+          <p className="text-sm text-red-700 dark:text-red-300">{error?.message ?? 'Failed to load heatmap data.'}</p>
         </div>
       </div>
     );
@@ -336,10 +338,10 @@ export const RelationshipHeatmap: React.FC = () => {
 
   if (members.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Relationship Matrix</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm text-blue-600">No relationship data yet. Log some meetings or referrals to populate the matrix.</p>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 dark:bg-[#071131] dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 dark:text-slate-100">Relationship Matrix</h2>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 dark:bg-blue-500/10">
+          <p className="text-sm text-blue-600 dark:text-blue-300">No relationship data yet. Log some meetings or referrals to populate the matrix.</p>
         </div>
       </div>
     );
@@ -348,13 +350,13 @@ export const RelationshipHeatmap: React.FC = () => {
   // ── Matrix render ─────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden dark:bg-[#071131] dark:border-slate-700">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 flex flex-col gap-4 border-b border-slate-100">
+      <div className="px-6 pt-6 pb-4 flex flex-col gap-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Relationship Matrix</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Relationship Matrix</h2>
+            <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
               {members.length} members · {heatmapData?.length ?? 0} active pairs
             </p>
           </div>
@@ -372,9 +374,9 @@ export const RelationshipHeatmap: React.FC = () => {
           <thead>
             <tr>
               {/* Corner cell */}
-              <th className="sticky top-0 left-0 z-30 bg-slate-50 border border-slate-200 p-0">
+              <th className="sticky top-0 left-0 z-30 bg-slate-50 border border-slate-200 p-0 dark:bg-white/5 dark:border-slate-700">
                 <div className="min-w-[120px] min-h-[40px] flex items-end justify-end p-2">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">→ To</span>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider dark:text-slate-400">→ To</span>
                 </div>
               </th>
 
@@ -382,18 +384,18 @@ export const RelationshipHeatmap: React.FC = () => {
               {members.map((col) => (
                 <th
                   key={col.id}
-                  className="sticky top-0 z-20 bg-slate-50 border border-slate-100 p-0 hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="sticky top-0 z-20 bg-slate-50 border border-slate-100 p-0 hover:bg-blue-50 cursor-pointer transition-colors dark:bg-white/5 dark:border-slate-800"
                   onClick={() => handleSelectMember(col)}
                 >
                   <div className="min-w-[72px] px-2 py-2 text-center">
                     <span
-                      className="block font-semibold text-slate-700 truncate max-w-[68px] mx-auto"
+                      className="block font-semibold text-slate-700 truncate max-w-[68px] mx-auto dark:text-slate-200"
                       title={displayName(col.name)}
                     >
                       {displayName(col.name).split(' ')[0]}
                     </span>
                     {displayName(col.name).split(' ')[1] && (
-                      <span className="block text-[9px] text-slate-400 truncate max-w-[68px] mx-auto">
+                      <span className="block text-[9px] text-slate-500 truncate max-w-[68px] mx-auto dark:text-slate-400">
                         {displayName(col.name).split(' ').slice(1).join(' ')}
                       </span>
                     )}
@@ -408,17 +410,17 @@ export const RelationshipHeatmap: React.FC = () => {
               <tr key={row.id}>
                 {/* Row header */}
                 <th
-                  className="sticky left-0 z-10 bg-white border border-slate-100 p-0 text-left hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="sticky left-0 z-10 bg-white border border-slate-100 p-0 text-left hover:bg-blue-50 cursor-pointer transition-colors dark:bg-[#071131] dark:border-slate-800"
                   onClick={() => handleSelectMember(row)}
                 >
                   <div className="min-w-[120px] px-3 py-2 flex items-center gap-2">
                     <div
-                      className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
-                      style={{ backgroundColor: '#6366F1' }}
+                      className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
+                      style={{ backgroundColor: '#4F46E5' }}
                     >
                       {initials(row.name)}
                     </div>
-                    <span className="font-semibold text-slate-700 truncate max-w-[80px]" title={displayName(row.name)}>
+                    <span className="font-semibold text-slate-700 truncate max-w-[80px] dark:text-slate-200" title={displayName(row.name)}>
                       {displayName(row.name)}
                     </span>
                   </div>

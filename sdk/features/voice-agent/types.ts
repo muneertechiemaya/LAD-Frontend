@@ -120,6 +120,9 @@ export interface MakeCallRequest {
   phoneNumber: string;
   context?: string;
   fromNumber?: string;
+  /** Who we are calling. Reaches the agent as the lead name, so it can greet
+   *  them by it instead of asking. Dropped silently before this existed. */
+  leadName?: string;
 }
 
 export interface MakeCallResponse {

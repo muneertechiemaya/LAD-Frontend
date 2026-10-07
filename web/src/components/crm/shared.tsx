@@ -42,7 +42,7 @@ export const CH: Record<string, ChannelMeta> = {
   voice:     { label: 'Voice',     color: T.voice,    Icon: Phone },
   instagram: { label: 'Instagram', color: '#ec4899',  Icon: Camera },
   intent:    { label: 'Signal',    color: T.primary,  Icon: Radio },
-  system:    { label: 'System',    color: '#64748b',  Icon: Settings2 },
+  system:    { label: 'System',    color: '#475569',  Icon: Settings2 }, // slate-600: -500 was 4.2:1 on its tint
 };
 
 export const STAGE_META: Record<string, { label: string; color: string }> = {
@@ -141,7 +141,7 @@ export function CrmAvatar({
 }
 
 export function ChannelChips({ channels }: { channels?: ChannelKey[] }) {
-  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">-</span>;
+  if (!channels?.length) return <span className="text-xs text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1">
       {channels.map((ch) => {
@@ -235,7 +235,7 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
           onClick={() => canPrev && onPageChange(page - 1)}
           disabled={!canPrev}
           aria-label="Previous page"
-          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-8 px-2.5 max-lg:h-11 max-lg:min-w-11 inline-flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -247,7 +247,7 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
           onClick={() => canNext && onPageChange(page + 1)}
           disabled={!canNext}
           aria-label="Next page"
-          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-8 px-2.5 max-lg:h-11 max-lg:min-w-11 inline-flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
@@ -260,6 +260,6 @@ export function VerifiedTag({ verified }: { verified?: boolean }) {
   return verified ? (
     <BadgeCheck className="w-3.5 h-3.5 shrink-0" style={{ color: T.success }} />
   ) : (
-    <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 shrink-0">unverified</span>
+    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 shrink-0">unverified</span>
   );
 }

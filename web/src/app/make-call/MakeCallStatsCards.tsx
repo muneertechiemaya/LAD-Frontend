@@ -1,27 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Phone, Bot, Languages, Globe } from 'lucide-react';
 
-// Custom hook for counter animation
-const useCountUp = (end: number, duration: number = 2000) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp: number;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
-
-  return count;
-};
+// Numbers render final straight away: a 2 s count-up let people read a
+// half-way value as the real total, and froze mid-count in a background tab.
+const nf = new Intl.NumberFormat();
 
 // Skeleton loading component
 const SkeletonCard = () => (
@@ -45,7 +29,7 @@ const SkeletonCard = () => (
 // Component to handle animated values
 const AnimatedValue = ({ value }: { value: number | string }) => {
   const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value || 0;
-  const animatedValue = useCountUp(numericValue, 2000);
+  const animatedValue = nf.format(numericValue);
   return <>{animatedValue}</>;
 };
 
@@ -69,7 +53,7 @@ const StatCard = ({ title, value, icon, bgColor }: StatCardProps) => (
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col justify-end">
-            <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-300 mb-1">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-1">
               {title}
             </p>
             <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -111,7 +95,7 @@ export default function MakeCallStatsCards({
     <div className="flex gap-4 mb-6 flex-wrap items-stretch">
       {/* Total Numbers */}
       <StatCard
-        title="Total Numbers"
+        title="Your phone numbers"
         value={totalNumbers || 0}
         icon={<Phone className="w-6 h-6 text-blue-600" />}
         bgColor="bg-blue-100"
@@ -119,7 +103,7 @@ export default function MakeCallStatsCards({
 
       {/* Total Agents */}
       <StatCard
-        title="Total Agents"
+        title="Voice agents"
         value={totalAgents || 0}
         icon={<Bot className="w-6 h-6 text-green-600" />}
         bgColor="bg-green-100"
@@ -127,7 +111,7 @@ export default function MakeCallStatsCards({
 
       {/* Languages */}
       <StatCard
-        title="Languages"
+        title="Languages available"
         value={totalLanguages || 0}
         icon={<Languages className="w-6 h-6 text-purple-600" />}
         bgColor="bg-purple-100"
@@ -135,7 +119,7 @@ export default function MakeCallStatsCards({
 
       {/* Accents */}
       <StatCard
-        title="Accents"
+        title="Accents available"
         value={totalAccents || 0}
         icon={<Globe className="w-6 h-6 text-amber-600" />}
         bgColor="bg-amber-100"

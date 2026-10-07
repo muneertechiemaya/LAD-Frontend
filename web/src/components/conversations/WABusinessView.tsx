@@ -2,7 +2,10 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import { useConversations, useConversationMessages } from '@lad/frontend-features/conversations';
+import { apiErrorFromResponse } from '@lad/shared/apiError';
 import type { Conversation, Message } from '@/types/conversation';
 
 // ── Type Extensions for API Response Properties ─────────────────────────────
@@ -62,6 +65,24 @@ function formatWhatsAppSidebarTimestamp(rawTimestamp?: string | number | Date | 
   }
 
   return format(date, 'dd/MM/yyyy');
+}
+
+const STARTS_WITH_LETTER = new RegExp('^\\p{L}', 'u');
+
+/**
+ * "Naveen Dubai" → "ND", "Naveen" → "N". Only words that start with a letter
+ * count, so a contact whose name is their phone number gets "" (the caller
+ * shows a person icon) instead of "+4". The first two characters of the name
+ * read "NA" for Naveen — "not available".
+ */
+function contactInitials(name?: string | null): string {
+  return (name || '').trim().split(/\s+/).filter((w) => STARTS_WITH_LETTER.test(w))
+    .slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+}
+
+/** Enter or Space on a row that acts as a button. */
+function onActivateKey(e: React.KeyboardEvent, activate: () => void) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
 }
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -344,10 +365,11 @@ function getConversationLabelIds(conv: Conversation): string[] {
 }
 
 async function getApiErrorMessage(res: Response, fallback: string): Promise<string> {
-  const data = await res.json().catch(() => ({}));
-  if (typeof data?.error === 'string' && data.error.trim()) return data.error;
-  if (typeof data?.message === 'string' && data.message.trim()) return data.message;
-  return fallback;
+  // Reads `detail` as well as the top level. The Python services are FastAPI, so
+  // a structured refusal arrives NESTED as {"detail": {...}} and the top-level
+  // lookup this used to do found nothing — every WABA refusal became the generic
+  // fallback. detailToMessage there carries the shapes and the incident.
+  return (await apiErrorFromResponse(res, fallback)).message;
 }
 
 function MessageTicks({ status }: { status?: string }) {
@@ -1156,10 +1178,12 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
-  const [deletedForMeIds, setDeletedForMeIds] = useState<Set<string>>(new Set());
+  // Optimistic hide of messages the user just deleted. The durable removal comes from
+  // the backend soft-delete (is_deleted=true) + the 3s message poll re-reading (all
+  // readers filter is_deleted=false); this set only bridges the gap until the next poll.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   // Optimistic per-message starred overrides (messageId → starred), merged into allMessages.
   const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>({});
-  const [deletedForEveryoneIds, setDeletedForEveryoneIds] = useState<Set<string>>(new Set());
 
    const { messages: polledMessages, isLoading, total, isAgentTyping } = useConversationMessages(
     conversation?.id || null,
@@ -1225,8 +1249,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setOwnershipError(null);
       setOlderMessages([]);
       setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
-      setDeletedForMeIds(new Set());
-      setDeletedForEveryoneIds(new Set());
+      setDeletedIds(new Set());
     }
   }, [conversation?.id]);
 
@@ -1264,8 +1287,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setOwnershipError(null);
       setOlderMessages([]);
       setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
-      setDeletedForMeIds(new Set());
-      setDeletedForEveryoneIds(new Set());
+      setDeletedIds(new Set());
     }
   }, [conversation?.id]);
 
@@ -1303,28 +1325,15 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   const allMessages = useMemo(
     () =>
       baseMessages
-        .filter((m) => !deletedForMeIds.has(m.id))
+        // Optimistically hide a just-deleted message; the poll then re-reads without
+        // it (backend soft-deletes and every reader filters is_deleted=false).
+        .filter((m) => !deletedIds.has(m.id))
         .map((m) => {
           // Apply optimistic star override so the indicator flips immediately.
           const starred = m.id in starOverrides ? starOverrides[m.id] : m.starred;
-          const base = starred === m.starred ? m : ({ ...m, starred } as Message);
-          if (!deletedForEveryoneIds.has(m.id)) return base;
-          return {
-            ...base,
-            content: base.isOutgoing ? 'You deleted this message' : 'This message was deleted',
-            mediaId: undefined,
-            mediaType: undefined,
-            mediaMimeType: undefined,
-            mediaFilename: undefined,
-            mediaCaption: undefined,
-            templateName: undefined,
-            latitude: undefined,
-            longitude: undefined,
-            locationName: undefined,
-            locationAddress: undefined,
-          } as Message;
+          return starred === m.starred ? m : ({ ...m, starred } as Message);
         }),
-    [baseMessages, deletedForMeIds, deletedForEveryoneIds, starOverrides]
+    [baseMessages, deletedIds, starOverrides]
   );
   const hasMore = total > olderOffset;
 
@@ -1544,7 +1553,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         if (sentIds.size > 0) {
           setPendingFiles((prev) => prev.filter((pf) => !sentIds.has(pf.id)));
         }
-        const error = err instanceof Error ? new NetworkError('Failed to send attachment', err) : new NetworkError('Failed to send attachment');
+        // Keep the reason the service gave — see the note on the text send below.
+        const error = new NetworkError(getErrorMessage(err, 'Failed to send attachment'), err);
         setSendError(error.message);
       } finally {
         setIsSending(false);
@@ -1558,7 +1568,11 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setText('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      // Keep the reason the service gave: a structured refusal (the 24-hour
+      // window, a send pause) explains itself and names the remedy, and
+      // replacing it with a constant is why these reach us as screenshots of
+      // the network tab. getErrorMessage falls back when there is no message.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send message'), err);
       setSendError(error.message);
     } finally {
       setIsSending(false);
@@ -1571,7 +1585,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     try {
       await Promise.resolve(onSendMessage(payload));
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      // Keep the reason the service gave — see the note on the text send above.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send message'), err);
       setSendError(error.message);
       return;
     } finally {
@@ -1605,35 +1620,32 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     }
   }, []);
 
+  // Delete a message: hide it from the LAD inbox (soft-delete on the backend). This
+  // does NOT remove the message from anyone's WhatsApp — for an inbound customer
+  // message that is impossible via any WhatsApp API. Works for inbound and outbound.
   const handleDeleteMessage = useCallback(
-    async (message: Message, scope: 'me' | 'everyone') => {
-      if (scope === 'me') {
-        setDeletedForMeIds((prev) => new Set(prev).add(message.id));
-        return;
-      }
-
+    async (message: Message) => {
       const convId = conversationId || conversation?.id;
       if (!convId) return;
 
-      setDeletedForEveryoneIds((prev) => new Set(prev).add(message.id));
+      // Optimistically hide immediately; the 3s poll then re-reads without it once the
+      // backend soft-delete lands (all readers filter is_deleted=false).
+      setDeletedIds((prev) => new Set(prev).add(message.id));
       try {
         const selectedChannel = backendChannel || channel || 'waba';
         const res = await fetchWithTenant(
           `/api/whatsapp-conversations/conversations/${convId}/messages/${message.id}?channel=${selectedChannel}`,
-          {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ delete_for_everyone: true }),
-          }
+          { method: 'DELETE', headers: { 'Content-Type': 'application/json' } }
         );
         if (!res.ok) throw new Error('Delete failed');
       } catch {
-        setDeletedForEveryoneIds((prev) => {
+        // Roll back the optimistic hide so the user sees it did not persist.
+        setDeletedIds((prev) => {
           const next = new Set(prev);
           next.delete(message.id);
           return next;
         });
-        setSendError('Could not delete for everyone');
+        setSendError('Could not delete the message');
       }
     },
     [backendChannel, channel, conversationId, conversation?.id]
@@ -1854,7 +1866,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setIsVoicePlaying(false);
       setVoicePlayProgress(0);
     } catch (err: unknown) {
-      const error = err instanceof Error ? new NetworkError('Failed to send voice message', err) : new NetworkError('Failed to send voice message');
+      // Keep the reason the service gave — see the note on the text send above.
+      const error = new NetworkError(getErrorMessage(err, 'Failed to send voice message'), err);
       setSendError(error.message);
     } finally {
       setIsSending(false);
@@ -1882,13 +1895,11 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#161717]">
-        <div className="flex gap-6 mt-8">
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
-              <FileText className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
-            </div>
-            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send Template</span>
-          </div>
+        {/* "Send Template" here had no click handler at all — it did nothing.
+            Say what to do instead, and keep the one action that works. */}
+        <p className="text-base font-medium text-[#111b21] dark:text-[#e9edef]">Pick a chat on the left to read and reply</p>
+        <p className="mt-1 text-sm text-[#54656f] dark:text-[#aebac1]">Or bring in new people to message:</p>
+        <div className="flex gap-6 mt-6">
           <button
             type="button"
             onClick={onOpenImportLeads}
@@ -1951,19 +1962,26 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              <div className="flex items-center gap-3 cursor-pointer" onClick={onTogglePanel}>
+              <div
+                className="flex items-center gap-3 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884]"
+                onClick={onTogglePanel}
+                onKeyDown={(e) => onActivateKey(e, () => onTogglePanel?.())}
+                role="button"
+                tabIndex={0}
+                aria-label={`Contact details for ${conversation.contact?.name || 'this contact'}`}
+              >
                 <Avatar className="w-10 h-10 shrink-0">
                   <AvatarImage src={conversation.contact?.avatar} />
                   <AvatarFallback 
                     style={{
                       '--av-bg-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 20%, white)`,
-                      '--av-text-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 70%, black)`,
+                      '--av-text-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 55%, black)`,
                       '--av-bg-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 30%, black)`,
                       '--av-text-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 80%, white)`,
                     } as React.CSSProperties}
                     className="bg-[var(--av-bg-light)] text-[var(--av-text-light)] dark:bg-[var(--av-bg-dark)] dark:text-[var(--av-text-dark)]"
                   >
-                    {conversation.contact?.name?.substring(0, 2).toUpperCase()}
+                    {contactInitials(conversation.contact?.name) || <User className="h-5 w-5" aria-hidden />}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -2163,8 +2181,10 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               <button
                 type="button"
                 onClick={() => setShowAttachMenu(v => !v)}
+                aria-label="Attach"
+                aria-expanded={showAttachMenu}
                 className={cn(
-                  'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
+                  'w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
                   showAttachMenu ? 'text-[#00a884] rotate-45' : 'text-muted-foreground dark:text-[#8696a0] hover:text-foreground'
                 )}
               >
@@ -2196,7 +2216,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 aria-label={showStickers ? 'Hide emoji' : 'Show emoji'}
                 aria-pressed={showStickers ? 'true' : 'false'}
                 onClick={() => setShowStickers(v => !v)}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground dark:text-[#8696a0] hover:text-foreground transition-colors"
+                className="w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full text-muted-foreground dark:text-[#8696a0] hover:text-foreground transition-colors"
               >
                 <Smile className="w-5 h-5" />
               </button>
@@ -2218,8 +2238,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
+              placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Message'}
+              className="field-bare flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#667781] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-lg:min-h-11 max-h-[120px] my-0.5 leading-normal shadow-none"
               rows={1}
             />
           </div>
@@ -2228,8 +2248,9 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
+                className={cn('h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
+                aria-label={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
               </button>
@@ -2248,13 +2269,13 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
           {/* Send / Mic */}
           {isSending ? (
-            <div className="shrink-0 w-9 h-9 flex items-center justify-center">
+            <div className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
             </div>
           ) : (text.trim() || pendingFiles.length > 0) ? (
             <button
               type="button"
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
+              className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
               onClick={handleSend}
               aria-label="Send message"
             >
@@ -2263,7 +2284,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           ) : (
             <button
               ref={micBtnRef}
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
+              className="shrink-0 w-9 h-9 max-lg:w-11 max-lg:h-11 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
               onClick={startVoiceRecording}
               aria-label="Record voice message"
             >
@@ -2433,6 +2454,11 @@ interface WABASidebarProps {
   loadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  // First load of the list, and whether it failed. Without these the list
+  // said "No chats found" both while loading and when the request failed.
+  isLoadingList?: boolean;
+  listError?: unknown;
+  onRetryList?: () => void;
   isImportDialogOpen?: boolean;
   onImportDialogOpenChange?: (open: boolean) => void;
 }
@@ -2464,6 +2490,9 @@ function WABASidebar({
   loadMore,
   hasMore,
   isLoadingMore,
+  isLoadingList = false,
+  listError,
+  onRetryList,
   isImportDialogOpen: externalIsImportDialogOpen,
   onImportDialogOpenChange,
 }: WABASidebarProps) {
@@ -3185,7 +3214,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => {
                     setIsGroupsPanelOpen(true);
                     setSelectedGroupsPanelIds(new Set());
@@ -3205,7 +3234,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   aria-label="Refresh conversations"
@@ -3222,7 +3251,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                  className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => setIsNewChatOpen(true)}
                   aria-label="New Chat"
                 >
@@ -3240,7 +3269,7 @@ function WABASidebar({
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
+                      className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                       aria-label="More options"
                     >
                       <MoreVertical className="w-5 h-5" />
@@ -3297,7 +3326,7 @@ function WABASidebar({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
             <Input
               placeholder="Search or start a new chat"
-              className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-[#a2a2a2] focus-visible:ring-1 focus-visible:ring-transparent"
+              className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-[#a2a2a2] focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               value={searchQuery || ''}
               onChange={(e) => onSearchChange(e.target.value)}
             />
@@ -3310,15 +3339,15 @@ function WABASidebar({
       )}
 
       {/* Filter Chips (All / Unread) + Sort/Filter */}
-      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
+      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-fade-x border-b border-border dark:border-[#222d34]/80">
         {(['all', 'unread'] as FilterTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setFilterTab(tab)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
+              'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
               filterTab === tab
-                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
@@ -3332,9 +3361,9 @@ function WABASidebar({
             type="button"
             onClick={() => onHideEmptyChange(!hideEmpty)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+              'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
               hideEmpty
-                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
@@ -3348,9 +3377,9 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 selectedLabelIds.length > 0
-                  ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
+                  ? 'bg-[#d9fdd3] text-[#006e5a] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                   : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <Tag className="h-3.5 w-3.5" />
@@ -3391,7 +3420,7 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 contextStatusFilter && contextStatusFilter !== 'all'
                   ? 'bg-[#00a884] text-white border-transparent'
                   : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
@@ -3444,7 +3473,7 @@ function WABASidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <ArrowDownUp className="h-3.5 w-3.5" />
@@ -3490,7 +3519,7 @@ function WABASidebar({
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="px-3 py-1.5 rounded-full bg-muted/50 dark:bg-[#161717] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
+              <button className="px-3 py-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-full bg-muted/50 dark:bg-[#161717] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
@@ -3702,6 +3731,31 @@ function WABASidebar({
             </p>
             <button className="mt-4 text-[#00a884] text-[15px] font-medium hover:underline">Add to Favourites</button>
           </div>
+        ) : isLoadingList && conversations.length === 0 ? (
+          <div aria-busy="true" aria-label="Loading chats">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <div className="h-12 w-12 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-2/5 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : listError && conversations.length === 0 ? (
+          <div role="alert" className="p-6 text-center text-sm text-muted-foreground dark:text-[#8696a0]">
+            <p>Couldn&apos;t load your chats.</p>
+            {onRetryList && (
+              <button
+                type="button"
+                onClick={onRetryList}
+                className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border px-4 font-medium text-foreground hover:bg-muted"
+              >
+                Try again
+              </button>
+            )}
+          </div>
         ) : filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground dark:text-[#8696a0]">
             No chats found for this filter.
@@ -3709,7 +3763,7 @@ function WABASidebar({
         ) : (
           filteredConversations.map((conv) => {
             const isSelected = selectedId === conv.id;
-            const initials = conv.contact?.name?.substring(0, 2).toUpperCase();
+            const initials = contactInitials(conv.contact?.name);
             const convLastMessage = (conv as Conversation & { lastMessage?: Message }).lastMessage;
             let lastMsg = convLastMessage || conv.messages?.[conv.messages.length - 1];
             if (isSelected && activeLastMsg) {
@@ -3724,8 +3778,13 @@ function WABASidebar({
               <div
                 key={conv.id}
                 onClick={() => isSelectMode ? toggleSelectChat(conv.id) : onSelectConversation(conv.id)}
+                onKeyDown={(e) => onActivateKey(e, () => isSelectMode ? toggleSelectChat(conv.id) : onSelectConversation(conv.id))}
+                role={isSelectMode ? 'checkbox' : 'button'}
+                aria-checked={isSelectMode ? selectedChatIds.has(conv.id) : undefined}
+                aria-current={!isSelectMode && isSelected ? 'true' : undefined}
+                tabIndex={0}
                 className={cn(
-                  'flex items-center gap-4 py-2 px-4 cursor-pointer transition-colors',
+                  'flex items-center gap-4 py-2 px-4 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] focus-visible:ring-inset',
                   isSelectMode && selectedChatIds.has(conv.id)
                     ? 'bg-[#00a884]/10 dark:bg-[#00a884]/15'
                     : isSelected ? 'bg-[#d9fdd3] dark:bg-[#2e2f2f]' : 'hover:bg-zinc-100 dark:hover:bg-[#2e2f2f]/50'
@@ -3748,13 +3807,13 @@ function WABASidebar({
                   <AvatarFallback 
                     style={{
                       '--av-bg-light': `color-mix(in srgb, ${avatarColor} 20%, white)`,
-                      '--av-text-light': `color-mix(in srgb, ${avatarColor} 70%, black)`,
+                      '--av-text-light': `color-mix(in srgb, ${avatarColor} 55%, black)`,
                       '--av-bg-dark': `color-mix(in srgb, ${avatarColor} 30%, black)`,
                       '--av-text-dark': `color-mix(in srgb, ${avatarColor} 80%, white)`,
                     } as React.CSSProperties}
                     className="bg-[var(--av-bg-light)] text-[var(--av-text-light)] dark:bg-[var(--av-bg-dark)] dark:text-[var(--av-text-dark)]"
                   >
-                    {initials}
+                    {initials || <User className="h-5 w-5" aria-hidden />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0 py-1">
@@ -3835,7 +3894,7 @@ function WABASidebar({
                 placeholder="Search name or number"
                 value={newChatSearch}
                 onChange={(e) => setNewChatSearch(e.target.value)}
-                className="pl-9 h-9 bg-secondary/50 dark:bg-[#2e2f2f] rounded-full border-0"
+                className="pl-9 h-9 bg-secondary/50 dark:bg-[#2e2f2f] rounded-full border-0 focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 autoFocus
               />
             </div>
@@ -4673,7 +4732,7 @@ const DEFAULT_CONTEXT_STATUSES: ContextStatusOption[] = [
   { value: 'human', label: 'Human', count: 0 },
   { value: 'onboarding_greeting', label: 'Onboarding Greeting', count: 0 },
   { value: 'onboarding_profile', label: 'Onboarding Profile', count: 0 },
-  { value: 'icp_discovery', label: 'ICP Discovery', count: 0 },
+  { value: 'icp_discovery', label: 'Ideal-customer search', count: 0 },
   { value: 'onboarding_complete', label: 'Onboarding Complete', count: 0 },
   { value: 'match_suggested', label: 'Match Suggested', count: 0 },
   { value: 'coordination_a_availability', label: 'Coordination Availability', count: 0 },
@@ -4700,6 +4759,8 @@ export function WABusinessView({
   const [isMounted, setIsMounted] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(isMobileChatOpen);
 
   useEffect(() => {
     setIsMounted(true);
@@ -4721,6 +4782,9 @@ export function WABusinessView({
     loadMore,
     hasMore,
     isLoadingMore,
+    isLoading: isLoadingList,
+    error: listError,
+    refetch: refetchList,
   } = useConversations({ channel });
 
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
@@ -4961,6 +5025,19 @@ const handleFavorite = useCallback(
     [conversations, favOverrides]
   );
 
+  // `?conversation=<id>` (from My Tasks or a push alert): open that chat once it
+  // is in the list. Applied once per id, so the user can still navigate away.
+  const deepLinkConversationId = useSearchParams().get('conversation');
+  const appliedDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!deepLinkConversationId || appliedDeepLinkRef.current === deepLinkConversationId) return;
+    if (typedConversations.some((c) => c.id === deepLinkConversationId)) {
+      appliedDeepLinkRef.current = deepLinkConversationId;
+      selectConversation(deepLinkConversationId);
+      setIsMobileChatOpen(true);
+    }
+  }, [deepLinkConversationId, typedConversations, selectConversation]);
+
   const typedSelectedConversation = useMemo(
   () => {
     if (isMobileViewport && !isMobileChatOpen) return null;
@@ -5067,6 +5144,9 @@ const handleFavorite = useCallback(
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              isLoadingList={isLoadingList}
+              listError={listError}
+              onRetryList={() => { void refetchList(); }}
               isImportDialogOpen={isImportDialogOpen}
               onImportDialogOpenChange={setIsImportDialogOpen}
             />

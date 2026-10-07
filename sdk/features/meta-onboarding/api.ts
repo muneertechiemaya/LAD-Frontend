@@ -18,6 +18,7 @@ import type {
   WhatsAppAccount,
   WhatsAppAccountsResponse,
   DisconnectResponse,
+  RegisterNumberResponse,
 } from './types';
 
 const BASE = '/api/social-integration/meta';
@@ -83,6 +84,22 @@ export const getWhatsAppAccountsOptions = () =>
     queryKey: metaOnboardingKeys.whatsappAccounts(),
     queryFn:  getWhatsAppAccounts,
   });
+
+/**
+ * Register a number on the Cloud API.
+ *
+ * The repair for a coexistence onboarding that skipped registration: the
+ * number sits on an Approved WABA, shows "Offline", and receives nothing.
+ * Meta's refusal - most often a two-step PIN the number already has - comes
+ * back in the error body and has to reach the user, because clearing it is
+ * something only they can do in WhatsApp Manager.
+ */
+export async function registerWhatsAppNumber(accountId: string): Promise<RegisterNumberResponse> {
+  const res = await apiClient.post<RegisterNumberResponse>(
+    `${BASE}/whatsapp/accounts/${accountId}/register`
+  );
+  return res.data;
+}
 
 /** Disconnect an account - soft-deletes locally and unsubscribes from Meta. */
 export async function disconnectWhatsAppAccount(accountId: string): Promise<DisconnectResponse> {

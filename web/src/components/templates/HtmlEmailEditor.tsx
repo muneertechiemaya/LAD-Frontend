@@ -68,13 +68,14 @@ export default function HtmlEmailEditor({
 
         {/* Mobile only header to toggle Media Library (collapsible on mobile screens) */}
         <div className="sm:hidden flex-shrink-0 bg-gray-50 dark:bg-[#000c3b] border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex items-center justify-between">
-          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">📸 Media library items</span>
+          <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Your images</span>
           <button
               type="button"
               onClick={() => setShowMediaMobile(!showMediaMobile)}
-              className="text-[11px] px-2.5 py-1 rounded-md bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 font-bold text-gray-700 dark:text-gray-300 cursor-pointer shadow-xs hover:bg-gray-50 dark:hover:bg-[#0b1957]/30"
+              aria-expanded={showMediaMobile}
+              className="text-xs min-h-11 px-3 py-1 rounded-md bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 font-bold text-gray-700 dark:text-gray-300 cursor-pointer shadow-xs hover:bg-gray-50 dark:hover:bg-[#0b1957]/30"
           >
-            {showMediaMobile ? 'Hide Library ✖' : 'Show Library +'}
+            {showMediaMobile ? 'Hide images' : 'Show images'}
           </button>
         </div>
 
@@ -88,7 +89,7 @@ export default function HtmlEmailEditor({
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-white dark:bg-[#000c3b] rounded-xl border border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <span className="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mr-1">Insert:</span>
+          <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mr-1">Insert:</span>
           {[
             { label: 'First Name', val: '{{first_name}}' },
             { label: 'Last Name',  val: '{{last_name}}'  },
@@ -98,7 +99,7 @@ export default function HtmlEmailEditor({
             <button
               key={val}
               onClick={() => insertAtCursor(val)}
-              className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+              className="px-2 py-0.5 sm:px-2.5 sm:py-1 max-lg:min-h-11 text-xs font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
             >
               {label}
             </button>
@@ -106,9 +107,9 @@ export default function HtmlEmailEditor({
           <div className="flex-1 min-w-[8px]" />
           <button
             onClick={() => setShowMediaModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs bg-primary dark:bg-blue-500 text-white rounded-lg hover:bg-primary/90 active:bg-primary/80 dark:hover:bg-blue-600 dark:active:bg-blue-700 font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 max-lg:min-h-11 text-xs bg-primary dark:bg-blue-500 text-white rounded-lg hover:bg-primary/90 active:bg-primary/80 dark:hover:bg-blue-600 dark:active:bg-blue-700 font-semibold transition-all active:scale-95 cursor-pointer"
           >
-            📸 Insert Media
+            📸 Insert image
           </button>
         </div>
 
@@ -135,12 +136,11 @@ export default function HtmlEmailEditor({
         </div>
 
         {/* Stats row */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400 flex-shrink-0">
           <span>📝 {wordCount} words</span>
-          <span>🔤 {charCount} chars</span>
-          <span className={charCount > 400000 ? 'text-amber-500 dark:text-amber-400 font-medium' : ''}>
+          <span className={charCount > 400000 ? 'text-amber-700 dark:text-amber-400 font-medium' : ''}>
             {charCount > 500000 ? '❌' : charCount > 400000 ? '⚠️' : '✅'}{' '}
-            {(charCount / 1000).toFixed(1)} KB / 500 KB
+            {(charCount / 1000).toFixed(1)} KB of 500 KB
           </span>
           <div className="hidden sm:block flex-1 border-transparent" />
           <span className="hidden sm:inline text-gray-400 dark:text-gray-600 text-[10px] truncate max-w-xs">Drag images from the Media Library · Use placeholders for personalisation</span>
@@ -148,19 +148,19 @@ export default function HtmlEmailEditor({
 
         {/* Placeholders hint */}
         <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/60 rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0">
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1 sm:mb-1.5">💡 Supported Placeholders:</p>
+          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1 sm:mb-1.5">💡 Personal details you can add:</p>
           <div className="flex flex-wrap gap-1.5">
             {['{{first_name}}', '{{last_name}}', '{{company}}', '{{title}}', '{{email}}'].map(p => (
               <button
                 key={p}
                 onClick={() => insertAtCursor(p)}
-                className="px-2 py-0.5 font-mono text-[11px] bg-white dark:bg-[#000724] border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-105 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                className="px-2 py-0.5 max-lg:min-h-11 font-mono text-xs bg-white dark:bg-[#000724] border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-105 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
               >
                 {p}
               </button>
             ))}
           </div>
-          <p className="text-[10px] sm:text-[11px] text-blue-500 dark:text-blue-400/70 mt-1 sm:mt-1.5">These will be replaced with actual values when emails are sent.</p>
+          <p className="text-xs text-blue-800 dark:text-blue-300 mt-1 sm:mt-1.5">Each one is replaced with that person&apos;s details when the email is sent.</p>
         </div>
       </div>
 

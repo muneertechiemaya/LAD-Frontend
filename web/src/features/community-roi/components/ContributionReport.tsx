@@ -104,27 +104,27 @@ export default function ContributionReport() {
       case 'both':
         return 'bg-green-500'; // Both
       default:
-        return 'bg-gray-100'; // No activity
+        return 'bg-gray-100 dark:bg-white/10'; // No activity
     }
   };
 
   return (
-    <div className="w-full bg-white rounded-xl p-8 shadow-sm">
+    <div className="w-full bg-white rounded-xl p-8 shadow-sm dark:bg-[#071131]">
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Contribution Report</h1>
-          <p className="text-gray-500">Weekly engagement footprint and revenue impact analysis</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 dark:text-white">Contribution Report</h1>
+          <p className="text-gray-500 dark:text-slate-400">Weekly engagement footprint and revenue impact analysis</p>
         </div>
 
         {/* Filters */}
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Segment</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1 dark:text-slate-400">Segment</p>
             <select
               value={segment}
               onChange={(e) => setSegment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400"
+              className="max-lg:min-h-11 px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
             >
               <option>All Communities</option>
               <option>Community A</option>
@@ -132,11 +132,11 @@ export default function ContributionReport() {
             </select>
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Period</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1 dark:text-slate-400">Period</p>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400"
+              className="max-lg:min-h-11 px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-800 cursor-pointer hover:border-gray-400 dark:text-slate-100"
             >
               <option>Last 12 Months</option>
               <option>Last 6 Months</option>
@@ -152,7 +152,7 @@ export default function ContributionReport() {
         <div className="flex gap-8 mb-4 ml-12">
           {months.map((month) => (
             <div key={month} className="w-16 text-center">
-              <p className="text-xs font-semibold text-gray-400 uppercase">{month}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase dark:text-slate-400">{month}</p>
             </div>
           ))}
         </div>
@@ -162,7 +162,7 @@ export default function ContributionReport() {
           {/* Week labels */}
           <div className="flex flex-col gap-1 justify-center">
             {[1, 2, 3, 4].map((week) => (
-              <p key={week} className="text-xs text-gray-400 font-medium w-8">{week}</p>
+              <p key={week} className="text-xs text-gray-500 font-medium w-8 dark:text-slate-400">{week}</p>
             ))}
           </div>
 
@@ -177,7 +177,7 @@ export default function ContributionReport() {
                   return (
                     <div
                       key={`${month}-${week}`}
-                      className={`w-6 h-6 rounded ${item ? getColorForType(item.type) : 'bg-gray-100'}`}
+                      className={`w-6 h-6 rounded ${item ? getColorForType(item.type) : 'bg-gray-100 dark:bg-white/10'}`}
                       title={`${month} Week ${week}: ${item?.type || 'No activity'}`}
                     />
                   );
@@ -191,20 +191,20 @@ export default function ContributionReport() {
       {/* Legend */}
       <div className="flex gap-6 mb-12 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-100 rounded"></div>
-          <p className="text-gray-600">NO ACTIVITY</p>
+          <div className="w-4 h-4 bg-gray-100 rounded dark:bg-white/10"></div>
+          <p className="text-gray-600 dark:text-slate-300">NO ACTIVITY</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-red-400 rounded"></div>
-          <p className="text-gray-600">MEETING ONLY</p>
+          <p className="text-gray-600 dark:text-slate-300">MEETING ONLY</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-yellow-400 rounded"></div>
-          <p className="text-gray-600">REFERRAL ONLY</p>
+          <p className="text-gray-600 dark:text-slate-300">REFERRAL ONLY</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-green-500 rounded"></div>
-          <p className="text-gray-600">BOTH</p>
+          <p className="text-gray-600 dark:text-slate-300">BOTH</p>
         </div>
       </div>
 
@@ -212,39 +212,39 @@ export default function ContributionReport() {
       {isLoading ? (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-          <p className="text-gray-500 mt-2">Loading contribution metrics...</p>
+          <p className="text-gray-500 mt-2 dark:text-slate-400">Loading contribution metrics...</p>
         </div>
       ) : error ? (
-        <div className="text-center py-8 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600">{error}</p>
+        <div className="text-center py-8 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
+          <p className="text-red-700 dark:text-red-300">{error}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Unique Meetings - REAL DATA */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Unique Meetings</p>
-            <p className="text-4xl font-bold text-green-600">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 dark:bg-orange-500/10">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Unique Meetings</p>
+            <p className="text-4xl font-bold text-green-600 dark:text-green-300">
               {stats.uniqueMeetings > 0 ? `+${stats.uniqueMeetings}` : '0'}
             </p>
           </div>
 
           {/* Unique Referrals - REAL DATA */}
-          <div className="bg-pink-50 border border-pink-200 rounded-lg p-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Unique Referrals Passed</p>
-            <p className="text-4xl font-bold text-pink-600">
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-6 dark:bg-pink-500/10">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Unique Referrals Passed</p>
+            <p className="text-4xl font-bold text-pink-600 dark:text-pink-300">
               {stats.uniqueReferrals > 0 ? `+${stats.uniqueReferrals}` : '0'}
             </p>
           </div>
 
           {/* Impact Generated - MOCK DATA */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Impact Generated (AED)</p>
-            <p className="text-4xl font-bold text-blue-600">{stats.impactGenerated}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 dark:bg-blue-500/10">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Impact Generated (AED)</p>
+            <p className="text-4xl font-bold text-blue-600 dark:text-blue-300">{stats.impactGenerated}</p>
           </div>
 
           {/* Avg Monthly Engagements - MOCK DATA */}
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Avg. Monthly Unique Engagements</p>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 dark:bg-purple-500/10">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">Avg. Monthly Unique Engagements</p>
             <p className="text-4xl font-bold text-blue-500">{stats.avgMonthlyEngagements}</p>
           </div>
         </div>

@@ -1,8 +1,10 @@
+import { cache } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { prisma } from '@/lib/prisma';
 import type { Metadata } from 'next';
+import { BlogUnavailable, logBlogQueryFailure } from '../_components/BlogUnavailable';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -16,13 +18,30 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
+// Shared by generateMetadata and the page so a request issues one query.
+// `failed` (DB down / bad creds) is kept distinct from `post: null` (no such
+// post) so an outage never renders as a 404.
+const loadPost = cache(async (slug: string) => {
+  try {
+    const post = await prisma.blogPost.findUnique({ where: { slug } });
+    return { failed: false as const, post };
+  } catch (error) {
+    logBlogQueryFailure('Blog post query', error);
+    return { failed: true as const, post: null };
+  }
+});
+
+const backLinkClass =
+  'text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-flex min-h-[44px] items-center';
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await prisma.blogPost.findUnique({ where: { slug } });
+  const { failed, post } = await loadPost(slug);
+  if (failed) return { title: 'Mr LAD Blog', robots: { index: false } };
   if (!post || !post.published) return { title: 'Not found · Mr LAD Blog' };
   return {
     title: `${post.title} · Mr LAD Blog`,
@@ -41,16 +60,27 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await prisma.blogPost.findUnique({ where: { slug } });
+  const { failed, post } = await loadPost(slug);
+
+  if (failed) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <article className="container mx-auto px-4 py-16 max-w-3xl">
+          <Link href="/blog" className={backLinkClass}>
+            ← Back to blog
+          </Link>
+          <BlogUnavailable retryHref={`/blog/${encodeURIComponent(slug)}`} />
+        </article>
+      </div>
+    );
+  }
+
   if (!post || !post.published) return notFound();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <article className="container mx-auto px-4 py-16 max-w-3xl">
-        <Link
-          href="/blog"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-block"
-        >
+        <Link href="/blog" className={backLinkClass}>
           ← Back to blog
         </Link>
 

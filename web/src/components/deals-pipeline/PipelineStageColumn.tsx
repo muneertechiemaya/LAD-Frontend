@@ -37,6 +37,10 @@ interface PipelineStageColumnProps {
   compactView?: boolean;
   showCardCount?: boolean;
   showTotalValue?: boolean;
+  /** Whole-pipeline lead count for this stage; undefined = unknown or filtered. */
+  total?: number;
+  /** More leads exist beyond the loaded page. */
+  hasMore?: boolean;
 }
 interface EditFormData {
   stageName: string;
@@ -58,7 +62,9 @@ const PipelineStageColumn: React.FC<PipelineStageColumnProps> = ({
   allStages = [],
   compactView = false,
   showCardCount = true,
-  showTotalValue = true
+  showTotalValue = true,
+  total,
+  hasMore = false
 }) => {
   const cleanDroppableId = String(droppableId);
   // Debug log to check props
@@ -190,10 +196,21 @@ const PipelineStageColumn: React.FC<PipelineStageColumnProps> = ({
               </h3>
               {showCardCount && (
                 <Badge variant="secondary" className="bg-[#e8ebf7] dark:bg-[#253456] text-[#172560] dark:text-white text-xs">
-                  {leads.length}
+                  {/* The real stage total when known; otherwise what is loaded, with
+                      "+" when more pages exist (it used to be a page count shown as a total). */}
+                  {/* Never below the cards on screen, even if the total is a moment stale. */}
+                  {typeof total === 'number' ? Math.max(total, leads.length).toLocaleString() : `${leads.length}${hasMore ? '+' : ''}`}
                 </Badge>
               )}
             </div>
+            {typeof total === 'number' && total > leads.length && (
+              // The board loads the newest leads first, so a big stage can show
+              // few or none of its cards yet; say so rather than look empty.
+              <p className="text-xs text-gray-600 dark:text-[#a3b1c6]">
+                Showing {leads.length.toLocaleString()} of {total.toLocaleString()}
+                {hasMore ? ' · newest leads load first, scroll down the board for older ones' : ''}
+              </p>
+            )}
             {showTotalValue && totalValue > 0 && (
               <p className="text-xs text-gray-600 dark:text-[#7a8ba3]">
                 {formatCurrency(totalValue)}
@@ -393,6 +410,8 @@ export default React.memo(PipelineStageColumn, (prevProps, nextProps) => {
     prevProps.compactView === nextProps.compactView &&
     prevProps.showCardCount === nextProps.showCardCount &&
     prevProps.showTotalValue === nextProps.showTotalValue &&
+    prevProps.total === nextProps.total &&
+    prevProps.hasMore === nextProps.hasMore &&
     // Deep compare lead IDs and status to detect if leads array actually changed
     JSON.stringify(prevProps.leads.map(l => ({ id: l.id, status: l.status }))) ===
     JSON.stringify(nextProps.leads.map(l => ({ id: l.id, status: l.status })))

@@ -8,6 +8,7 @@
  * Same interface as apiClient for consistency.
  */
 import { safeStorage } from './storage';
+import { apiErrorFromResponse } from './apiError';
 
 type ApiResponse<T = any> = {
   data: T;
@@ -113,9 +114,16 @@ class ProxyClient {
       const response = await fetch(url.toString(), config);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        // Was: `errorData.error || errorData.message`, read off the TOP level.
+        // The Python services are FastAPI, so a deliberate refusal arrives
+        // NESTED as {"detail": {error, message}} — both lookups missed, and a
+        // precise explanation became "HTTP 409: Conflict". apiErrorFromResponse
+        // reads `detail` too, and carries the status and the refusal's slug
+        // through as ApiError.status / ApiError.code so a caller can branch on
+        // the kind of failure rather than regex-match the prose.
+        throw await apiErrorFromResponse(
+          response,
+          `HTTP ${response.status}: ${response.statusText}`
         );
       }
 

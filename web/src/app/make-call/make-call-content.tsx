@@ -594,11 +594,11 @@ export default function MakeCallContent() {
             <div className="flex items-center gap-2 mb-1">
               <Speech className="w-8 h-8 text-[#1E293B] dark:text-white" />
               <h1 className="text-2xl sm:text-4xl font-bold text-[#1E293B] dark:text-white">
-                AI Caller
+                Calls
               </h1>
             </div>
             <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] ml-2">
-              Make single or bulk calls with voice agents
+              Have a voice agent call one person or a whole list
             </p>
           </div>
           <Button 
@@ -606,7 +606,7 @@ export default function MakeCallContent() {
             className="flex items-center gap-2 font-semibold shadow-xs transition-colors self-end sm:self-start sm:mt-2 bg-slate-900 text-white hover:bg-slate-800 dark:bg-input/30 dark:border dark:border-blue-950/60 dark:text-white dark:hover:bg-input/50"
           >
             <Sparkles className="w-4 h-4" />
-            VOAG- Playground
+            Test a voice agent
           </Button>
         </div>
 

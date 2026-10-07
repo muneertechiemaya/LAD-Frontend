@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Lead } from '@/features/deals-pipeline/types';
 import { logger } from '@/lib/logger';
 import type { Stage } from '@/features/deals-pipeline/store/slices/pipelineSlice';
-import { usePipelineStats } from '@lad/frontend-features/deals-pipeline';
+import { usePipelineStats, useLeadStageTotals } from '@lad/frontend-features/deals-pipeline';
 // Pipeline component imports
 import PipelineBoardToolbar from './PipelineBoardToolbar';
 import PipelineStageColumn from './PipelineStageColumn';
@@ -122,6 +122,9 @@ import {
   setPriorities
 } from '@/store/slices/masterDataSlice';
 import { getStatuses, getSources, getPriorities, moveLeadToStage, createStage, createLead, updateLead, deleteLead, updateStage, deleteStage, usePipelineLeads } from '@lad/frontend-features/deals-pipeline';
+import { filterLeadsForUI } from '@/features/deals-pipeline/store/selector/pipelineSelectors';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 const HEADER_HEIGHT = 64; 
 // Feature flags for gradual migration
 const USE_REDUX_PIPELINE = true; // Enable Redux data fetching
@@ -211,6 +214,25 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   const activeFilters = useSelector(selectPipelineActiveFilters);
 
   const { data: pipelineStats } = usePipelineStats(activeFilters as any);
+  // True per-stage totals. The board only loads a page of leads (newest 20), so
+  // its own column counts said "Contacted 9" while 65 leads were in that stage.
+  const { data: stageTotals, refetch: refetchStageTotals } = useLeadStageTotals();
+  // Totals are unfiltered: with a search or filter on, show what is loaded.
+  // Any create, delete or stage edit (drawer, card, drag) changes some lead's
+  // stage: refresh the totals then, not only after drag/inline moves.
+  const leadStageSignature = useMemo(
+    () => (reduxLeads || []).map((l: { id?: string | number; stage?: string }) => `${l.id}:${l.stage}`).join('|'),
+    [reduxLeads],
+  );
+  const firstSignature = useRef(true);
+  useEffect(() => {
+    if (firstSignature.current) { firstSignature.current = false; return; }
+    const t = setTimeout(() => { refetchStageTotals(); }, 800);
+    return () => clearTimeout(t);
+  }, [leadStageSignature, refetchStageTotals]);
+  const countsAreFiltered = Boolean(searchQuery?.trim()) || Object.values((activeFilters || {}) as unknown as Record<string, unknown>).some((v) =>
+    Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.values(v as Record<string, unknown>).some(Boolean) : Boolean(v),
+  );
   const serverTotalLeadsCount = Number(
     (pipelineStats as any)?.total_leads ?? (pipelineStats as any)?.totalLeads ?? 0
   );
@@ -244,7 +266,9 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   const [customEndDate, setCustomEndDate] = useState<string>('');
   // Computed loading state combining all loading states
   const isLoading = reduxStagesLoading || reduxLeadsLoading || masterDataLoading || usersLoading || !preferencesLoaded;
-  const currentError = reduxStagesError || reduxLeadsError || usersError || masterDataErrors?.[0] || null;
+  // The users list only feeds the assignee picker; failing to load it must not
+  // replace the whole board with an error (it did, hiding every lead).
+  const currentError = reduxStagesError || reduxLeadsError || masterDataErrors?.[0] || null;
   // Use the filtered data directly from selector instead of manual filtering
   const currentStages = pipelineBoardData.stages;
   // Memoize normalized stages to prevent creating new objects on every render
@@ -337,7 +361,27 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
     dispatch(loadPipelineDataAction(1, size));
   }, [dispatch, onLimitChange]);
 
-  const effectiveListViewPage = page ?? listViewPage;
+  const queryClient = useQueryClient();
+  // The list view shows a fetched page (react-query), not the Redux board, so
+  // inline edits must refresh it too.
+  const refreshListPage = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['deals-pipeline', 'pipeline', 'leads'] });
+  }, [queryClient]);
+  // The list view searches on the server: a page holds only 20 leads, and the
+  // server also matches raw_data names and digits-only phones. Debounced so a
+  // typed name is one request; a new search starts on page 1 (`pageSearch` is
+  // the search the current page belongs to, so the old page is never requested
+  // with the new term).
+  const listSearch = useDebouncedValue((searchQuery || '').trim(), 300);
+  const [pageSearch, setPageSearch] = useState(listSearch);
+  const searchChanged = pageSearch !== listSearch;
+  useEffect(() => {
+    if (!searchChanged) return;
+    setPageSearch(listSearch);
+    if (onPageChange) onPageChange(1);
+    else setListViewPage(1);
+  }, [searchChanged, listSearch, onPageChange]);
+  const effectiveListViewPage = searchChanged ? 1 : (page ?? listViewPage);
   const effectiveListViewLimit = limit ?? listViewPageSize;
 
   const pipelineLeadsQuery = usePipelineLeads(
@@ -348,6 +392,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
       status: activeFilters?.statuses?.length
         ? activeFilters.statuses[activeFilters.statuses.length - 1]
         : undefined,
+      search: listSearch || undefined,
       page: effectiveListViewPage,
       limit: effectiveListViewLimit,
     },
@@ -837,6 +882,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
     if (USE_REDUX_ACTIONS) {
       // Don't await - dispatch returns immediately, making next drag responsive
       Promise.resolve(dispatch(moveLeadAction(String(activeLeadId), String(destinationStageId))))
+        .then(() => { refetchStageTotals(); })
         .catch(() => {
           // Error handling is already done inside moveLeadAction
           // Just show user-facing message without blocking UI
@@ -850,7 +896,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
           dispatch(showSnackbar({ message: 'Failed to move lead', severity: 'error' }));
         });
     }
-  }, [currentLeadsByStage, currentStages, dispatch]);
+  }, [currentLeadsByStage, currentStages, dispatch, refetchStageTotals]);
   const handleDragCancel = useCallback((): void => {
     dispatch(setActiveCard(null));
   }, [dispatch]);
@@ -1223,6 +1269,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
     try {
       // Always use Redux action - it handles both API call AND state update
       await dispatch(updateLeadAction(leadId, { status: newStatus as 'Active' | 'Inactive' }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Status updated successfully',
@@ -1235,7 +1282,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   // Handler for inline stage editing
   const handleStageChangeInline = useCallback(async (leadId: string | number, newStageKey: string): Promise<void> => {
     try {
@@ -1245,17 +1292,20 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         await moveLeadToStage(leadId, newStageKey);
         loadStagesAndLeads();
       }
+      refetchStageTotals();
+      refreshListPage();
     } catch (err) {
       console.error('[PipelineBoard] Failed to update lead stage:', err);
       const errorMessage = (err as { message?: string }).message || 'Failed to update lead stage.';
       dispatch(showSnackbar({ message: errorMessage, severity: 'error' }));
     }
-  }, [USE_REDUX_ACTIONS, dispatch]);
+  }, [USE_REDUX_ACTIONS, dispatch, refetchStageTotals, refreshListPage]);
   // Handler for inline priority editing
   const handlePriorityChange = useCallback(async (leadId: string | number, newPriority: string): Promise<void> => {
     try {
       // Use Redux action for consistent state management
       await dispatch(updateLeadAction(leadId, { priority: newPriority }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Priority updated successfully',
@@ -1268,12 +1318,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   // Handler for inline assignee editing
   const handleAssigneeChange = useCallback(async (leadId: string | number, newAssignee: string): Promise<void> => {
     try {
       // Use Redux action for consistent state management
       await dispatch(updateLeadAction(leadId, { assignee: newAssignee }));
+      refreshListPage();
       // Show success message
       dispatch(showSnackbar({
         message: 'Assignee updated successfully',
@@ -1286,7 +1337,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
         severity: 'error'
       }));
     }
-  }, [dispatch]);
+  }, [dispatch, refreshListPage]);
   const handleEditLead = useCallback((lead: Lead): void => {
     // Edit functionality removed as requested
     }, []);
@@ -1438,8 +1489,8 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
   if (currentError) {
     return (
       <div className="flex flex-col justify-center items-center mt-32">
-        <div className="rounded-lg shadow-sm bg-red-50 border border-red-200 p-4 mb-4">
-          <p className="text-red-800">{currentError}</p>
+        <div className="rounded-lg shadow-sm bg-red-50 border border-red-200 p-4 mb-4 dark:bg-red-950/30 dark:border-red-900/50">
+          <p className="text-red-800 dark:text-red-300">{currentError}</p>
         </div>
         <Button 
           variant="outline" 
@@ -1460,6 +1511,11 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
       }
       style={{ height: `calc(93vh - ${HEADER_HEIGHT}px)` }}
     >
+      {usersError && (
+        <p role="status" className="mx-1 mb-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300">
+          Couldn&apos;t load your teammates, so assigning leads is unavailable right now.
+        </p>
+      )}
       {(() => {
         if (pipelineSettings.viewMode === 'kanban') {
           return (
@@ -1482,6 +1538,39 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
                 onExport={handleExportLeads}
                 onExportWithDateRange={handleExportLeadsWithDateRange}
               />
+              {/* Phones: 24 stages are ~6,900px of sideways swiping and the board
+                  opened on an empty column. Jump straight to a stage instead;
+                  stages with nobody in them are hidden on phones (and said so). */}
+              {stageTotals && !countsAreFiltered && (() => {
+                const keyOf = (st: { key?: string; id?: string | number }) => String(st.key || st.id || '');
+                const withLeads = (normalizedStages as Array<{ key?: string; id?: string | number; name?: string; label?: string }>)
+                  .filter((st) => (stageTotals[keyOf(st).toLowerCase()] ?? 0) > 0 || (currentLeadsByStage[keyOf(st)]?.leads?.length ?? 0) > 0);
+                // Matches PipelineKanbanView: only stages hidden there count as hidden.
+                const hiddenCount = normalizedStages.length - withLeads.length;
+                return (
+                  <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1" aria-label="Jump to a stage">
+                    {withLeads.map((st) => (
+                      <button
+                        key={keyOf(st)}
+                        type="button"
+                        onClick={() => {
+                          scrollContainerRef.current
+                            ?.querySelector(`[data-stage-key="${CSS.escape(keyOf(st))}"]`)
+                            ?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                        }}
+                        className="h-11 shrink-0 rounded-full border border-slate-300 bg-white px-3 text-sm text-slate-800 dark:border-slate-600 dark:bg-[#071131] dark:text-slate-100"
+                      >
+                        {st.name || st.label} · {Math.max(stageTotals[keyOf(st).toLowerCase()] ?? 0, currentLeadsByStage[keyOf(st)]?.leads?.length ?? 0).toLocaleString()}
+                      </button>
+                    ))}
+                    {hiddenCount > 0 && (
+                      <span className="shrink-0 px-1 text-xs text-slate-600 dark:text-slate-400">
+                        {hiddenCount} empty {hiddenCount === 1 ? 'stage' : 'stages'} hidden
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               <div 
                 ref={scrollContainerRef}
                 className="pipeline-board-scrollable flex-1 relative bg-[#f8f9fe] overflow-x-scroll overflow-y-auto"
@@ -1514,6 +1603,9 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
                     compactView={pipelineSettings.compactView}
                     showCardCount={pipelineSettings.showCardCount}
                     showTotalValue={pipelineSettings.showStageValue}
+                    stageTotals={stageTotals}
+                    countsAreFiltered={countsAreFiltered}
+                    hasMore={Boolean(pagination?.hasMore)}
                   />
                   {reduxLeadsLoading && pagination.page > 1 && (
                     <div className="flex justify-center p-4 w-full sticky bottom-0 bg-white/10 backdrop-blur-sm">
@@ -1534,9 +1626,16 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
             style={{ height: 0 }} // Force flex item to respect container height
           >
             {(() => {
-              // Use locally filtered leads from Redux state for instant UI responsiveness
-              // This ensures that our grouped filters (like 'Linkedin') work even if the API query hasn't refreshed
-              const filteredLeads = pipelineBoardData.stages.flatMap(s => s.leads);
+              // Render the page the pager asked for. This used to always render the
+              // board's first page of leads, so "Page 3 of 219" showed page 1's rows.
+              // The same filter rules run on the fetched page; the board's leads are
+              // only the fallback until the first page arrives. The search is not
+              // re-applied here: the server already ran it, and it matches raw_data
+              // names and digits-only phones that the client filter would drop.
+              const fetchedPage = pipelineLeadsQuery.data?.leads as Lead[] | undefined;
+              const filteredLeads = fetchedPage
+                ? filterLeadsForUI(fetchedPage as any, activeFilters as any, '')
+                : pipelineBoardData.stages.flatMap(s => s.leads);
               const apiPagination = pipelineLeadsQuery.data?.pagination;
 
               // Normalize leads to ensure compatibility with PipelineListView's Lead interface
@@ -1566,6 +1665,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({
                   ) as Record<string, boolean>}
                   totalLeadsCount={apiPagination?.total}
                   totalPages={apiPagination?.totalPages}
+                  searchOnServer={Boolean(fetchedPage)}
                   isLoading={pipelineLeadsQuery.isLoading}
                   viewMode={viewMode}
                   onViewModeChange={handleViewModeChange}

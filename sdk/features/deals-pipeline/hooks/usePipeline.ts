@@ -31,3 +31,17 @@ export function usePipelineStats(filters?: LeadFilters, enabled: boolean = true)
     enabled: enabled,
   });
 }
+
+/**
+ * True lead count per stage (whole pipeline, unfiltered). `data === undefined`
+ * after loading means it failed: show loaded counts, never zeros.
+ */
+export function useLeadStageTotals(enabled: boolean = true) {
+  return useQuery<Record<string, number>>({
+    queryKey: ["deals-pipeline", "stage-totals"],
+    queryFn: () => api.getLeadStageTotals(),
+    staleTime: 60000,
+    retry: 1,
+    enabled,
+  });
+}

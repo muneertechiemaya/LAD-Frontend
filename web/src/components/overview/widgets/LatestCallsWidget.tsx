@@ -40,8 +40,8 @@ export const LatestCallsWidget: React.FC<LatestCallsWidgetProps> = ({
       <div className="space-y-3">
         {visibleCalls.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm font-medium text-white">No calls yet</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">No calls yet</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Your AI assistants haven&apos;t placed any calls.
             </p>
           </div>
@@ -63,17 +63,17 @@ export const LatestCallsWidget: React.FC<LatestCallsWidgetProps> = ({
                     {call.status.replace('_', ' ')}
                   </Badge>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate text-white">
+                    <p className="font-medium text-sm truncate text-gray-900 dark:text-white">
                       {call.leadName || 'Unknown Lead'}
                     </p>
-                    <p className="text-xs text-slate-400 truncate">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                       {call.agentName}
                     </p>
                   </div>
                 </div>
                 <div className="text-right whitespace-nowrap ml-4">
-                  <p className="text-sm font-medium text-white">{call.duration}</p>
-                  <p className="text-xs text-slate-400">{call.date}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{call.duration}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{call.date}</p>
                 </div>
               </div>
             ))}

@@ -14,23 +14,27 @@ export interface Crumb {
 export default function TopBar({
   tenant,
   crumbs = [],
+  hideOnMobile = false,
 }: {
   tenant?: string;
   crumbs?: Crumb[];
+  /** Phones already have the app's own header; skip this bar where the crumb adds nothing. */
+  hideOnMobile?: boolean;
 }) {
   const { tenant: tenantCtx } = useTenant();
   const tenantName =
     tenant || (tenantCtx?.name && tenantCtx.name !== 'Default' ? tenantCtx.name : '');
   return (
-    <header className="sticky top-0 z-30 backdrop-blur bg-[#F8F9FE]/85 dark:bg-[#000724]/85 border-b border-slate-200/70 dark:border-[#262831]">
+    <header className={`${hideOnMobile ? 'max-md:hidden ' : ''}sticky top-0 z-30 backdrop-blur bg-[#F8F9FE]/85 dark:bg-[#000724]/85 border-b border-slate-200/70 dark:border-[#262831]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2">
+          {/* Brand mark: the app's mobile header already shows it. */}
+          <div className="max-md:hidden flex items-center gap-2">
             <div
               className="w-7 h-7 rounded-md grid place-items-center"
               style={{ background: '#0B1957' }}
             >
-              <span className="text-white font-bold text-[11px] tracking-tight">LAD</span>
+              <span className="text-white font-bold text-xs tracking-tight">LAD</span>
             </div>
             <span
               className="text-[13.5px] font-semibold text-[#172560] dark:text-white"
@@ -39,14 +43,14 @@ export default function TopBar({
               Mr LAD
             </span>
           </div>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="max-md:hidden text-slate-300 dark:text-slate-700">·</span>
           <nav className="text-[12.5px] flex items-center gap-1.5 min-w-0">
             {crumbs.map((c, i, arr) => (
               <React.Fragment key={i}>
                 {c.href ? (
                   <a
                     href={c.href}
-                    className="text-slate-500 dark:text-slate-300 hover:text-[#0B1957] dark:hover:text-white"
+                    className="max-lg:inline-flex max-lg:min-h-11 max-lg:items-center max-md:text-[14px] whitespace-nowrap text-slate-500 dark:text-slate-300 hover:text-[#0B1957] dark:hover:text-white"
                   >
                     {c.label}
                   </a>
@@ -67,7 +71,7 @@ export default function TopBar({
           )}
           <button
             disabled
-            className="w-8 h-8 grid place-items-center rounded-md text-slate-600 dark:text-slate-300 opacity-50 cursor-not-allowed"
+            className="w-8 h-8 max-lg:w-11 max-lg:h-11 grid place-items-center rounded-md text-slate-600 dark:text-slate-300 opacity-50 cursor-not-allowed"
             aria-label="Notifications"
             title="Not available yet"
           >

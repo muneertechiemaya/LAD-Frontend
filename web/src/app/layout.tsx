@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import PwaBootstrap from "@/components/pwa/PwaBootstrap";
 import "./globals.css";
 import { AppToasterProvider } from "@/components/ui/app-toaster";
 import { LoadingProvider } from "@/components/providers/loading-provider";
@@ -37,6 +38,17 @@ export const metadata: Metadata = {
       "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice.",
     images: ["/og-image.png"],
   },
+  // Installed app (Add to Home Screen). The manifest itself is app/manifest.ts.
+  appleWebApp: {
+    capable: true,
+    title: "Mr LAD",
+    statusBarStyle: "default",
+  },
+};
+
+// Browser chrome / status bar colour for the installed app and mobile browsers.
+export const viewport: Viewport = {
+  themeColor: "#0B1957",
 };
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +63,8 @@ export default function RootLayout({
       <head>
         {/* Favicon - MrLAD square mark */}
         <link rel="icon" href="/MrLad-code.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/MrLad-code.svg" />
+        {/* iOS ignores SVG touch icons — this PNG is the home-screen icon. */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         
         <Script
           id="theme-init"
@@ -97,13 +110,20 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* Inter and Space Grotesk carry no Indic glyphs. The Noto Sans families
+            are the fallback for transcripts, prompts and names in the languages the
+            voice agents speak (te, hi/mr, ta, kn, ml, gu, bn, pa, od, ur). Google
+            Fonts serves each as unicode-range subsets, so a page only downloads the
+            scripts it actually shows. Without this, a client with no Telugu system
+            font renders a Telugu transcript as boxes. */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+Telugu:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500;600&family=Noto+Sans+Kannada:wght@400;500;600&family=Noto+Sans+Malayalam:wght@400;500;600&family=Noto+Sans+Gujarati:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600&family=Noto+Sans+Gurmukhi:wght@400;500;600&family=Noto+Sans+Oriya:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
       <body className={`antialiased`}>
         <Providers>
+          <PwaBootstrap />
           <LoadingProvider>
             <AppToasterProvider>
               {/* <PageLoader /> */}

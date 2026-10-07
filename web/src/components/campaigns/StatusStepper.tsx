@@ -54,7 +54,7 @@ const DEFAULT_STEPS: WorkflowStep[] = [
   { id: 2, label: 'Connect',           type: 'linkedin_connect' },
   { id: 3, label: 'Accept',            type: 'wait_for_condition' },
   { id: 4, label: 'Contact',           type: 'linkedin_message' },
-  { id: 5, label: 'Lead Contact Back', type: 'reply' },
+  { id: 5, label: 'Replied', type: 'reply' },
 ];
 
 export const StatusStepper: React.FC<StatusStepperProps> = ({ currentStep, steps }) => {

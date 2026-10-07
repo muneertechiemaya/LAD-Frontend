@@ -35,7 +35,7 @@ export const ConversationFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
     <button
       onClick={refresh}
       title="Refresh"
-      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]"
+      className="p-1 max-lg:p-[15px] max-lg:-m-[11px] rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-[#E0E0E0]"
     >
       <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
     </button>
@@ -116,7 +116,7 @@ const FunnelBody: React.FC<{ data: NonNullable<ReturnType<typeof useConversation
             {spikeUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             {volume_spike.is_spike ? 'Spike' : `${spikeUp ? '+' : ''}${volume_spike.pct_change}%`}
           </span>
-          <span className="text-[10px] text-muted-foreground">vs {volume_spike.trailing_avg}/day avg</span>
+          <span className="text-[11px] text-muted-foreground">vs {volume_spike.trailing_avg}/day avg</span>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { useCampaign, updateCampaign, createCampaign, pauseCampaign, campaignSav
 import { useToast } from '@/components/ui/app-toaster';
 import { StepLibrary, FlowCanvas, StepSettings } from '@/components/campaigns';
 import LinkedInApprovalsPanel from '@/components/campaigns/LinkedInApprovalsPanel';
+import { DesktopOnlyNotice } from '@/components/layout/DesktopOnlyNotice';
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -163,7 +164,7 @@ export default function CampaignDetailPage() {
   };
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <div className="h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-2xl shadow-lg">
           <Loader2 className="w-8 h-8 text-[#6366F1] animate-spin" />
           <p className="text-base font-semibold">Loading campaign...</p>
@@ -172,7 +173,17 @@ export default function CampaignDetailPage() {
     );
   }
   return (
-    <div className="h-screen flex flex-col bg-[#F8F9FE] dark:bg-[#000724]">
+    <>
+    {/* Phones: the 3-panel flow builder can't fit — point to the campaign view instead. */}
+    <DesktopOnlyNotice
+      title="Open the builder on a bigger screen"
+      body="Editing a campaign's flow needs a tablet or desktop. You can still follow this campaign's results here."
+      actions={[
+        { href: `/campaigns/${campaignId}/analytics`, label: 'View campaign', primary: true },
+        { href: '/campaigns', label: 'Back to Outreach' },
+      ]}
+    />
+    <div className="h-full flex flex-col bg-[#F8F9FE] dark:bg-[#000724] max-md:hidden">
       {/* Header */}
       <div className="border-b border-[#E2E8F0] dark:border-blue-950/40 bg-white dark:bg-[#1a2a43] px-6 py-4 z-10">
         <div className="flex items-center justify-between">
@@ -250,5 +261,6 @@ export default function CampaignDetailPage() {
         <StepSettings />
       </div>
     </div>
+    </>
   );
 }

@@ -90,7 +90,7 @@ export const InstagramSettings: React.FC = () => {
         <button
           type="button"
           onClick={() => router.push('/settings?tab=integrations')}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0b1957] dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+          className="mb-6 inline-flex items-center gap-1.5 max-lg:min-h-11 text-sm font-semibold text-slate-500 hover:text-[#0b1957] dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 stroke-[2.5]" />
           Back to Integrations
@@ -111,7 +111,7 @@ export const InstagramSettings: React.FC = () => {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition-all cursor-pointer ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 max-lg:min-h-11 text-sm font-bold transition-all cursor-pointer ${
                   active
                     ? 'bg-[#0b1957] text-white shadow-sm'
                     : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-[#0c1b43]'

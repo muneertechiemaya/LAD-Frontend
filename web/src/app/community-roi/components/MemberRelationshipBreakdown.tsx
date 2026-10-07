@@ -68,7 +68,7 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="text-sm text-gray-500">Loading relationship data...</div>
+        <div className="text-sm text-gray-500 dark:text-slate-400">Loading relationship data...</div>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
   if (error) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="text-sm text-red-500">Error: {error}</div>
+        <div className="text-sm text-red-700 dark:text-red-300">Error: {error}</div>
       </div>
     );
   }
@@ -84,16 +84,16 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
   if (!breakdown || totalRelationships === 0) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="text-sm text-gray-500">No relationship data available</div>
+        <div className="text-sm text-gray-500 dark:text-slate-400">No relationship data available</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 dark:bg-[#071131] dark:border-slate-700">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">Relationship Breakdown</h3>
-        <p className="text-xs text-gray-500 mt-1">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Relationship Breakdown</h3>
+        <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
           {memberName} has {totalRelationships} total connections
         </p>
       </div>
@@ -113,15 +113,15 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: type.color_code }}
                   />
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className="text-xs font-medium text-gray-700 dark:text-slate-200">
                     {type.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-900">
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
                     {type.count}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-slate-400">
                     ({percentage}%)
                   </span>
                 </div>
@@ -140,7 +140,7 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
 
               {/* Additional stats for types with data */}
               {(type.total_meetings > 0 || type.total_referrals > 0) && (
-                <div className="flex gap-3 text-xs text-gray-500 ml-5">
+                <div className="flex gap-3 text-xs text-gray-500 ml-5 dark:text-slate-400">
                   {type.total_meetings > 0 && (
                     <span>📅 {type.total_meetings} meeting{type.total_meetings > 1 ? 's' : ''}</span>
                   )}
@@ -155,17 +155,17 @@ export const MemberRelationshipBreakdown: React.FC<MemberRelationshipBreakdownPr
       </div>
 
       {/* Summary legend */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-800 dark:border-slate-700">
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <div className="font-medium text-gray-900">Type Distribution</div>
-            <div className="text-gray-500 mt-1">
+            <div className="font-medium text-gray-900 dark:text-white">Type Distribution</div>
+            <div className="text-gray-500 mt-1 dark:text-slate-400">
               {breakdown.length} types tracked
             </div>
           </div>
           <div className="text-right">
-            <div className="font-medium text-gray-900">Total</div>
-            <div className="text-gray-500 mt-1">{totalRelationships} members</div>
+            <div className="font-medium text-gray-900 dark:text-white">Total</div>
+            <div className="text-gray-500 mt-1 dark:text-slate-400">{totalRelationships} members</div>
           </div>
         </div>
       </div>
