@@ -16,11 +16,11 @@ export default function MonitorTenantsPage() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Tenant Health <span className="text-gray-400">({data.length})</span>
+          Tenant Health <span className="text-gray-600 dark:text-gray-400">({data.length})</span>
         </h2>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -35,7 +35,7 @@ export default function MonitorTenantsPage() {
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
-          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3 font-medium">Tenant</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -64,14 +64,14 @@ export default function MonitorTenantsPage() {
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">No tenants found</td>
+                <td colSpan={14} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No tenants found</td>
               </tr>
             ) : (
               data.map((t) => (
                 <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900 dark:text-gray-100">{t.name}</div>
-                    <div className="text-xs capitalize text-gray-400">{t.plan}</div>
+                    <div className="text-xs capitalize text-gray-500 dark:text-gray-400">{t.plan}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -94,7 +94,7 @@ export default function MonitorTenantsPage() {
                   <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{t.conversations?.totalContacts ?? '-'}</td>
                   <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{fmtMoney(t.billing.creditsBalance, t.billing.currency)}</td>
                   <td className="px-4 py-3">
-                    <span className={t.errorRate > 20 ? 'text-red-600 dark:text-red-400' : t.errorRate > 5 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}>
+                    <span className={t.errorRate > 20 ? 'text-red-700 dark:text-red-400' : t.errorRate > 5 ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}>
                       {t.errorRate}%
                     </span>
                   </td>
@@ -106,10 +106,10 @@ export default function MonitorTenantsPage() {
                           style={{ width: `${t.setup.percent}%` }}
                         />
                       </div>
-                      <span className="text-xs text-gray-500">{t.setup.percent}%</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{t.setup.percent}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{t.lastLoginAt ? new Date(t.lastLoginAt).toLocaleDateString() : 'Never'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.lastLoginAt ? new Date(t.lastLoginAt).toLocaleDateString() : 'Never'}</td>
                 </tr>
               ))
             )}
@@ -117,7 +117,7 @@ export default function MonitorTenantsPage() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
         Convos / Msgs / Contacts are read live from each tenant&apos;s own database (dual-DB). A blank value means that tenant&apos;s DB was unreachable or unprovisioned.
       </p>
     </div>

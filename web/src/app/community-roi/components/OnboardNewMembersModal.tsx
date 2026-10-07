@@ -137,7 +137,7 @@ export default function OnboardNewMembersModal({
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
+              <Users className="w-5 h-5 text-blue-600 dark:text-blue-300" />
               Onboard New Members
             </DialogTitle>
             <DialogDescription>
@@ -147,15 +147,15 @@ export default function OnboardNewMembersModal({
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader className="w-6 h-6 animate-spin text-blue-600 mr-2" />
-              <p className="text-sm text-gray-600">Fetching member list...</p>
+              <Loader className="w-6 h-6 animate-spin text-blue-600 mr-2 dark:text-blue-300" />
+              <p className="text-sm text-gray-600 dark:text-slate-300">Fetching member list...</p>
             </div>
           ) : error ? (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-500/10">
+              <AlertCircle className="w-5 h-5 text-red-700 mt-0.5 flex-shrink-0 dark:text-red-300" />
               <div>
                 <p className="font-semibold text-red-900">Failed to fetch members</p>
-                <p className="text-sm text-red-700 mt-1">{error.message}</p>
+                <p className="text-sm text-red-700 mt-1 dark:text-red-300">{error.message}</p>
                 <Button
                   size="sm"
                   variant="outline"
@@ -167,11 +167,11 @@ export default function OnboardNewMembersModal({
               </div>
             </div>
           ) : newMembers.length === 0 ? (
-            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-500/10">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0 dark:text-amber-300" />
               <div>
                 <p className="font-semibold text-amber-900">No new members found</p>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="text-sm text-amber-700 mt-1 dark:text-amber-300">
                   All members from BNI Rising Phoenix are already in your database.
                 </p>
               </div>
@@ -179,34 +179,34 @@ export default function OnboardNewMembersModal({
           ) : (
             <>
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="grid grid-cols-3 gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-500/10">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-900">{newMembers.length}</div>
-                  <div className="text-xs text-blue-700">New Members</div>
+                  <div className="text-xs text-blue-700 dark:text-blue-300">New Members</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-900">{selectedIndexes.size}</div>
-                  <div className="text-xs text-blue-700">Selected</div>
+                  <div className="text-xs text-blue-700 dark:text-blue-300">Selected</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-900">{filteredMembers.length}</div>
-                  <div className="text-xs text-blue-700">Filtered</div>
+                  <div className="text-xs text-blue-700 dark:text-blue-300">Filtered</div>
                 </div>
               </div>
 
               {/* Search and Select All */}
               <div className="space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-slate-400" />
                   <Input
                     placeholder="Search by name, email, or company..."
-                    className="pl-10 bg-white"
+                    className="pl-10 bg-white dark:bg-[#071131]"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border dark:bg-white/5">
                   <div className="flex items-center gap-3">
                     <Checkbox
                       checked={
@@ -215,7 +215,7 @@ export default function OnboardNewMembersModal({
                       }
                       onChange={handleSelectAll}
                     />
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
                       {selectedIndexes.size === filteredMembers.length && filteredMembers.length > 0
                         ? 'Deselect All'
                         : 'Select All'}
@@ -237,8 +237,8 @@ export default function OnboardNewMembersModal({
                         key={originalIndex}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-blue-50 border-blue-300'
-                            : 'bg-white border-gray-200 hover:border-gray-300'
+                            ? 'bg-blue-50 border-blue-300 dark:bg-blue-500/10'
+                            : 'bg-white border-gray-200 hover:border-gray-300 dark:bg-[#071131] dark:border-slate-700'
                         }`}
                         onClick={() => handleToggleSelect(originalIndex)}
                       >
@@ -249,8 +249,8 @@ export default function OnboardNewMembersModal({
                             className="mt-1"
                           />
                           <div className="flex-1">
-                            <div className="font-semibold text-gray-900">{member.name}</div>
-                            <div className="text-xs text-gray-600 space-y-1 mt-2">
+                            <div className="font-semibold text-gray-900 dark:text-white">{member.name}</div>
+                            <div className="text-xs text-gray-600 space-y-1 mt-2 dark:text-slate-300">
                               {member.email && (
                                 <div className="flex items-center gap-2">
                                   <Mail className="w-3 h-3" />
@@ -272,7 +272,7 @@ export default function OnboardNewMembersModal({
                             </div>
                           </div>
                           {isSelected && (
-                            <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                            <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1 dark:text-blue-300" />
                           )}
                         </div>
                       </div>
@@ -282,7 +282,7 @@ export default function OnboardNewMembersModal({
               </ScrollArea>
 
               {/* Send Template Option */}
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-500/10">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <Checkbox
                     checked={sendTemplate}
@@ -294,7 +294,7 @@ export default function OnboardNewMembersModal({
                       <MessageSquare className="w-4 h-4" />
                       Send WhatsApp Onboarding Message
                     </div>
-                    <p className="text-xs text-green-700 mt-1">
+                    <p className="text-xs text-green-700 mt-1 dark:text-green-300">
                       Automatically send onboarding template message to selected members
                     </p>
                   </div>
@@ -326,7 +326,7 @@ export default function OnboardNewMembersModal({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-blue-600" />
+              <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-300" />
               Confirm Onboarding
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -336,8 +336,8 @@ export default function OnboardNewMembersModal({
                   member{confirmationData?.selectedCount !== 1 ? 's' : ''} to your network.
                 </p>
                 {confirmationData?.sendTemplate && (
-                  <div className="flex items-start gap-2 p-2 bg-green-50 rounded border border-green-200">
-                    <MessageSquare className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex items-start gap-2 p-2 bg-green-50 rounded border border-green-200 dark:bg-green-500/10">
+                    <MessageSquare className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0 dark:text-green-300" />
                     <span className="text-sm text-green-800">
                       Onboarding template message will be sent to each member via WhatsApp.
                     </span>

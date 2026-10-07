@@ -31,7 +31,7 @@ export default function MonitorLayout({ children }: { children: React.ReactNode 
 
   if (isLoading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-gray-500">
+      <div className="flex h-[60vh] items-center justify-center text-gray-500 dark:text-gray-400">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
       </div>
     );
@@ -43,7 +43,7 @@ export default function MonitorLayout({ children }: { children: React.ReactNode 
       <div className="flex h-[60vh] flex-col items-center justify-center text-center">
         <ShieldAlert className="mb-3 h-10 w-10 text-red-500" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Access restricted</h2>
-        <p className="mt-1 max-w-md text-sm text-gray-500">
+        <p className="mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
           The platform observability console is available to super-admins only.
         </p>
       </div>
@@ -54,10 +54,11 @@ export default function MonitorLayout({ children }: { children: React.ReactNode 
     <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Platform Observability</h1>
-        <p className="text-sm text-gray-500">Internal monitoring across all tenants.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Internal monitoring across all tenants.</p>
       </div>
 
-      <nav className="mb-6 flex gap-1 border-b border-gray-200 dark:border-gray-800">
+      {/* 11 tabs: one scrollable strip on narrow screens instead of overflowing the page. */}
+      <nav aria-label="Monitor sections" className="no-scrollbar -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-gray-200 px-4 dark:border-gray-800">
         {TABS.map((tab) => {
           const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
           const Icon = tab.icon;
@@ -65,10 +66,11 @@ export default function MonitorLayout({ children }: { children: React.ReactNode 
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              aria-current={active ? 'page' : undefined}
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors max-lg:min-h-11 ${
                 active
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                  : 'border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               <Icon className="h-4 w-4" />

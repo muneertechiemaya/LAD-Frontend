@@ -33,8 +33,15 @@ export const STATUS_MAPPINGS: Record<string, string> = {
   'blocked': 'Blocked',
   'inactive': 'Inactive',
   'new': 'New',
-  'completed': 'Completed'
+  'completed': 'Completed',
+  'success': 'Success',
+  'scheduled': 'Scheduled',
+  'closed_won': 'Closed Won',
+  'closed_lost': 'Closed Lost'
 };
+/** "inbound_upload" -> "Inbound Upload": a readable label for a raw key. */
+export const humanizeKey = (key: string): string =>
+  String(key).replace(/[_-]+/g, ' ').trim().replace(/(^|\s)(\S)/g, (_m, s: string, c: string) => s + c.toUpperCase());
 // Default stage mappings (key -> label) - can be overridden by dynamic stages
 export const DEFAULT_STAGE_MAPPINGS: Record<string, string> = {
   'lead': 'Lead',
@@ -61,7 +68,7 @@ export const getStatusLabel = (statusKey: string | null | undefined, statusOptio
     }
   }
   // Fallback to hardcoded mappings
-  return STATUS_MAPPINGS[statusKey] || statusKey || 'Unknown';
+  return STATUS_MAPPINGS[statusKey] || humanizeKey(statusKey) || 'Unknown';
 };
 /**
  * Get stage label from stage key and stages data
@@ -126,4 +133,4 @@ export const enhanceLeadWithLabels = (lead: Lead | null | undefined, stages: Sta
  */
 export const enhanceLeadsWithLabels = (leads: Lead[] = [], stages: StageOption[] = []): Lead[] => {
   return leads.map(lead => enhanceLeadWithLabels(lead, stages));
-};
+};

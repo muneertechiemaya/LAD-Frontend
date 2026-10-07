@@ -17,7 +17,7 @@ export default function MonitorDashboardPage() {
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Overview</h2>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="max-lg:min-h-11 flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -63,7 +63,7 @@ export default function MonitorDashboardPage() {
           </div>
 
           {data.generatedAt ? (
-            <p className="mt-4 text-right text-xs text-gray-400">
+            <p className="mt-4 text-right text-xs text-gray-500 dark:text-gray-400">
               Updated {new Date(data.generatedAt).toLocaleString()}
             </p>
           ) : null}

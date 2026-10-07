@@ -356,14 +356,14 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.deal_name || 'Untitled deal'}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate">
+                        <div className="text-xs text-slate-500 dark:text-[#7a8ba3] truncate">
                           {[r.account_name, r.contact_name].filter(Boolean).join(' · ') || '-'}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        {r.stage && <Badge variant="secondary" className="bg-slate-100 dark:bg-[#0e1d4d] text-slate-700 dark:text-slate-300 text-[10px]">{r.stage}</Badge>}
+                        {r.stage && <Badge variant="secondary" className="bg-slate-100 dark:bg-[#0e1d4d] text-slate-700 dark:text-slate-300 text-xs">{r.stage}</Badge>}
                         {r.amount != null && <div className="text-xs font-bold text-[#172560] dark:text-white mt-0.5">{r.amount.toLocaleString()}</div>}
                       </div>
                       <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-600" />
@@ -377,7 +377,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.subject || 'Untitled task'}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-[#7a8ba3] flex flex-wrap gap-x-3 gap-y-0.5">
+                        <div className="text-xs text-slate-500 dark:text-[#7a8ba3] flex flex-wrap gap-x-3 gap-y-0.5">
                           {r.related_to && <span className="truncate">{r.related_to}</span>}
                           {r.due_date && <span>Due {new Date(r.due_date).toLocaleDateString()}</span>}
                           {r.priority && <span>{r.priority} priority</span>}
@@ -385,7 +385,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      {r.status && <Badge variant="secondary" className="bg-slate-100 dark:bg-[#0e1d4d] text-slate-700 dark:text-slate-300 text-[10px]">{r.status}</Badge>}
+                      {r.status && <Badge variant="secondary" className="bg-slate-100 dark:bg-[#0e1d4d] text-slate-700 dark:text-slate-300 text-xs">{r.status}</Badge>}
                       <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-600" />
                     </div>
                   </>
@@ -397,7 +397,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.name || '-'}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-[#7a8ba3] flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                        <div className="text-xs text-slate-500 dark:text-[#7a8ba3] flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                           {r.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
                           {r.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
                           {r.company_name && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{r.company_name}</span>}
@@ -405,7 +405,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      {r.title && <span className="text-[11px] text-slate-500 dark:text-[#7a8ba3]">{r.title}</span>}
+                      {r.title && <span className="text-xs text-slate-500 dark:text-[#7a8ba3]">{r.title}</span>}
                       <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-600" />
                     </div>
                   </>

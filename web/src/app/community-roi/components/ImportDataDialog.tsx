@@ -88,18 +88,18 @@ export function ImportDataDialog() {
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          <div className="flex items-center gap-4 p-4 border-2 border-dashed rounded-lg border-slate-200 bg-slate-50/50 justify-center flex-col text-center">
+          <div className="flex items-center gap-4 p-4 border-2 border-dashed rounded-lg border-slate-200 bg-slate-50/50 justify-center flex-col text-center dark:border-slate-700">
             {file ? (
               <>
                 <FileSpreadsheet className="h-10 w-10 text-emerald-500" />
-                <div className="text-sm font-medium text-slate-900">{file.name}</div>
-                <div className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</div>
+                <div className="text-sm font-medium text-slate-900 dark:text-white">{file.name}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">{(file.size / 1024).toFixed(1)} KB</div>
               </>
             ) : (
               <>
                 <Upload className="h-10 w-10 text-slate-300" />
-                <div className="text-sm font-medium text-slate-600">Click to select file</div>
-                <div className="text-xs text-slate-400">Supports .xlsx files</div>
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-300">Click to select file</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Supports .xlsx files</div>
               </>
             )}
             <Input 
@@ -122,7 +122,7 @@ export function ImportDataDialog() {
           </div>
 
           {result && (
-            <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${result.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+            <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${result.success ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'}`}>
               {result.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
               {result.message}
             </div>

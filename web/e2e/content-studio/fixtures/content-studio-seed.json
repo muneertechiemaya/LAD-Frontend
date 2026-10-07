@@ -1,0 +1,317 @@
+{
+  "version": 1,
+  "note": "Seeded showcase for Content Studio. Copy is written against Mr LAD's own brand brief and graded on the post-grader scorecard (hook 50%, specifics/emotion/share/voice 10% each, position/fit 5% each). Schedules are relative to the day the seed runs, in the tenant's timezone. Metrics are SAMPLE data and must always be shown with a Sample data label.",
+  "brandBrief": {
+    "business": "Mr LAD finds the right leads, messages them on LinkedIn, WhatsApp, email and Instagram, answers replies day and night, and books the meetings into your calendar.",
+    "customer": "The founder or sales lead of a 5 to 50 person B2B firm in Dubai or Riyadh who answers enquiries personally after hours and loses deals to whoever replies first.",
+    "primaryCta": "Book a 20-minute demo",
+    "strongOpinion": "Most GCC SMEs don't have a lead problem. They have a reply-speed problem.",
+    "storyVault": [
+      "Buyers message 3 suppliers and talk to whoever answers first.",
+      "The 11pm enquiry that was answered at 9am, after the buyer had signed elsewhere."
+    ],
+    "voice": ["direct", "warm", "expert"],
+    "voiceWords": "Plain, fast, no jargon, on your side"
+  },
+  "settings": {
+    "goals": ["book_meetings", "grow_followers"],
+    "pillars": [
+      { "id": "customer-pain", "name": "Customer pain", "weight": 30, "color": "#0B1957" },
+      { "id": "customer-stories", "name": "Customer stories", "weight": 20, "color": "#0B6E73" },
+      { "id": "how-to", "name": "How-to", "weight": 25, "color": "#2156D9" },
+      { "id": "behind-the-scenes", "name": "Behind the scenes", "weight": 15, "color": "#B3246F" },
+      { "id": "offer-proof", "name": "Offer and proof", "weight": 10, "color": "#7A4A00" }
+    ],
+    "frequency": { "linkedin": 3, "instagram": 3, "x": 2, "facebook": 1, "tiktok": 1 },
+    "windows": {
+      "linkedin": "10:00",
+      "instagram": "18:30",
+      "x": "12:00",
+      "facebook": "19:00",
+      "tiktok": "20:00"
+    },
+    "timezone": "Asia/Dubai",
+    "approvalRequired": false,
+    "maxPostsPerDay": 3,
+    "autoMaintain": false
+  },
+  "posts": [
+    {
+      "key": "li-carousel-11pm",
+      "platform": "linkedin",
+      "format": "carousel",
+      "pillar": "Customer pain",
+      "status": "scheduled",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 0, "time": "10:15" },
+      "title": "The 11pm enquiry",
+      "angle": "customer_transformation",
+      "hookPattern": "Transformation / Story",
+      "hook": "Your best lead messaged you at 11pm. You replied at 9am. They'd already signed with someone else.",
+      "body": "This carousel is the 3-step check we'd run on any inbox before buying more leads.",
+      "cta": "What's the latest hour you've answered a client?",
+      "hashtags": [],
+      "slides": [
+        { "heading": "Your best lead messaged you at 11pm.", "text": "You replied at 9am. They'd already signed with someone else." },
+        { "heading": "Buyers don't wait for office hours.", "text": "They message 3 suppliers and talk to whoever answers first." },
+        { "heading": "The slow reply isn't laziness.", "text": "It's 1 person doing sales, delivery and the inbox." },
+        { "heading": "Step 1: find your slowest reply.", "text": "Check last week's inbox. That's your real response time." },
+        { "heading": "Step 2: answer within minutes.", "text": "Ask the questions a salesperson would ask, in the first reply." },
+        { "heading": "Step 3: book the call in the first conversation.", "text": "Not the third. Save this for your next sales meeting." }
+      ],
+      "script": null,
+      "grade": {
+        "score": 8.7,
+        "dimensions": { "hook": 9, "specificity": 8.5, "emotion": 8.5, "shareability": 8.5, "voice": 8.5, "polarity": 7, "platformFit": 9 },
+        "fixes": [
+          { "issue": "Slide 6 ends on advice", "current": "Not the third. Save this for your next sales meeting.", "why": "The post's goal is demos, and the last slide is where intent peaks.", "fix": "End slide 6 with: Want this check run on your inbox? Book a 20-minute demo." },
+          { "issue": "No proof from your own account", "current": "Check last week's inbox.", "why": "A real reply time from your inbox makes the claim yours, not generic.", "fix": "Add your own slowest reply time from last week to slide 4." },
+          { "issue": "Brand colour overuse", "current": "All 6 slides on navy", "why": "Slides read as one block when swiped.", "fix": "Keep navy for slide 1 only; use white for slides 2 to 6." }
+        ]
+      }
+    },
+    {
+      "key": "ig-reel-2am",
+      "platform": "instagram",
+      "format": "video_script",
+      "pillar": "Behind the scenes",
+      "status": "scheduled",
+      "approvalState": "pending",
+      "schedule": { "dayOffset": 0, "time": "18:30" },
+      "title": "The 2am enquiry",
+      "angle": "most_people_wrong",
+      "hookPattern": "Curiosity Gap",
+      "hook": "This is what happens to an enquiry that lands at 2am.",
+      "body": "A buyer asks for pricing. Nobody's awake. By the time you reply, they've had 3 other quotes. Now the reply goes out within minutes, in your words, with your price range.",
+      "cta": "Save this and check your own 2am inbox.",
+      "hashtags": ["#SalesTips", "#WhatsAppBusiness", "#DubaiBusiness"],
+      "slides": [],
+      "script": {
+        "durationSeconds": 38,
+        "hook": { "spoken": "This is what happens to an enquiry that lands at 2am.", "onScreen": "2:04am. New enquiry.", "seconds": 2 },
+        "scenes": [
+          { "seconds": 6, "spoken": "A buyer asks for pricing. Nobody's awake.", "onScreen": "", "visual": "Screen recording: a WhatsApp message arrives" },
+          { "seconds": 8, "spoken": "By the time you reply, they've had 3 other quotes.", "onScreen": "Old way: answered 9:40am", "visual": "Clock jumps from 2:04am to 9:40am" },
+          { "seconds": 10, "spoken": "Now the reply goes out within minutes, in your words, with your price range.", "onScreen": "", "visual": "Reply typing, then sent" },
+          { "seconds": 9, "spoken": "And the meeting's in your calendar before you wake up.", "onScreen": "Booked: Tuesday 10:00", "visual": "Calendar invite appears" }
+        ],
+        "cta": { "spoken": "Save this and check your own 2am inbox.", "onScreen": "Save for later", "seconds": 3 }
+      },
+      "grade": {
+        "score": 8.2,
+        "dimensions": { "hook": 8.5, "specificity": 8, "emotion": 8, "shareability": 7.5, "voice": 8, "polarity": 6.5, "platformFit": 9 },
+        "fixes": [
+          { "issue": "Mocked screen", "current": "Screen recording: a WhatsApp message arrives", "why": "A real (blurred) recording reads as proof; a mock reads as an ad.", "fix": "Record a real enquiry from your own number with names blurred." },
+          { "issue": "Old-way line flashes past", "current": "Old way: answered 9:40am", "why": "It's the turning point of the reel.", "fix": "Hold the 9:40am text on screen for 2 full seconds." },
+          { "issue": "Sound-off viewers", "current": "Spoken lines without captions", "why": "Most Reels start muted.", "fix": "Burn in captions for every spoken line." }
+        ]
+      }
+    },
+    {
+      "key": "li-post-reply-problem",
+      "platform": "linkedin",
+      "format": "post",
+      "pillar": "Customer pain",
+      "status": "scheduled",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 1, "time": "10:00" },
+      "title": "A reply problem, not a lead problem",
+      "angle": "polarizing_opinion",
+      "hookPattern": "Contrarian",
+      "hook": "Most GCC SMEs don't have a lead problem. They have a reply problem.",
+      "body": "A buyer fills your form at 10:40pm. They message 3 suppliers. The first one to answer gets the call.\n\nIt's rarely the best supplier. It's the fastest.\n\nSo before you spend another dirham on ads, find the slowest first reply in last week's inbox. Not the average. The worst one.\n\nIf it's longer than an hour, your next lead campaign will leak the same way. Fix the reply time first. Then buy more leads.",
+      "cta": "What's the slowest reply you've found in your own inbox?",
+      "hashtags": [],
+      "slides": [],
+      "script": null,
+      "grade": {
+        "score": 8.4,
+        "dimensions": { "hook": 8.5, "specificity": 8, "emotion": 8, "shareability": 8, "voice": 8.5, "polarity": 9, "platformFit": 9 },
+        "fixes": [
+          { "issue": "No proof of your own", "current": "A buyer fills your form at 10:40pm.", "why": "A story from your vault turns a pattern into a moment.", "fix": "Swap the 10:40pm buyer for the real 11pm enquiry from your story vault." },
+          { "issue": "Single market", "current": "another dirham", "why": "KSA readers skim past UAE-only cues.", "fix": "Write: another dirham or riyal." },
+          { "issue": "First comment unused", "current": "(none)", "why": "LinkedIn rewards early replies from the author.", "fix": "Pin a first comment asking readers for their slowest reply time." }
+        ]
+      }
+    },
+    {
+      "key": "ig-carousel-3-replies",
+      "platform": "instagram",
+      "format": "carousel",
+      "pillar": "How-to",
+      "status": "draft",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 3, "time": "19:00" },
+      "title": "3 WhatsApp replies that quietly lose the sale",
+      "angle": "most_people_wrong",
+      "hookPattern": "Negative Frame",
+      "hook": "3 WhatsApp replies that quietly lose the sale.",
+      "body": "Number 2 is the hardest habit to break.",
+      "cta": "Save this before your team answers the next enquiry.",
+      "hashtags": ["#WhatsAppBusiness", "#SalesTips", "#DubaiBusiness", "#SMEUAE"],
+      "slides": [
+        { "heading": "3 WhatsApp replies that quietly lose the sale", "text": "" },
+        { "heading": "\"Please share your email and we'll send details.\"", "text": "Fix: answer their question in the chat first." },
+        { "heading": "\"Price depends on many factors.\"", "text": "Fix: give a real range, then ask 1 question." },
+        { "heading": "\"Our team will call you.\"", "text": "Fix: offer 2 times they can pick right now." },
+        { "heading": "Save this before your team answers the next enquiry.", "text": "" }
+      ],
+      "script": null,
+      "grade": {
+        "score": 8.0,
+        "dimensions": { "hook": 8, "specificity": 8, "emotion": 7, "shareability": 9, "voice": 8, "polarity": 7, "platformFit": 9 },
+        "fixes": [
+          { "issue": "Quoted replies look invented", "current": "\"Please share your email and we'll send details.\"", "why": "A real screenshot (names blurred) is far more saveable.", "fix": "Use a real chat screenshot on slide 2." },
+          { "issue": "Strongest mistake is buried", "current": "Slide 3: Price depends on many factors.", "why": "The price dodge is the one readers recognise most.", "fix": "Swap slides 2 and 3." },
+          { "issue": "Hashtag count", "current": "4 hashtags", "why": "Within Instagram's 3 to 5; more would dilute.", "fix": "Keep exactly these 4." }
+        ]
+      }
+    },
+    {
+      "key": "x-post-auto-reply",
+      "platform": "x",
+      "format": "post",
+      "pillar": "Customer pain",
+      "status": "ready",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 5, "time": "12:00" },
+      "title": "An auto-reply isn't a reply",
+      "angle": "polarizing_opinion",
+      "hookPattern": "Contrarian",
+      "hook": "An auto-reply isn't a reply.",
+      "body": "\"We'll get back to you within 24 hours\" tells a buyer exactly how long they have to find someone faster.",
+      "cta": "Tell me I'm wrong.",
+      "hashtags": [],
+      "slides": [],
+      "script": null,
+      "grade": {
+        "score": 8.3,
+        "dimensions": { "hook": 8.5, "specificity": 7.5, "emotion": 8, "shareability": 8.5, "voice": 8, "polarity": 8.5, "platformFit": 9 },
+        "fixes": [
+          { "issue": "Room to quote", "current": "Full post is 152 characters", "why": "Quote-posts need space to add a take.", "fix": "Keep it under 200 characters, as it is now." },
+          { "issue": "Reply plan", "current": "(none)", "why": "Replies are what X rewards.", "fix": "Reply to the first 5 responses within the hour." },
+          { "issue": "One-off angle", "current": "Contrarian hook", "why": "Next week's X post should vary the pattern.", "fix": "Use a Question hook next time." }
+        ]
+      }
+    },
+    {
+      "key": "tt-script-pdf",
+      "platform": "tiktok",
+      "format": "video_script",
+      "pillar": "How-to",
+      "status": "ready",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 6, "time": "20:00" },
+      "title": "Stop sending the PDF",
+      "angle": "most_people_wrong",
+      "hookPattern": "Contrarian",
+      "hook": "Stop sending your price list as a PDF.",
+      "body": "Buyers don't open it on their phone. Send 3 lines instead: your starting price, what's included, and 1 question about their project. Then offer 2 call times.",
+      "cta": "Follow for 1 sales fix a week.",
+      "hashtags": ["#SalesTips", "#SmallBusiness", "#WhatsAppBusiness"],
+      "slides": [],
+      "script": {
+        "durationSeconds": 30,
+        "hook": { "spoken": "Stop sending your price list as a PDF.", "onScreen": "Stop sending the PDF.", "seconds": 2 },
+        "scenes": [
+          { "seconds": 6, "spoken": "Buyers don't open it on their phone.", "onScreen": "", "visual": "Selfie to camera" },
+          { "seconds": 12, "spoken": "Send 3 lines instead: your starting price, what's included, and 1 question about their project.", "onScreen": "Starting price · What's included · 1 question", "visual": "B-roll: typing the 3 lines on a phone" },
+          { "seconds": 7, "spoken": "Then offer 2 call times.", "onScreen": "Tue 10:00 or Wed 4:00?", "visual": "Selfie to camera" }
+        ],
+        "cta": { "spoken": "Follow for 1 sales fix a week.", "onScreen": "Follow for 1 fix a week", "seconds": 3 }
+      },
+      "grade": {
+        "score": 8.2,
+        "dimensions": { "hook": 8.5, "specificity": 7.5, "emotion": 7.5, "shareability": 8, "voice": 8, "polarity": 8.5, "platformFit": 8.5 },
+        "fixes": [
+          { "issue": "Show, don't tell", "current": "Send 3 lines instead", "why": "Viewers save what they can copy.", "fix": "Film the 3 lines typed on your own phone screen." },
+          { "issue": "Pause after the hook", "current": "Hook then a beat of silence", "why": "TikTok judges the first 1.7 seconds.", "fix": "Cut straight into the next line." },
+          { "issue": "Soft ending", "current": "Fade out", "why": "A follow ask converts best on the last frame.", "fix": "End on the follow line, no fade." }
+        ]
+      }
+    },
+    {
+      "key": "fb-post-every-enquiry",
+      "platform": "facebook",
+      "format": "post",
+      "pillar": "Offer and proof",
+      "status": "scheduled",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": 7, "time": "19:00" },
+      "title": "Every enquiry gets a reply",
+      "angle": "customer_transformation",
+      "hookPattern": "Speed / Effortless",
+      "hook": "Every enquiry gets a reply. Even the 11pm ones.",
+      "body": "Mr LAD answers WhatsApp in your voice and books the meeting into your calendar.",
+      "cta": "Tag the colleague who's always on their phone at midnight.",
+      "hashtags": [],
+      "slides": [],
+      "script": null,
+      "grade": {
+        "score": 7.8,
+        "dimensions": { "hook": 8, "specificity": 7, "emotion": 7.5, "shareability": 8, "voice": 8, "polarity": 6.5, "platformFit": 8 },
+        "fixes": [
+          { "issue": "Product claim", "current": "Mr LAD answers WhatsApp in your voice", "why": "Every claim should match what your account really does.", "fix": "Keep it to channels you have switched on." },
+          { "issue": "No image", "current": "Text only", "why": "Facebook posts with a real photo get more shares.", "fix": "Add a photo of a real booked slot (details hidden)." },
+          { "issue": "Low polarity", "current": "Every enquiry gets a reply.", "why": "Offer posts rarely spark debate; that's fine here.", "fix": "No change needed." }
+        ]
+      }
+    },
+    {
+      "key": "li-post-inbox-published",
+      "platform": "linkedin",
+      "format": "post",
+      "pillar": "Customer pain",
+      "status": "published",
+      "approvalState": "not_required",
+      "schedule": { "dayOffset": -7, "time": "10:15" },
+      "title": "Deals lost in the inbox",
+      "angle": "polarizing_opinion",
+      "hookPattern": "Contrarian",
+      "hook": "Most deals aren't lost on price. They're lost in the inbox.",
+      "body": "The buyer asked a simple question on Thursday night. The answer went out on Sunday morning.\n\nNobody lowered the price. Nobody lost a pitch. The thread went quiet and the buyer moved on.\n\nBefore your next discount, read your last 10 lost deals and check when each one got its first reply.",
+      "cta": "Which would you rather fix first: your price or your reply time?",
+      "hashtags": [],
+      "slides": [],
+      "script": null,
+      "grade": {
+        "score": 8.3,
+        "dimensions": { "hook": 8.5, "specificity": 7.5, "emotion": 8, "shareability": 8, "voice": 8.5, "polarity": 8.5, "platformFit": 8.5 },
+        "fixes": [
+          { "issue": "Story is a composite", "current": "The buyer asked a simple question on Thursday night.", "why": "A real, named (with permission) example lands harder.", "fix": "Swap in a real story from your vault." },
+          { "issue": "Ask is 2-part", "current": "your price or your reply time?", "why": "Either-or questions are good; keep it.", "fix": "No change needed." },
+          { "issue": "Missing proof", "current": "(none)", "why": "Your own lost-deal count would make this yours.", "fix": "Add how many of your last 10 lost deals had a slow first reply." }
+        ]
+      },
+      "sampleMetrics": {
+        "reach": "[VERIFIED REACH]",
+        "engagementRate": 4.2,
+        "saves": 41,
+        "profileVisits": 63,
+        "comments": 17,
+        "shares": 9,
+        "newFollowers": 38,
+        "leadsCreated": 4
+      }
+    }
+  ],
+  "ideas": [
+    { "key": "idea-li-wed", "platform": "linkedin", "format": "post", "pillar": "Customer stories", "schedule": { "dayOffset": 3, "time": "10:30" }, "title": "The client who switched off their auto-reply", "angle": "customer_transformation" },
+    { "key": "idea-ig-sat", "platform": "instagram", "format": "carousel", "pillar": "How-to", "schedule": { "dayOffset": 5, "time": "18:30" }, "title": "What to send in the first 60 seconds", "angle": "receipts_number" },
+    { "key": "idea-li-thu-next", "platform": "linkedin", "format": "post", "pillar": "Offer and proof", "schedule": { "dayOffset": 9, "time": "10:00" }, "title": "What a demo with Mr LAD looks like", "angle": "customer_transformation" }
+  ],
+  "sampleAnalytics": {
+    "label": "Sample data",
+    "reach": "[VERIFIED REACH]",
+    "engagementRate": 4.2,
+    "newFollowers": 38,
+    "leadsFromPosts": 9,
+    "bestTimes": [
+      { "hour": 8, "score": 35 }, { "hour": 10, "score": 92 }, { "hour": 12, "score": 54 },
+      { "hour": 14, "score": 30 }, { "hour": 18, "score": 61 }, { "hour": 20, "score": 78 }
+    ],
+    "followerGrowth": [
+      { "weekOffset": -3, "followers": 9 }, { "weekOffset": -2, "followers": 7 }, { "weekOffset": -1, "followers": 12 }, { "weekOffset": 0, "followers": 10 }
+    ]
+  }
+}

@@ -15,6 +15,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ─── Public data contract ────────────────────────────────────────────────────
 export type Template = {
@@ -73,6 +80,10 @@ const C = {
   delivered:   '#d97706', deliveredSoft: '#fef3c7',  // amber-600   / amber-100
   pending:     '#94a3b8', pendingSoft:   '#e2e8f0',  // slate-400   / slate-200
   failed:      '#e11d48', failedSoft:    '#ffe4e6',  // rose-600    / rose-100
+  // Pill TEXT on the soft tints: the 600s read 3.3:1 (emerald) and 3.9:1
+  // (rose) there, under WCAG's 4.5:1. The 700s read 4.8:1 and 5.2:1.
+  readInk:     '#047857',   // emerald-700
+  failedInk:   '#be123c',   // rose-700
   // "Okay" band (25-35%): a warmer amber that still reads as caution, not a
   // celebratory green and not an alarming red.
   okay:        '#b45309', okaySoft:      '#fef3c7',  // amber-700   / amber-100
@@ -87,10 +98,10 @@ const pct1 = (v: number) => `${(v * 100).toFixed(1)}`;
 // ─── Read-rate bands ─────────────────────────────────────────────────────────
 type Band = { label: string; color: string; bg: string };
 function bandFor(rate: number): Band {
-  if (rate >= 0.50) return { label: 'Excellent', color: C.read,   bg: C.readSoft   };
-  if (rate >= 0.35) return { label: 'Healthy',   color: C.read,   bg: C.readSoft   };
+  if (rate >= 0.50) return { label: 'Excellent', color: C.readInk, bg: C.readSoft   };
+  if (rate >= 0.35) return { label: 'Healthy',   color: C.readInk, bg: C.readSoft   };
   if (rate >= 0.25) return { label: 'Okay',      color: C.okay,   bg: C.okaySoft   };
-  return              { label: 'Weak',      color: C.failed, bg: C.failedSoft };
+  return              { label: 'Weak',      color: C.failedInk, bg: C.failedSoft };
 }
 
 // ─── Scoped CSS ──────────────────────────────────────────────────────────────
@@ -109,7 +120,7 @@ const SCOPED_CSS = `
 .lad-bp-table thead th {
   text-align: left;
   font-family: ${FONT_UI};
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -155,14 +166,12 @@ const SCOPED_CSS = `
   min-width: 0;
 }
 .lad-bp-select-pill:hover { background: ${C.surface2}; }
-.lad-bp-select-pill:focus-within {
-  border-color: ${C.ink};
-  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+.lad-bp-select-pill:focus,
+.lad-bp-select-pill:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
-.lad-bp-select-pill > select {
-  appearance: none; -webkit-appearance: none; -moz-appearance: none;
-  border: 0; outline: 0; padding: 0;
-  background: transparent;
+.lad-bp-select-pill [data-slot="select-value"] {
   font-family: ${FONT_MONO};
   font-variant-numeric: tabular-nums;
   font-size: 14px;
@@ -172,12 +181,9 @@ const SCOPED_CSS = `
   width: 100%;
   text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
 }
-.lad-bp-select-pill > .chev {
-  position: absolute;
-  right: 12px;
-  display: flex; align-items: center;
-  color: ${C.muted};
-  pointer-events: none;
+.lad-bp-select-pill > svg {
+  width: 14px; height: 14px;
+  color: ${C.muted}; opacity: 1;
 }
 
 /* Subtitle: floats below the dropdown without contributing to the row's
@@ -248,32 +254,55 @@ const SCOPED_CSS = `
 .dark .lad-bp-select-pill:hover {
   background: #0c1a42;
 }
-.dark .lad-bp-select-pill > select {
-  color: #f8fafc;
-}
-.dark .lad-bp-select-pill > select option {
-  background: #071131;
+.dark .lad-bp-select-pill [data-slot="select-value"] {
   color: #f8fafc;
 }
 .dark .lad-bp-bar {
   background: #1e293b;
 }
+/* The subtitle's numbers carry an inline light-theme ink (C.ink2), which read
+   1.8:1 on the dark card; the muted caption itself read 3.9:1. */
+.dark .lad-bp-template-sub { color: #94a3b8; }
+/* the heading's colour is an inline style (C.ink), so dark needs !important */
+.dark #lad-bp-heading { color: #f8fafc !important; }
+.dark .lad-bp-eyebrow { color: #94a3b8 !important; }
+.dark .lad-bp-template-sub .lad-bp-mono { color: #e2e8f0 !important; }
 .dark .lad-bp-empty {
   background: #071131;
   border-color: rgba(30, 46, 74, 0.4);
   color: #94a3b8;
 }
-`;
 
-// ─── Chevron (inline SVG, 14px) ──────────────────────────────────────────────
-function Chevron() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <path d="M3 5.5L7 9.5L11 5.5" fill="none" stroke="currentColor"
-            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+/* Phones: a 7-column table (720px min) doesn't fit, so each row becomes a
+   card - template and delivery bar across the top, then the four numbers
+   as a labelled row. Labels come from data-label on each cell. */
+@media (max-width: 640px) {
+  .lad-bp-table, .lad-bp-table tbody { display: block; }
+  .lad-bp-table thead { display: none; }
+  .lad-bp-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 8px;
+    padding: 16px;
+  }
+  .lad-bp-table tbody td { padding: 0; width: auto; min-width: 0; }
+  .lad-bp-col-index { display: none; }
+  .lad-bp-col-template, .lad-bp-col-bar { grid-column: 1 / -1; width: auto; min-width: 0; }
+  .lad-bp-table tbody td.lad-bp-col-template { padding-bottom: 26px; }
+  .lad-bp-col-num, .lad-bp-col-rate { text-align: left; width: auto; }
+  .lad-bp-col-num::before, .lad-bp-col-rate::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-family: ${FONT_UI};
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: ${C.muted};
+  }
 }
+`;
 
 // ─── Stacked delivery bar ────────────────────────────────────────────────────
 function DeliveryBar({ t }: { t: Template }) {
@@ -304,9 +333,9 @@ function EmptyState({ chromeless = false }: { chromeless?: boolean }) {
       <style>{SCOPED_CSS}</style>
       {!chromeless && (
         <header style={{ marginBottom: 12 }}>
-          <div
+          <div className="lad-bp-eyebrow"
             style={{
-              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+              fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,
             }}
           >
@@ -358,11 +387,9 @@ export function BroadcastPerformance({
   const readRate  = readDenom > 0 ? t.read / readDenom : 0;
   const band      = bandFor(readRate);
 
-  const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
-    const id = e.target.value;
+  const handleChange = (id: string) => {
     setSelectedId(id);
     onSelect?.(id);
-    e.currentTarget.focus();
   };
 
   return (
@@ -372,9 +399,9 @@ export function BroadcastPerformance({
       {/* Section heading - suppressed when host provides its own chrome */}
       {!chromeless && (
         <header style={{ marginBottom: 12 }}>
-          <div
+          <div className="lad-bp-eyebrow"
             style={{
-              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+              fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: C.muted, fontWeight: 600, marginBottom: 4,
             }}
           >
@@ -433,21 +460,22 @@ export function BroadcastPerformance({
                 Select template
               </label>
               <div className="lad-bp-template-wrap">
-                <div className="lad-bp-select-pill">
-                  <select
+                <Select value={selectedId} onValueChange={handleChange}>
+                  <SelectTrigger
                     id="lad-bp-template-select"
-                    value={selectedId}
-                    onChange={handleChange}
+                    className="lad-bp-select-pill focus-visible:ring-0 focus-visible:ring-offset-0"
                     title={t.name}
                   >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
                     {templates.map(opt => (
-                      <option key={opt.id} value={opt.id}>
+                      <SelectItem key={opt.id} value={opt.id}>
                         {opt.channel ? `${opt.channel} · ${opt.name}` : opt.name}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
-                  <span className="chev"><Chevron /></span>
-                </div>
+                  </SelectContent>
+                </Select>
                 <div className="lad-bp-template-sub">
                   <span className="lad-bp-mono" style={{ color: C.ink2 }}>
                     {nf.format(t.recipients)}
@@ -463,7 +491,7 @@ export function BroadcastPerformance({
                         marginLeft: 8,
                         padding: '2px 8px',
                         borderRadius: 999,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: 600,
                         letterSpacing: '0.02em',
                         background: CHANNEL_CHIP[t.channel].bg,
@@ -485,25 +513,28 @@ export function BroadcastPerformance({
             </td>
             <td
               className="lad-bp-col-num"
-              style={{ color: t.read > 0 ? C.read : C.ink }}
+              data-label="Read"
+              style={t.read > 0 ? { color: C.read } : undefined}
               aria-label={`Read: ${nf.format(t.read)} messages`}
             >
               <span key={selectedId + '-read'} className="lad-bp-anim">{nf.format(t.read)}</span>
             </td>
             <td
               className="lad-bp-col-num"
+              data-label="Sent"
               aria-label={`Sent: ${nf.format(t.sent)} messages`}
             >
               <span key={selectedId + '-sent'} className="lad-bp-anim">{nf.format(t.sent)}</span>
             </td>
             <td
               className="lad-bp-col-num"
+              data-label="Failed"
               style={{ color: t.failed > 0 ? C.failed : C.muted }}
               aria-label={`Failed: ${nf.format(t.failed)} messages`}
             >
               <span key={selectedId + '-failed'} className="lad-bp-anim">{nf.format(t.failed)}</span>
             </td>
-            <td className="lad-bp-col-rate">
+            <td className="lad-bp-col-rate" data-label="Read rate">
               <span
                 key={selectedId + '-rate'}
                 className="lad-bp-rate-pill lad-bp-anim"

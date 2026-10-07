@@ -105,7 +105,7 @@ export default function IcpSearchStrategyPage() {
           <Button
             variant="ghost"
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors p-0 h-auto hover:bg-transparent group"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors p-0 h-auto hover:bg-transparent group dark:text-slate-400"
           >
             <div className="p-1.5 rounded-full bg-white shadow-sm border border-slate-200 group-hover:border-slate-300 transition-all">
               <ArrowLeft className="h-4 w-4" />
@@ -113,27 +113,25 @@ export default function IcpSearchStrategyPage() {
             <span className="font-medium text-sm">Back</span>
           </Button>
         </div>
-        <nav className="text-xs text-gray-500">
-          <Link href="/settings" className="hover:underline">
+        <nav className="text-xs max-md:text-sm text-gray-500 dark:text-slate-400">
+          <Link href="/settings" className="hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">
             Settings
           </Link>{' '}
           /{' '}
-          <Link href="/prospects" className="hover:underline">
-            Prospects
-          </Link>
+          <span>Lead search</span>
         </nav>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">
-          Search strategy
+          Lead search
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Tune how the dispatcher discovers prospects: which backends to use,
-          in what order, and how to handle overlap. Saved values apply to every
-          subsequent run.
+        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+          Choose where Mr LAD looks for new leads, in what order, and what to
+          do when the same person turns up twice. Changes apply to the next
+          search.
         </p>
       </header>
 
       {loading && (
-        <div className="rounded border border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-800 p-6 text-sm text-gray-600">
+        <div className="rounded border border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-800 p-6 text-sm text-gray-600 dark:text-slate-300">
           Loading active ICP…
         </div>
       )}
@@ -159,16 +157,15 @@ export default function IcpSearchStrategyPage() {
 
       {definition && draft && (
         <>
-          <div className="mb-4 flex items-center justify-between rounded-md bg-gray-50 dark:bg-background px-4 py-2 text-xs text-gray-600">
+          <div className="mb-4 flex items-center justify-between rounded-md bg-gray-50 dark:bg-background px-4 py-2 text-xs text-gray-600 dark:text-slate-300">
             <span>
-              Editing variant <strong>{definition.variant_name}</strong> ·
-              last updated{' '}
+              Last saved{' '}
               {new Date(definition.updated_at).toLocaleString()}
             </span>
             <button
               type="button"
               onClick={handleResetToDefaults}
-              className="text-xs text-blue-600 underline hover:no-underline"
+              className="text-xs text-blue-600 underline hover:no-underline max-lg:min-h-11 dark:text-blue-400"
             >
               Reset to defaults
             </button>
@@ -183,15 +180,15 @@ export default function IcpSearchStrategyPage() {
           {/* ── Action bar (sticky bottom) ────────────────────────────── */}
           <div className="sticky bottom-0 mt-6 -mx-6 border-t border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800 px-6 py-3 shadow-sm sm:mx-0 sm:rounded-b-lg">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-gray-600 dark:text-gray-500">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {saveError ? (
-                  <span className="text-rose-600">
+                  <span className="text-rose-600 dark:text-rose-400">
                     Save failed: {saveError.message}
                   </span>
                 ) : dirty ? (
-                  <span className="text-amber-700">Unsaved changes</span>
+                  <span className="text-amber-700 dark:text-amber-400">Unsaved changes</span>
                 ) : savedAt ? (
-                  <span className="text-emerald-700">
+                  <span className="text-emerald-700 dark:text-emerald-400">
                     Saved {Math.max(1, Math.floor((Date.now() - savedAt) / 1000))}
                     s ago
                   </span>
@@ -204,7 +201,7 @@ export default function IcpSearchStrategyPage() {
                   type="button"
                   onClick={handleReset}
                   disabled={!dirty || saving}
-                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11 dark:text-slate-200"
                 >
                   Discard
                 </button>
@@ -212,9 +209,9 @@ export default function IcpSearchStrategyPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={!dirty || saving}
-                  className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11"
                 >
-                  {saving ? 'Saving…' : 'Save strategy'}
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </div>
@@ -222,7 +219,7 @@ export default function IcpSearchStrategyPage() {
 
           {/* ── JSON preview (collapsible, debug aid) ─────────────────── */}
           <details className="mt-6 rounded border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800">
-            <summary className="cursor-pointer px-4 py-2 text-xs text-gray-600 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800">
+            <summary className="cursor-pointer px-4 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800">
               Show effective strategy JSON
             </summary>
             <pre className="overflow-x-auto px-4 py-3 text-xs text-gray-700 dark:text-gray-300">

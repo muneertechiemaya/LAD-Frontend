@@ -40,13 +40,22 @@ export async function resolvePhones(
 }
 
 export async function makeCall(payload: MakeCallRequest): Promise<MakeCallResponse> {
-  // Transform phoneNumber to to_number and add voice_id to match backend API expectations
+  // Transform phoneNumber to to_number and add voice_id to match backend API expectations.
+  //
+  // The key names here have to match what the controller destructures out of
+  // req.body (features/voice-agent/controllers/call-controllers/
+  // CallInitiationController.js): it reads `added_context` and `lead_name`. This
+  // used to send `context`, which nothing read, so the instructions typed into
+  // the dialog never reached the agent; and it never sent the lead name at all,
+  // so the agent asked every caller for a name the dashboard already had
+  // (call 6933a237). The batch path already sent both correctly.
   const apiPayload = {
     voice_id: "default", // Required by V2 API
     agent_id: payload.voiceAgentId,
     to_number: payload.phoneNumber,
-    context: payload.context,
+    added_context: payload.context,
     from_number: payload.fromNumber,
+    lead_name: payload.leadName || null,
   };
   const response = await apiPost<MakeCallResponse>(
     "/api/voice-agent/calls/start-call",

@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogActions } from "@/components/ui/dialog";
 import ExcelJS from "exceljs";
 // LAD Architecture Compliance: Use SDK hooks instead of direct API calls
-import { useMakeCall, useTriggerBatchCall, useUpdateSummary } from '@lad/frontend-features/voice-agent';
+import { useMakeCall, useTriggerBatchCall, useUpdateSummary, getFullPhoneNumber, callErrorMessage } from '@lad/frontend-features/voice-agent';
 import { logger } from "@/lib/logger";
 import {
   saveBatchUpload,
@@ -232,20 +232,6 @@ const COUNTRIES = [
   { code: "GU", name: "Guam", dialCode: "+1-671", flag: "🇬🇺" },
 ];
 
-// Helper function to get full phone number with country code
-function getFullPhoneNumber(phoneNumber: string, countryDialCode: string): string {
-  const cleanPhone = phoneNumber.replace(/\s+/g, "").trim();
-  // If phone already starts with +, assume it has country code
-  if (cleanPhone.startsWith("+")) {
-    return cleanPhone;
-  }
-  // If phone starts with the dial code digits (without +), don't add it again
-  if (cleanPhone.startsWith(countryDialCode.replace("+", ""))) {
-    return `+${cleanPhone}`;
-  }
-  return `${countryDialCode}${cleanPhone}`;
-}
-
 type BulkEntry = BatchUploadEntry;
 
 interface CallOptionsProps {
@@ -413,7 +399,21 @@ export function CallOptions(props: CallOptionsProps) {
         voiceAgentId: agentId,
         phoneNumber: fullPhoneNumber,
         context: additionalInstructions || "Call initiated from dashboard",
-        fromNumber: fromNumber // Pass from number from call configuration
+        fromNumber: fromNumber, // Pass from number from call configuration
+        // The "Lead name (optional)" field was collected, cleared on submit and
+        // never sent, so the agent opened by asking for a name that was already
+        // on screen (call 6933a237).
+        //
+        // cleanLeadName falls back to the PHONE NUMBER for an empty or
+        // placeholder name, which is a sane display default for the batch table
+        // but must never travel as a lead name: the agent greets the lead by it,
+        // and "9133500099 గారండి" is worse than asking. So the fallback is
+        // dropped here and the name is simply absent, which is what the agent
+        // is built to handle.
+        leadName: (() => {
+          const cleaned = cleanLeadName(clientName, fullPhoneNumber);
+          return cleaned && cleaned !== fullPhoneNumber ? cleaned : undefined;
+        })()
       });
       push({ title: "Success", description: "Call initiated successfully!" });
       onDialChange("");
@@ -421,7 +421,7 @@ export function CallOptions(props: CallOptionsProps) {
       router.push("/call-logs");
     } catch (e: any) {
       logger.error("Failed to initiate call", { error: e?.message || 'Unknown error' });
-      push({ variant: "error", title: "Error", description: e?.message || "Failed to initiate call. Please try again." });
+      push({ variant: "error", title: "Error", description: callErrorMessage(e) });
     } finally {
       onLoadingChange?.(false);
     }
@@ -855,7 +855,7 @@ export function CallOptions(props: CallOptionsProps) {
                         type="button"
                         aria-label={`View summary for row ${idx}`}
                         onClick={() => selectedSummaryIndex === idx ? onRadioChange(null) : onRadioChange(idx)}
-                        className={`inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50
+                        className={`inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50 dark:hover:bg-[#0A123C]
                         ${selectedSummaryIndex === idx ? "bg-gray-100 border-gray-400" : ""}`}
                       >
                         {selectedSummaryIndex === idx ? (
@@ -868,7 +868,7 @@ export function CallOptions(props: CallOptionsProps) {
                         type="button"
                         aria-label={`Edit summary for row ${idx}`}
                         onClick={() => openEditorFor(idx)}
-                        className="inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50"
+                        className="inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50 dark:hover:bg-[#0A123C]"
                       >
                         <SquarePen className="w-4 h-4" />
                       </button>
@@ -1096,27 +1096,27 @@ export function CallOptions(props: CallOptionsProps) {
             </>
           ) : (
             <>
-              <Phone className="w-5 h-5 mr-2" /> Initiate Call
+              <Phone className="w-5 h-5 mr-2" /> Call now
             </>
           )}
         </Button>
       </CardContent>
       {/* Summary editor dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="dark:bg-[#071131] dark:border-blue-950/40">
-          <DialogHeader className="dark:bg-[#071131] dark:border-blue-950/40">
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="dark:bg-[#000724] dark:border-blue-950/40">
+          <DialogHeader className="dark:bg-[#081331] dark:border-blue-950/40">
+            <DialogTitle className="flex items-center gap-2 dark:text-white text-[#0b1957]">
               <SquarePen className="w-4 h-4" /> Edit Profile
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 px-8 py-6">
             <label className="text-xs text-gray-600 dark:text-[#7a8ba3]">Phone</label>
-            <Input className="dark:bg-slate-800/50 dark:border-blue-950/40" value={editorValues.to_number} onChange={(e) => setEditorValues((v) => ({ ...v, to_number: e.target.value.replace(/\s+/g, "") }))} />
+            <Input className="dark:bg-[#071131] dark:border-blue-950/40 dark:text-white" value={editorValues.to_number} onChange={(e) => setEditorValues((v) => ({ ...v, to_number: e.target.value.replace(/\s+/g, "") }))} />
             <label className="text-xs text-gray-600 dark:text-[#7a8ba3]">Name</label>
-            <Input className="dark:bg-slate-800/50 dark:border-blue-950/40" value={editorValues.name || ""} onChange={(e) => setEditorValues((v) => ({ ...v, name: e.target.value }))} />
+            <Input className="dark:bg-[#071131] dark:border-blue-950/40 dark:text-white" value={editorValues.name || ""} onChange={(e) => setEditorValues((v) => ({ ...v, name: e.target.value }))} />
             <label className="text-xs text-gray-600 dark:text-[#7a8ba3]">Company</label>
             <Input
-              className="dark:bg-slate-800/50 dark:border-blue-950/40"
+              className="dark:bg-[#071131] dark:border-blue-950/40 dark:text-white"
               value={editorValues.requested_id || ""}
               onChange={(e) => setEditorValues((v) => ({ ...v, requested_id: e.target.value }))}
               placeholder={dataType === 'employee' ? 'e.g. 57da3722a6da985435dbab61' : 'e.g. company-id'}
@@ -1129,7 +1129,7 @@ export function CallOptions(props: CallOptionsProps) {
                     ? { ...v, company_sales_summary: e.target.value, summary: e.target.value }
                     : { ...v, sales_summary: e.target.value, summary: e.target.value }
                 ))}
-                className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-blue-950/40 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary/50 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#7a8ba3]"
+                className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-blue-950/40 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary/50 bg-white dark:bg-[#071131] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#7a8ba3]"
                 placeholder="Enter summary to save..."
               />
               <button
@@ -1181,7 +1181,7 @@ export function CallOptions(props: CallOptionsProps) {
                     setIsRephrasing(false);
                   }
                 }}
-                className="absolute right-2 top-2 p-2 rounded-md bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-800/70 border border-gray-300 dark:border-blue-950/40 text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white"
+                className="absolute right-2 top-2 p-2 rounded-md bg-gray-100 dark:bg-[#071131] hover:bg-gray-200 dark:hover:bg-slate-800/70 border border-gray-300 dark:border-blue-950/40 text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white"
               >
                 {isRephrasing ? (
                   <span className="animate-spin text-gray-600">⏳</span>
@@ -1191,7 +1191,7 @@ export function CallOptions(props: CallOptionsProps) {
               </button>
             </div>
           </div>
-          <DialogActions className="px-8 pb-8 pt-4 dark:bg-[#071131] dark:border-blue-950/40">
+          <DialogActions className="px-8 pb-8 pt-4 dark:bg-[#081331] dark:border-blue-950/40">
             <Button 
               onClick={saveEditor} 
               disabled={savingSummary} 

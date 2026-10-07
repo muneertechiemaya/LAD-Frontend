@@ -12,7 +12,7 @@ const DARK_RESET = "dark:!bg-transparent dark:!border-transparent dark:!px-0 dar
 export function LiveActivityStatusBadge({ status, currentStep }: LiveActivityStatusBadgeProps) {
   if (currentStep === 6) {
     return (
-      <span className={`inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold w-[100px] bg-green-100 text-green-700 border border-green-300 ${DARK_RESET} dark:!text-emerald-400 dark:!w-auto`}>
+      <span className={`inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold w-[100px] bg-green-100 text-green-800 border border-green-300 ${DARK_RESET} dark:!text-emerald-400 dark:!w-auto`}>
         <span className="w-2 h-2 rounded-full bg-green-600 dark:!bg-emerald-400" />
         Success
       </span>
@@ -23,7 +23,7 @@ export function LiveActivityStatusBadge({ status, currentStep }: LiveActivitySta
 
   if (value.includes('success') || value.includes('completed') || value.includes('ended')) {
     return (
-      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60">
+      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60">
         <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-emerald-400" />
         Success
       </span>

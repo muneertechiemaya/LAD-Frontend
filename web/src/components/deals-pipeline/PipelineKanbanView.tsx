@@ -36,6 +36,12 @@ interface PipelineKanbanViewProps {
   compactView?: boolean;
   showCardCount?: boolean;
   showTotalValue?: boolean;
+  /** Whole-pipeline lead count per lower-case stage key; undefined = unknown. */
+  stageTotals?: Record<string, number>;
+  /** A search or filter is on, so the unfiltered totals don't apply. */
+  countsAreFiltered?: boolean;
+  /** More leads exist beyond the loaded page. */
+  hasMore?: boolean;
 }
 const PipelineKanbanView: React.FC<PipelineKanbanViewProps> = ({
   stages,
@@ -47,7 +53,10 @@ const PipelineKanbanView: React.FC<PipelineKanbanViewProps> = ({
   enableDragAndDrop = true,
   compactView = false,
   showCardCount = true,
-  showTotalValue = true
+  showTotalValue = true,
+  stageTotals,
+  countsAreFiltered = false,
+  hasMore = false
 }) => {
   // Debug log to check props
   // Memoize sortable stage IDs array
@@ -89,10 +98,17 @@ const PipelineKanbanView: React.FC<PipelineKanbanViewProps> = ({
             const uniqueKey = `${stageKey}-${index}`;
             const stageData = leadsByStage[stageKey] || { stage, leads: [] };
             const { leads = [] } = stageData;
+            // Once totals have loaded, a stage missing from them has nobody in it.
+            const total = stageTotals ? (stageTotals[String(stageKey).toLowerCase()] ?? 0) : undefined;
+            // Hide on phones only when the server says the stage is empty; while
+            // totals are unknown (loading/failed) hide nothing.
+            const emptyOnServer = total === 0 && leads.length === 0;
             return (
               <div
                 key={uniqueKey}
-                className="min-w-[280px] sm:min-w-[320px] md:min-w-[350px] max-w-[280px] sm:max-w-[320px] md:max-w-[350px] transition-transform duration-200 ease-in-out"
+                data-stage-key={String(stageKey)}
+                // While a card is being dragged, show every stage so any can be a drop target.
+                className={`min-w-[280px] sm:min-w-[320px] md:min-w-[350px] max-w-[280px] sm:max-w-[320px] md:max-w-[350px] transition-transform duration-200 ease-in-out ${emptyOnServer && !countsAreFiltered && !activeCard ? 'max-md:hidden' : ''}`}
                 style={{
                   transform: `scale(${zoom})`,
                   transformOrigin: 'top left',
@@ -117,6 +133,8 @@ const PipelineKanbanView: React.FC<PipelineKanbanViewProps> = ({
                   compactView={compactView}
                   showCardCount={showCardCount}
                   showTotalValue={showTotalValue}
+                  total={countsAreFiltered ? undefined : total}
+                  hasMore={hasMore}
                 />
               </div>
             );
@@ -143,6 +161,9 @@ export default React.memo(PipelineKanbanView, (prevProps, nextProps) => {
     prevProps.showCardCount === nextProps.showCardCount &&
     prevProps.showTotalValue === nextProps.showTotalValue &&
     prevProps.enableDragAndDrop === nextProps.enableDragAndDrop &&
+    prevProps.stageTotals === nextProps.stageTotals &&
+    prevProps.countsAreFiltered === nextProps.countsAreFiltered &&
+    prevProps.hasMore === nextProps.hasMore &&
     // Check if leadsByStage keys changed (stages added/removed)
     Object.keys(prevProps.leadsByStage).length === Object.keys(nextProps.leadsByStage).length &&
     // Check if leads in each stage changed

@@ -1,7 +1,7 @@
 'use client';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCompanyName } from '../../store/slices/settingsSlice';
 import { IntegrationsSettings } from '../../components/settings/IntegrationsSettings';
@@ -11,13 +11,15 @@ import { BillingSettings } from '../../components/settings/BillingSettings';
 import { CreditsSettings } from '../../components/settings/CreditsSettings';
 import { BusinessProfileSettings } from '../../components/settings/BusinessProfileSettings';
 import { TeamManagement } from '../../components/settings/TeamManagement';
-import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair } from 'lucide-react';
+import { CalendarSettings } from '../../components/calendar/CalendarSettings';
+import { NotificationSettings } from '../../components/settings/NotificationSettings';
+import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair, CalendarDays, Bell } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 
-type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'chat' | 'api' | 'billing' | 'credits';
+type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'calendars' | 'chat' | 'notifications' | 'api' | 'billing' | 'credits';
 
 const SettingsPage: React.FC = () => {
   const router = useRouter();
@@ -29,6 +31,25 @@ const SettingsPage: React.FC = () => {
   const companyName = useSelector((state: any) => state.settings.companyName);
   const companyLogo = useSelector((state: any) => state.settings.companyLogo);
   const [activeTab, setActiveTab] = useState<ActiveTab>('integrations');
+  // On a phone the strip scrolls sideways and only the first three tabs fit, so
+  // opening ?tab=media or ?tab=billing showed a tab strip with the current tab
+  // off-screen to the right. Keep the active tab in view.
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  // Smooth only when the tab was tapped. A tab set from the URL (page load,
+  // an "Add credits" link) jumps straight there: browsers don't run smooth
+  // scrolling in a background tab, so a page opened in one kept the strip at 0.
+  const tabPickedRef = useRef(false);
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    const btn = strip?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+    if (!strip || !btn) return;
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    // Scroll the strip only - scrollIntoView would also move the page.
+    strip.scrollTo({
+      left: btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2,
+      behavior: tabPickedRef.current ? 'smooth' : 'auto',
+    });
+  }, [activeTab]);
   const [renewalDate, setRenewalDate] = useState<string>('');
   const [logoError, setLogoError] = useState(false);
 
@@ -62,8 +83,14 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     // Initialize active tab from URL query param if present
     const tabParam = (searchParams.get('tab') || '').toLowerCase();
-    const allowed: ActiveTab[] = ['businessprofile', 'team', 'accounts', 'website', 'integrations', 'chat', 'api', 'billing', 'credits'];
+    const allowed: ActiveTab[] = ['businessprofile', 'team', 'accounts', 'website', 'integrations', 'calendars', 'chat', 'notifications', 'api', 'billing', 'credits'];
     // The Company tab was merged into Business Profile - redirect old links/bookmarks.
+    // Media Hub moved into Content Studio › Media - send old links/bookmarks there.
+    if (tabParam === 'media') {
+      // Reference images (?panel=assets) now live in Library › Images and video.
+      router.replace(searchParams.get('panel') === 'assets' ? '/content-studio?tab=library&view=media' : '/content-studio?tab=media');
+      return;
+    }
     if (tabParam === 'company') {
       const sp = new URLSearchParams(Array.from(searchParams.entries()));
       sp.set('tab', 'businessprofile');
@@ -107,7 +134,9 @@ const SettingsPage: React.FC = () => {
     // { id: 'accounts' as ActiveTab, label: 'Accounts', icon: UserCircle },
     // { id: 'website' as ActiveTab, label: 'Website', icon: Globe },
     { id: 'integrations' as ActiveTab, label: 'Integrations', icon: Plug },
+    { id: 'calendars' as ActiveTab, label: 'Calendars', icon: CalendarDays },
     { id: 'chat' as ActiveTab, label: 'Chat Settings', icon: MessageSquare },
+    { id: 'notifications' as ActiveTab, label: 'Notifications', icon: Bell },
     { id: 'api' as ActiveTab, label: 'Voice Settings', icon: Terminal },
     { id: 'billing' as ActiveTab, label: 'Billing', icon: CreditCard },
     { id: 'credits' as ActiveTab, label: 'Credits', icon: Coins },
@@ -143,17 +172,20 @@ const SettingsPage: React.FC = () => {
         </div>
         {/* Bottom Section: Tabs Navigation */}
         <div className="border-t border-gray-200/50 dark:border-gray-800/60 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
-          <div className="flex space-x-1 overflow-x-auto p-1">
+          <div ref={tabStripRef} className="relative flex space-x-1 overflow-x-auto p-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                data-tab={tab.id}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
                 onClick={() => {
+                  tabPickedRef.current = true;
                   setActiveTab(tab.id);
                   const sp = new URLSearchParams(Array.from(searchParams.entries()));
                   sp.set('tab', tab.id);
                   router.replace(`/settings?${sp.toString()}`);
                 }}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
                     ? 'bg-white dark:bg-gray-800 text-[#0B1957] dark:text-blue-400 shadow-md font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-800/50'
                 }`}
@@ -164,10 +196,10 @@ const SettingsPage: React.FC = () => {
             ))}
             <button
               onClick={() => router.push('/settings/icp-search-strategy')}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
+              className="flex items-center gap-2 px-4 py-2.5 max-lg:min-h-11 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
             >
               <Crosshair className="w-4 h-4" />
-              ICP Strategy
+              Lead search
             </button>
           </div>
         </div>
@@ -176,7 +208,9 @@ const SettingsPage: React.FC = () => {
       <div className="space-y-6">
         {activeTab === 'businessprofile' && <BusinessProfileSettings />}
         {activeTab === 'integrations' && <IntegrationsSettings />}
+        {activeTab === 'calendars' && <CalendarSettings />}
         {activeTab === 'chat' && <ChatSettings />}
+        {activeTab === 'notifications' && <NotificationSettings />}
         {activeTab === 'api' && <VoiceAgentSettings />}
         {/* Placeholder for other tabs */}
         {activeTab === 'team' && <TeamManagement />}

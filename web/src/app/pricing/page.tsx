@@ -25,7 +25,7 @@ export default function PricingPage() {
   const handleGetStarted = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (token) router.push('/settings?tab=credits&action=add');
-    else        router.push('/login');
+    else        router.push('/register');
   };
   const handleTalkToSales = () => router.push('/contact');
 
@@ -52,6 +52,10 @@ export default function PricingPage() {
               <span className="pillar c">Convert</span>
             </div>
           </header>
+
+          {/* On a phone only the first plan fits beside the feature names; say
+              that the table scrolls, or the other plans look missing. */}
+          <p className="swipe-hint">Swipe sideways to compare all {PLAN_COLUMNS} plans →</p>
 
           {/* ===== Comparison table scroll wrapper ===== */}
           <div className="table-scroll-wrapper">
@@ -313,7 +317,7 @@ export default function PricingPage() {
              #1A3F7F = primary brand accent (royal blue).
              Pillar accents stay as their own brand colors. */
           .pricing-root {
-            --paper: #F8FAFC; --ink: #222B45; --ink-soft: #8F9BB3; --line: #E5EAF2;
+            --paper: #F8FAFC; --ink: #222B45; --ink-soft: #5B6780; --line: #E5EAF2;
             --teal: #1A3F7F; --teal-soft: #EEF3FB;
             --outreach: #1F6FEB; --engage: #1E9E5A; --analyse: #D98A04; --convert: #7C4DCC;
             --card: #FFFFFF;
@@ -333,8 +337,8 @@ export default function PricingPage() {
           .pillars { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
           .pillar { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: #fff; }
           .pillar.o { background: var(--outreach); }
-          .pillar.e { background: var(--engage); }
-          .pillar.a { background: var(--analyse); }
+          .pillar.e { background: #177A45; } /* white on --engage was 3.45:1 */
+          .pillar.a { background: #9A6200; } /* white on --analyse was 2.77:1 */
           .pillar.c { background: var(--convert); }
 
           .table-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -422,6 +426,7 @@ export default function PricingPage() {
           .pricing-root :global(.scc-preset) { font-family: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
           .pricing-root :global(.scc-preset:hover) { border-color: var(--teal); }
           .pricing-root :global(.scc-preset.on) { background: var(--teal); border-color: var(--teal); color: #fff; }
+          @media (max-width: 1023.98px) { .pricing-root :global(.scc-preset) { min-height: 44px; min-width: 44px; } }
 
           /* Two-column grid */
           .pricing-root :global(.scc-grid) { display: grid; grid-template-columns: 1fr 460px; gap: 56px; align-items: start; }
@@ -435,10 +440,15 @@ export default function PricingPage() {
           /* Stage labels are the calculator's visual landmarks - sized up so
              they read clearly above each block of sliders. */
           .pricing-root :global(.scc-stage-num) { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
-          .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: var(--outreach); }
-          .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: var(--engage); }
+          /* Text-weight versions of the pillar hues: the fill hues are under 4.5:1 as 18px text. */
+          .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: #1A5FD0; }
+          .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: #157A45; }
           .pricing-root :global(.scc-stage-convert .scc-stage-num)  { color: var(--convert); }
-          .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: var(--analyse); }
+          .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: #9A6200; }
+          :global(.dark) .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: #5B9BF5; }
+          :global(.dark) .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: #4ADE80; }
+          :global(.dark) .pricing-root :global(.scc-stage-convert .scc-stage-num)  { color: #A78BFA; }
+          :global(.dark) .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: #FBBF24; }
           .pricing-root :global(.scc-stage-name) { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.3px; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-stage-rule) { flex: 1; height: 1px; background: var(--line); align-self: center; }
 
@@ -451,6 +461,7 @@ export default function PricingPage() {
 
           /* Custom range slider - track + thumb in our teal accent */
           .pricing-root :global(.scc-slider) { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer; }
+          @media (max-width: 1023.98px) { .pricing-root :global(.scc-slider) { height: 44px; } }
           .pricing-root :global(.scc-slider::-webkit-slider-runnable-track) { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--teal) var(--fill, 0%), #D8DDE6 var(--fill, 0%)); }
           .pricing-root :global(.scc-slider::-webkit-slider-thumb) { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); margin-top: -7px; box-shadow: 0 1px 3px rgba(26, 63, 127, .35); transition: transform .1s; }
           .pricing-root :global(.scc-slider::-webkit-slider-thumb:hover) { transform: scale(1.15); }
@@ -517,6 +528,27 @@ export default function PricingPage() {
             .pricing-root :global(.fname span) { display: none; }
             .pricing-root :global(.cell) { font-size: 10.5px; padding: 8px 3px; }
           }
+
+          /* Phones: at 390px the 860px table showed the feature column and one
+             plan, and swiping took the feature names away with it. Pin the
+             feature column, narrow the plan columns (about two in view), and
+             keep each section heading in view while the rows scroll. */
+          .swipe-hint { display: none; }
+          @media (max-width: 640px) {
+            .swipe-hint { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 8px; text-align: right; }
+            .table-scroll-inner { min-width: 0; width: max-content; }
+            .grid, .pricing-root :global(.frow) { grid-template-columns: 112px repeat(${PLAN_COLUMNS}, 104px); }
+            .corner, .pricing-root :global(.fname) { position: sticky; left: 0; z-index: 3; background: var(--card); }
+            .corner { background: var(--paper); }
+            .pricing-root :global(.frow:nth-child(even) .fname) { background: #FBFCFE; }
+            :global(.dark) .pricing-root :global(.frow:nth-child(even) .fname) { background: #151f3d; }
+            .pricing-root :global(.fname) { padding: 10px 8px; box-shadow: 1px 0 0 var(--line); }
+            .pricing-root :global(.fname b) { font-size: 12px; }
+            /* overflow:hidden made each section its own scroll container, which
+               stops sticky children; clip keeps the rounded corners without it. */
+            .pricing-root :global(section.fgroup) { overflow: clip; }
+            .pricing-root :global(.fgroup > .head) { position: sticky; left: 0; width: calc(100vw - 40px); box-sizing: border-box; min-height: 44px; }
+          }
           
           /* --- Dark Mode Additions --- */
           
@@ -527,8 +559,8 @@ export default function PricingPage() {
         --card-dark: #101935;
         --ink: #222B45; 
         --ink-dark: #F1F5F9;
-        --ink-soft: #8F9BB3; 
-        --ink-soft-dark: #7a8ba3;
+        --ink-soft: #5B6780; 
+        --ink-soft-dark: #9AA8BD;
         --line: #E5EAF2; 
         --line-dark: #262831;
         --teal: #1A3F7F; 
@@ -590,9 +622,10 @@ export default function PricingPage() {
           --paper: #000724;
           --card: #101935;
           --ink: #F1F5F9;
-          --ink-soft: #7a8ba3;
+          --ink-soft: #9AA8BD;
           --line: #262831;
-          --teal: #3b82f6; /* Adjust to your preferred dark-mode accent */
+          --teal: #2563eb; /* fill accent: white text on it is 5.17:1 (#3b82f6 was 3.68:1) */
+          --teal-ink: #60a5fa; /* accent as text on navy cards: 5.4:1+ */
           --teal-soft: #1e295d;
         }
         
@@ -637,6 +670,17 @@ export default function PricingPage() {
           color: var(--ink-soft); 
         }
         
+        :global(.dark) .pricing-root :global(.scc-lad-price),
+        :global(.dark) .pricing-root :global(.scc-lad-title span),
+        :global(.dark) .pricing-root :global(.yes),
+        :global(.dark) .pricing-root :global(.head .bench b),
+        :global(.dark) .pricing-root :global(.scc-verdict strong),
+        :global(.dark) .pricing-root :global(.scc-item.active .scc-item-value),
+        :global(.dark) .pricing-root :global(.scc-item.active .scc-tool-price),
+        :global(.dark) .pricing-root :global(.scc-plan-features svg) {
+          color: var(--teal-ink);
+        }
+
         /* --- Dark Mode Additions for Plan Cards --- */
         
         /* Reset background for the "No AI" card in dark mode */

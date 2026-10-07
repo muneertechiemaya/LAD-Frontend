@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power, Loader2, FolderOpen } from 'lucide-react';
+import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power, Loader2, ChevronLeft } from 'lucide-react';
 import { useCreditsBalance } from '@lad/frontend-features/billing';
 import { Input } from '@/components/ui/input';
 import { GoogleAuthIntegration } from './GoogleAuthIntegration';
@@ -15,10 +15,8 @@ import { TenantOnboarding } from './TenantOnboarding';
 import { WhatsAppEmbeddedSignup } from './WhatsAppEmbeddedSignup';
 import { GoHighLevelIntegration } from './GoHighLevelIntegration';
 import { ZohoIntegration } from './ZohoIntegration';
-import { MageSettings } from './MageSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
-import { safeStorage } from '@lad/shared/storage';
 
 type IntegrationView = 'grid' | string;
 
@@ -41,8 +39,8 @@ const CREDIT_GATED_IDS = new Set(['linkedin', 'whatsapp-ai', 'whatsapp-personal'
 const INTEGRATIONS: IntegrationCard[] = [
   {
     id: 'whatsapp-ai',
-    name: 'WhatsApp API Agent',
-    description: 'Configure your WhatsApp Business API account for AI-powered conversations.',
+    name: 'WhatsApp Business',
+    description: 'Your WhatsApp Business number, with Mr LAD replying for you.',
     icon: (
       <svg viewBox="0 0 175.216 175.552" className="h-7 w-7">
         <defs><linearGradient id="wa1" x1="85.915" x2="86.535" y1="32.567" y2="137.092" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#57d163"/><stop offset="1" stopColor="#23b33a"/></linearGradient></defs>
@@ -132,20 +130,9 @@ const INTEGRATIONS: IntegrationCard[] = [
     category: 'Email & Calendar',
   },
   {
-    // Not an OAuth connection — we provision a Drive folder on our own account
-    // and share it with the user, so this asks nothing of their Google account.
-    // Distinct from the 'google' card above, which is their own Google sign-in.
-    id: 'brand-assets',
-    name: 'Media Generation Engine',
-    description: 'Brand DNA, reference imagery, generated media, and the shorthand the media agent understands.',
-    icon: <FolderOpen className="h-6 w-6 text-indigo-600" />,
-    iconBg: 'bg-indigo-50',
-    category: 'Content',
-  },
-  {
     id: 'custom-email',
-    name: 'Custom Email (SMTP)',
-    description: 'Connect Roundcube, cPanel mail, Zoho, Yandex, Fastmail, or any self-hosted webmail.',
+    name: 'Other email inbox',
+    description: 'Any other email account: Zoho, Yandex, Fastmail, cPanel or your own server.',
     icon: <Server className="h-6 w-6 text-emerald-600" />,
     iconBg: 'bg-emerald-50',
     category: 'Email & Calendar',
@@ -218,7 +205,9 @@ const INTEGRATIONS: IntegrationCard[] = [
   },
 ];
 
-type ConnectionStatus = 'connected' | 'disconnected' | 'loading';
+// 'unknown' = the check itself failed. Shown as "Couldn't check", never as
+// "Disconnected": a 503 from a service is not the same as no account.
+type ConnectionStatus = 'connected' | 'disconnected' | 'loading' | 'unknown';
 
 export const IntegrationsSettings: React.FC = () => {
   const router = useRouter();
@@ -317,12 +306,17 @@ export const IntegrationsSettings: React.FC = () => {
   }, []);
 
   const refreshStatuses = useCallback(() => {
+    // The checks below run one after another; mark them all as checking now so
+    // a connected account further down never shows "Connect Now" while it waits its turn.
+    for (const id of ['whatsapp-personal', 'whatsapp-ai', 'google', 'microsoft', 'instagram', 'linkedin', 'gohighlevel', 'zoho', 'mindbody', 'routemagic']) {
+      setStatus(id, 'loading');
+    }
     const checkAll = async () => {
       // WhatsApp Personal
       setStatus('whatsapp-personal', 'loading');
       try {
         const res = await fetchWithTenant('/api/personal-whatsapp/accounts');
-        if (!res.ok) { setStatus('whatsapp-personal', 'disconnected'); }
+        if (!res.ok) { setStatus('whatsapp-personal', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
@@ -343,13 +337,13 @@ export const IntegrationsSettings: React.FC = () => {
             } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
-      } catch { setStatus('whatsapp-personal', 'disconnected'); }
+      } catch { setStatus('whatsapp-personal', 'unknown'); }
 
       // WhatsApp AI
       setStatus('whatsapp-ai', 'loading');
       try {
         const res = await fetchWithTenant('/api/whatsapp-conversations/admin/whatsapp-accounts');
-        if (!res.ok) { setStatus('whatsapp-ai', 'disconnected'); }
+        if (!res.ok) { setStatus('whatsapp-ai', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
@@ -368,29 +362,29 @@ export const IntegrationsSettings: React.FC = () => {
             } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
-      } catch { setStatus('whatsapp-ai', 'disconnected'); }
+      } catch { setStatus('whatsapp-ai', 'unknown'); }
 
       // Google
       setStatus('google', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/email/google/status', { method: 'POST' });
-        if (!res.ok) { setStatus('google', 'disconnected'); }
+        if (!res.ok) { setStatus('google', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('google', data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('google', 'disconnected'); }
+      } catch { setStatus('google', 'unknown'); }
 
       // Microsoft
       setStatus('microsoft', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/email/microsoft/status', { method: 'POST' });
-        if (!res.ok) { setStatus('microsoft', 'disconnected'); }
+        if (!res.ok) { setStatus('microsoft', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('microsoft', data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('microsoft', 'disconnected'); }
+      } catch { setStatus('microsoft', 'unknown'); }
 
       // Instagram - hits the standalone LAD-Instagram-Comms service via
       // the Next.js proxy. "Connected" = at least one active (non-deleted)
@@ -398,7 +392,7 @@ export const IntegrationsSettings: React.FC = () => {
       setStatus('instagram', 'loading');
       try {
         const res = await fetchWithTenant('/api/instagram-conversations/accounts');
-        if (!res.ok) { setStatus('instagram', 'disconnected'); }
+        if (!res.ok) { setStatus('instagram', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
@@ -407,47 +401,48 @@ export const IntegrationsSettings: React.FC = () => {
           );
           setStatus('instagram', connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('instagram', 'disconnected'); }
+      } catch { setStatus('instagram', 'unknown'); }
 
       // LinkedIn
       setStatus('linkedin', 'loading');
       try {
         const res = await fetchWithTenant('/api/campaigns/linkedin/accounts');
-        if (!res.ok) { setStatus('linkedin', 'disconnected'); }
+        if (!res.ok) { setStatus('linkedin', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
           const connected = accounts.some((a: any) => a.status === 'connected' || a.status === 'active');
           setStatus('linkedin', connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('linkedin', 'disconnected'); }
+      } catch { setStatus('linkedin', 'unknown'); }
 
       // GoHighLevel
       setStatus('gohighlevel', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/gohighlevel/status');
-        if (!res.ok) { setStatus('gohighlevel', 'disconnected'); }
+        if (!res.ok) { setStatus('gohighlevel', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('gohighlevel', data?.data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('gohighlevel', 'disconnected'); }
+      } catch { setStatus('gohighlevel', 'unknown'); }
 
       // Zoho CRM
       setStatus('zoho', 'loading');
       try {
         const res = await fetchWithTenant('/api/social-integration/zoho/status');
-        if (!res.ok) { setStatus('zoho', 'disconnected'); }
+        if (!res.ok) { setStatus('zoho', res.status === 404 ? 'disconnected' : 'unknown'); }
         else {
           const data = await res.json();
           setStatus('zoho', data?.data?.connected ? 'connected' : 'disconnected');
         }
-      } catch { setStatus('zoho', 'disconnected'); }
+      } catch { setStatus('zoho', 'unknown'); }
 
       // MindBody
       try {
         setStatus('mindbody', 'loading');
         const r = await fetchWithTenant('/api/social-integration/mindbody/status', { method: 'POST' });
+        if (!r.ok && r.status !== 404) throw new Error(`status ${r.status}`); // -> 'unknown' below
         const data = await r.json();
         setStatus('mindbody', data?.connected ? 'connected' : 'disconnected');
         if (data?.connected) {
@@ -458,13 +453,14 @@ export const IntegrationsSettings: React.FC = () => {
           });
         }
       } catch {
-        setStatus('mindbody', 'disconnected');
+        setStatus('mindbody', 'unknown');
       }
 
       // Route Magic
       try {
         setStatus('routemagic', 'loading');
         const r = await fetchWithTenant('/api/social-integration/routemagic/status');
+        if (!r.ok && r.status !== 404) throw new Error(`status ${r.status}`); // -> 'unknown' below
         const data = await r.json();
         setStatus('routemagic', data?.connected ? 'connected' : 'disconnected');
         if (data?.connected) {
@@ -477,33 +473,9 @@ export const IntegrationsSettings: React.FC = () => {
           });
         }
       } catch {
-        setStatus('routemagic', 'disconnected');
+        setStatus('routemagic', 'unknown');
       }
 
-      // Brand Assets folder — served by the playground worker, not the Next.js
-      // API, so this goes direct with the JWT rather than via fetchWithTenant.
-      //
-      // Deliberately last in this chain. Every other check hits our own API,
-      // but this one hits a Cloud Run service in asia-south1 that has no
-      // minScale, so a first visit after an idle period pays a cold start.
-      // Anywhere earlier and every integration below it waits behind that.
-      // Being last also means the timeout can be generous: ConnectionStatus has
-      // no "unknown", so timing out has to claim 'disconnected', and a short
-      // fuse would mislabel a connected folder whenever the worker was cold.
-      setStatus('brand-assets', 'loading');
-      try {
-        const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
-        const token = safeStorage.getItem('token');
-        const res = await fetch(`${workerUrl}/brand-assets/status`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          signal: AbortSignal.timeout(10000),
-        });
-        if (!res.ok) { setStatus('brand-assets', 'disconnected'); }
-        else {
-          const data = await res.json();
-          setStatus('brand-assets', data?.asset_count > 0 || data?.drive_connected ? 'connected' : 'disconnected');
-        }
-      } catch { setStatus('brand-assets', 'disconnected'); }
     };
     checkAll();
   }, [setStatus]);
@@ -615,14 +587,22 @@ export const IntegrationsSettings: React.FC = () => {
     <>
       {activeView !== 'grid' ? (
         <div className="space-y-4">
+          {/* Shared by every integration sub-view, so it is fixed once here.
+              It was a bare text link with no padding and almost no hit area,
+              which read as unstyled rather than deliberate. */}
           <button
             onClick={() => {
               setActiveView('grid');
               refreshStatuses();
             }}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors dark:text-slate-300"
+            className="group inline-flex items-center gap-1.5 rounded-lg border border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-200 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800/60 dark:hover:border-slate-700 transition-colors font-medium"
+            style={{
+              fontSize: 'clamp(0.78rem, 0.86vw, 0.9rem)',
+              padding: 'clamp(0.35rem, 0.5vw, 0.5rem) clamp(0.6rem, 0.9vw, 0.9rem)',
+            }}
           >
-            &larr; Back to Integrations
+            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+            Back to integrations
           </button>
 
           {activeView === 'whatsapp-ai' && (
@@ -650,7 +630,6 @@ export const IntegrationsSettings: React.FC = () => {
               }
             />
           )}
-          {activeView === 'brand-assets' && <MageSettings />}
           {activeView === 'linkedin' && <LinkedInIntegration />}
           {activeView === 'gohighlevel' && <GoHighLevelIntegration />}
           {activeView === 'zoho' && <ZohoIntegration />}
@@ -896,7 +875,7 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {routeMagicSyncResult && (
                     <div className="rounded-xl border border-emerald-100 dark:border-emerald-950/60 bg-emerald-50/40 dark:bg-emerald-950/10 p-3.5 text-xs font-semibold space-y-2">
-                      <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-[10px]">Last sync result</div>
+                      <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-xs">Last sync result</div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-700 dark:text-slate-300">
                     <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Fetched:</span> <span className="font-bold text-sm text-blue-500">{routeMagicSyncResult.fetched}</span></div>
                         <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Inserted:</span> <span className="font-bold text-sm text-emerald-500">{routeMagicSyncResult.inserted}</span></div>
@@ -1037,8 +1016,8 @@ export const IntegrationsSettings: React.FC = () => {
                 >
                   {integration.comingSoon && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
-                        <Clock className="h-2.5 w-2.5" />
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
+                        <Clock className="h-3 w-3" />
                         Coming Soon
                       </span>
                     </div>
@@ -1046,8 +1025,8 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {!integration.comingSoon && isLocked && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
-                        <Lock className="h-2.5 w-2.5" />
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
+                        <Lock className="h-3 w-3" />
                         Requires Credits
                       </span>
                     </div>
@@ -1055,15 +1034,17 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {!integration.comingSoon && !isLocked && status && status !== 'loading' && (
                     <div className="absolute top-3 right-3">
-                      <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
                         status === 'connected'
                           ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/50'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
+                          : status === 'unknown'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          status === 'connected' ? 'bg-green-500 dark:bg-emerald-400' : 'bg-gray-400 dark:bg-slate-400'
+                          status === 'connected' ? 'bg-green-500 dark:bg-emerald-400' : status === 'unknown' ? 'bg-amber-500 dark:bg-amber-400' : 'bg-gray-400 dark:bg-slate-400'
                         }`} />
-                        {status === 'connected' ? 'Connected' : 'Disconnected'}
+                        {status === 'connected' ? 'Connected' : status === 'unknown' ? "Couldn't check" : 'Disconnected'}
                       </span>
                     </div>
                   )}
@@ -1074,7 +1055,7 @@ export const IntegrationsSettings: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm text-foreground leading-tight">{integration.name}</h3>
-                      <span className="text-[11px] text-muted-foreground dark:text-slate-300">{integration.category}</span>
+                      <span className="text-xs text-muted-foreground dark:text-slate-300">{integration.category}</span>
                     </div>
                   </div>
 
@@ -1099,7 +1080,7 @@ export const IntegrationsSettings: React.FC = () => {
                         }
                         onToggle={integration.id === 'whatsapp-ai' ? toggleWabaAi : toggleWapaAi}
                       />
-                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug dark:text-slate-300">
+                      <p className="mt-1 text-xs text-muted-foreground leading-snug dark:text-slate-300">
                         Applies to all chats on this account
                       </p>
                     </div>
@@ -1129,7 +1110,8 @@ export const IntegrationsSettings: React.FC = () => {
                             : 'bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 shadow-md'
                         }`}
                       >
-                        {status === 'connected' ? 'Manage Settings' : 'Connect Now'}
+                        {/* "Connect Now" only when we know it isn't connected — not while checking, not when the check failed. */}
+                        {status === 'connected' ? 'Manage Settings' : status === 'loading' ? 'Checking…' : status === 'unknown' ? 'Open' : 'Connect Now'}
                       </button>
                     )}
                   </div>
@@ -1425,7 +1407,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, rm_tenant_id: e.target.value }))}
                     className={modalInputClass}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-TENANT-ID</code> header
                     </p>
                 </div>
@@ -1451,7 +1433,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, api_key: e.target.value }))}
                     className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                         Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-API-KEY</code> header
                       </p>
                 </div>
@@ -1463,7 +1445,7 @@ export const IntegrationsSettings: React.FC = () => {
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, base_url: e.target.value }))}
                     className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Defaults to the sandbox endpoint. Switch to production when going live.</p>
                 </div>
               </div>
@@ -1484,7 +1466,7 @@ export const IntegrationsSettings: React.FC = () => {
                 >
                   {routeMagicConnecting ? 'Verifying & Connecting…' : 'Connect Route Magic Account'}
                 </button>
-                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-3 text-center">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-3 text-center">
                   We&apos;ll call <code className="text-foreground">GET /customers</code> against Route Magic to verify before saving.
                 </p>
               </div>
@@ -1517,7 +1499,7 @@ function AiToggleChip({
       type="button"
       onClick={onToggle}
       disabled={disabled}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 max-lg:min-h-11 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 ${
         enabled
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
           : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'

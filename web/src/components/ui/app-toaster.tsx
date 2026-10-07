@@ -58,7 +58,7 @@ export function AppToasterProvider({ children }: { children: React.ReactNode }) 
                   )}
                 </div>
                 <button
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
+                  className="inline-flex h-7 w-7 max-lg:h-11 max-lg:w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
                   onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
                 >
                   <X className="h-4 w-4" />

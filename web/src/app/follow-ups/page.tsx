@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Bell,
   Clock,
@@ -119,14 +120,14 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-4">
-      <div className={`p-2.5 rounded-lg ${color}`}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-2 sm:gap-4 dark:bg-[#071131] dark:border-blue-950/50">
+      <div className={`p-2 sm:p-2.5 rounded-lg ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-2xl font-semibold text-gray-900 mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+        <p className="text-sm text-gray-500 dark:text-slate-400">{label}</p>
+        <p className="text-2xl font-semibold text-gray-900 mt-0.5 dark:text-white">{value}</p>
+        {sub && <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{sub}</p>}
       </div>
     </div>
   );
@@ -152,6 +153,7 @@ export default function FollowUpsPage() {
   const [configSaving, setConfigSaving] = useState(false);
   const [configDirty, setConfigDirty] = useState(false);
   const [icpStatus, setIcpStatus] = useState<IcpStatusData | null>(null);
+  const [icpStatusFailed, setIcpStatusFailed] = useState(false);
   const [templates, setTemplates] = useState<WaTemplate[]>([]);
   const [templateSending, setTemplateSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -185,7 +187,10 @@ export default function FollowUpsPage() {
     setConfigLoading(true);
     try {
       const d = await apiFetch('/api/whatsapp-conversations/followup-settings');
-      if (d && !d.error) { setConfig(d); setConfigDirty(false); }
+      // The service answers { success, data: config }. Keeping the envelope left
+      // every field undefined: blank inputs and "Disabled" whatever was saved.
+      const cfg = d?.data ?? d;
+      if (cfg && !d.error && typeof cfg === 'object') { setConfig(cfg); setConfigDirty(false); }
     } catch {/* ignore */} finally {
       setConfigLoading(false);
     }
@@ -195,8 +200,8 @@ export default function FollowUpsPage() {
   const loadIcpStatus = useCallback(async () => {
     try {
       const d = await apiFetch('/api/whatsapp-conversations/followup-settings/status');
-      if (d && !d.error) setIcpStatus(d);
-    } catch {/* ignore */}
+      if (d && !d.error) { setIcpStatus(d); setIcpStatusFailed(false); } else setIcpStatusFailed(true);
+    } catch { setIcpStatusFailed(true); }
   }, []);
 
   // ── Load WA templates ──
@@ -273,7 +278,8 @@ export default function FollowUpsPage() {
         method: 'PUT',
         body: JSON.stringify(config),
       });
-      if (d && !d.error) { setConfig(d); setConfigDirty(false); }
+      const saved = d?.data ?? d;
+      if (saved && !d.error && typeof saved === 'object') { setConfig(saved); setConfigDirty(false); }
     } catch {/* ignore */} finally {
       setConfigSaving(false);
     }
@@ -314,28 +320,28 @@ export default function FollowUpsPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#000724]">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div className="bg-white border-b px-6 py-4 flex items-center justify-between dark:bg-[#071131] dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg">
+          <div className="p-2 bg-blue-50 rounded-lg dark:bg-blue-500/10">
             <GitFork className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">Follow-ups</h1>
-            <p className="text-sm text-gray-500">Manage automated follow-ups and re-engagement messages</p>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Follow-ups</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Leads who went quiet, and the nudges Mr LAD sends them</p>
           </div>
         </div>
         <button
           onClick={() => { loadStatus(); loadLeads(); loadConfig(); loadIcpStatus(); }}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 max-lg:min-h-11 transition-colors dark:text-slate-400 dark:hover:text-white dark:bg-white/5 dark:hover:bg-white/10 dark:border-slate-700"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
         </button>
       </div>
 
-      <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full">
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -343,45 +349,46 @@ export default function FollowUpsPage() {
             label="Scheduled"
             value={statusLoading ? '-' : (status?.scheduled_count ?? 0)}
             icon={Calendar}
-            color="bg-blue-50 text-blue-600"
+            color="bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
             sub="Pending send"
           />
           <StatCard
             label="Sent (24h)"
             value={statusLoading ? '-' : (status?.recent_sent_24h ?? 0)}
             icon={CheckCircle}
-            color="bg-green-50 text-green-600"
+            color="bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-300"
             sub="Last 24 hours"
           />
           <StatCard
-            label="Eligible Leads"
+            label="Leads to follow up"
             value={statusLoading ? '-' : (status?.eligible_leads ?? 0)}
             icon={Users}
-            color="bg-orange-50 text-orange-600"
-            sub="Need follow-up"
+            color="bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300"
+            sub="Gone quiet, ready for a nudge"
           />
           <StatCard
-            label="Scheduler"
-            value={statusLoading ? '-' : (status?.scheduler_active ? 'Active' : 'Paused')}
-            icon={status?.scheduler_active ? Bell : AlertCircle}
-            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}
-            sub={status?.business_hours ? 'Business hours' : 'Outside hours'}
+            label="Automatic sending"
+            value={statusLoading ? '-' : (status?.scheduler_active ? 'On' : 'Waiting')}
+            icon={status?.scheduler_active ? Bell : Clock}
+            // Waiting for business hours is normal, not an error: neutral, not red.
+            color={status?.scheduler_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}
+            sub={status?.business_hours ? 'Sending during business hours' : 'Resumes in business hours'}
           />
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="flex border-b">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden dark:bg-[#071131] dark:border-blue-950/50">
+          <div className="flex border-b dark:border-slate-800">
             <button
               onClick={() => setActiveTab('leads')}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'leads'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
               <Users className="w-4 h-4" />
-              Inactive Leads
+              Gone quiet
               {leads.length > 0 && (
                 <span className="bg-orange-100 text-orange-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {leads.length}
@@ -392,12 +399,12 @@ export default function FollowUpsPage() {
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'settings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
               <Settings className="w-4 h-4" />
-              ICP Follow-up Settings
+              Follow-up settings
             </button>
           </div>
 
@@ -406,16 +413,16 @@ export default function FollowUpsPage() {
             <div className="p-5">
               {/* Search bar */}
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400" />
                 <input
-                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 dark:border-slate-700"
                   placeholder="Search by name or phone…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X className="w-4 h-4 text-gray-400" />
+                    <X className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                   </button>
                 )}
               </div>
@@ -436,26 +443,26 @@ export default function FollowUpsPage() {
               )}
 
               {leadsLoading ? (
-                <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+                <div className="flex items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Loading inactive leads…
+                  Loading leads who went quiet…
                 </div>
               ) : filteredLeads.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-3">
                   <CheckCircle className="w-10 h-10 text-green-300" />
-                  <p className="font-medium text-gray-600">No inactive leads found</p>
-                  <p className="text-sm">All leads are engaged or there are no eligible leads at this time.</p>
+                  <p className="font-medium text-gray-600 dark:text-slate-300">Nobody needs a nudge right now</p>
+                  <p className="text-sm">Leads who stop replying after a few days show up here, ready for a follow-up.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Lead</th>
-                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Inactive for</th>
-                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Last message</th>
-                        <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                      <tr className="border-b text-left dark:border-slate-800">
+                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Lead</th>
+                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Inactive for</th>
+                        <th className="pb-3 pr-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Last message</th>
+                        <th className="pb-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -466,8 +473,8 @@ export default function FollowUpsPage() {
                         return (
                           <tr key={lead.lead_id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td className="py-3.5 pr-4">
-                              <div className="font-medium text-gray-900">{name}</div>
-                              <div className="text-xs text-gray-400 mt-0.5">{lead.phone_number}</div>
+                              <div className="font-medium text-gray-900 dark:text-white">{name}</div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{lead.phone_number}</div>
                             </td>
                             <td className="py-3.5 pr-4">
                               {lead.context_status && (
@@ -482,7 +489,7 @@ export default function FollowUpsPage() {
                                 {formatHours(lead.hours_inactive)}
                               </div>
                             </td>
-                            <td className="py-3.5 pr-4 text-gray-500 text-xs">
+                            <td className="py-3.5 pr-4 text-gray-500 text-xs dark:text-slate-400">
                               {formatDate(lead.last_message_at)}
                             </td>
                             <td className="py-3.5">
@@ -499,7 +506,7 @@ export default function FollowUpsPage() {
                                 <button
                                   disabled={isLoading}
                                   onClick={() => scheduleFollowup(lead)}
-                                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 dark:bg-blue-500/10"
                                 >
                                   {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                                   Schedule
@@ -520,26 +527,31 @@ export default function FollowUpsPage() {
           {activeTab === 'settings' && (
             <div className="p-5 space-y-6">
               {configLoading ? (
-                <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+                <div className="flex items-center justify-center py-16 text-gray-500 dark:text-slate-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Loading settings…
                 </div>
               ) : !config ? (
-                <div className="flex items-center justify-center py-16 text-gray-400">
+                <div className="flex items-center justify-center py-16 text-gray-500 dark:text-slate-400">
                   Failed to load settings.
                 </div>
               ) : (
                 <>
+                  {icpStatusFailed && !icpStatus && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/50 dark:bg-amber-500/10 dark:text-amber-200">
+                      Couldn&apos;t load how many members are waiting. The settings below still work.
+                    </p>
+                  )}
                   {/* ICP Status cards */}
                   {icpStatus && (
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
+                      <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100 dark:bg-blue-500/10">
                         <p className="text-2xl font-semibold text-blue-700">{icpStatus.total_idle}</p>
                         <p className="text-xs text-blue-500 mt-1">Total idle members</p>
                       </div>
                       <div className="bg-orange-50 rounded-xl p-4 text-center border border-orange-100">
                         <p className="text-2xl font-semibold text-orange-700">{icpStatus.eligible_for_followup}</p>
-                        <p className="text-xs text-orange-500 mt-1">Eligible for follow-up</p>
+                        <p className="text-xs text-orange-500 mt-1">Ready for a follow-up</p>
                       </div>
                       <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
                         <p className="text-2xl font-semibold text-green-700">{icpStatus.already_scheduled}</p>
@@ -549,20 +561,20 @@ export default function FollowUpsPage() {
                   )}
 
                   {/* Config form */}
-                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-5">
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-5 dark:bg-white/5 dark:border-blue-950/50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium text-gray-900">Automated ICP Follow-ups</h3>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          Automatically follow up with members who haven&apos;t completed their profile
+                        <h3 className="font-medium text-gray-900 dark:text-white">Automatic follow-ups</h3>
+                        <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
+                          Remind WhatsApp members who went quiet before finishing their profile
                         </p>
                       </div>
                       <button
                         onClick={() => updateConfig({ enabled: !config.enabled })}
-                        className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                        className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 max-lg:min-h-11 rounded-lg transition-colors ${
                           config.enabled
-                            ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
-                            : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
+                            ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-800/50'
+                            : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 dark:bg-white/10 dark:text-slate-300 dark:border-slate-700'
                         }`}
                       >
                         {config.enabled
@@ -574,8 +586,8 @@ export default function FollowUpsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                          Idle Hours Before First Follow-up
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Hours of silence before the first reminder
                         </label>
                         <input
                           type="number"
@@ -583,13 +595,13 @@ export default function FollowUpsPage() {
                           max={168}
                           value={config.idle_hours}
                           onChange={(e) => updateConfig({ idle_hours: parseInt(e.target.value) || 1 })}
-                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Hours of inactivity before sending (1-168)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">1 to 168 hours</p>
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                          Repeat Interval (minutes)
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Minutes between reminders
                         </label>
                         <input
                           type="number"
@@ -597,13 +609,13 @@ export default function FollowUpsPage() {
                           max={1440}
                           value={config.interval_minutes}
                           onChange={(e) => updateConfig({ interval_minutes: parseInt(e.target.value) || 5 })}
-                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Minutes between repeat messages (5-1440)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">5 to 1,440 minutes (one day)</p>
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                          Max Attempts
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                          Most reminders per member
                         </label>
                         <input
                           type="number"
@@ -611,29 +623,29 @@ export default function FollowUpsPage() {
                           max={10}
                           value={config.max_attempts}
                           onChange={(e) => updateConfig({ max_attempts: parseInt(e.target.value) || 1 })}
-                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Max follow-up messages per member (1-10)</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">1 to 10</p>
                       </div>
                     </div>
 
                     {/* Message type */}
                     <div>
-                      <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                        Message Type
+                      <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                        What to send
                       </label>
                       <div className="flex gap-3 mt-1.5">
                         {(['template', 'custom'] as const).map((t) => (
                           <button
                             key={t}
                             onClick={() => updateConfig({ message_type: t })}
-                            className={`flex-1 py-2 rounded-lg border text-sm font-medium capitalize transition-colors ${
+                            className={`flex-1 py-2 max-lg:min-h-11 rounded-lg border text-sm font-medium capitalize transition-colors ${
                               config.message_type === t
                                 ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 dark:bg-[#071131] dark:text-slate-300 dark:border-slate-700'
                             }`}
                           >
-                            {t === 'template' ? '📋 Template' : '✏️ Custom'}
+                            {t === 'template' ? 'Approved template' : 'Your own message'}
                           </button>
                         ))}
                       </div>
@@ -641,15 +653,15 @@ export default function FollowUpsPage() {
 
                     {config.message_type === 'custom' && (
                       <div>
-                        <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
                           Custom Message
-                          <span className="ml-1 text-gray-400 normal-case font-normal">(use {'{member_name}'} for personalisation)</span>
+                          <span className="ml-1 text-gray-500 dark:text-slate-400 normal-case font-normal">(use {'{member_name}'} for personalisation)</span>
                         </label>
                         <textarea
                           rows={3}
                           value={config.custom_message}
                           onChange={(e) => updateConfig({ custom_message: e.target.value })}
-                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white resize-none"
+                          className="mt-1.5 w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white resize-none dark:border-slate-700 dark:bg-[#071131]"
                           placeholder="Hi {member_name}, we noticed…"
                         />
                       </div>
@@ -677,29 +689,33 @@ export default function FollowUpsPage() {
                   </div>
 
                   {/* Send template section */}
-                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-4">
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-4 dark:bg-white/5 dark:border-blue-950/50">
                     <div>
-                      <h3 className="font-medium text-gray-900">Send Template Now</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        Immediately send a WhatsApp template to eligible members
+                      <h3 className="font-medium text-gray-900 dark:text-white">Send Template Now</h3>
+                      <p className="text-sm text-gray-500 mt-0.5 dark:text-slate-400">
+                        Send a WhatsApp template now to everyone ready for a follow-up
                       </p>
                     </div>
 
                     {templates.length === 0 ? (
-                      <div className="flex items-center gap-2 text-sm text-gray-400 bg-white rounded-lg border border-dashed border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 bg-white rounded-lg border border-dashed border-gray-200 p-4 dark:bg-[#071131] dark:border-slate-700">
                         <AlertCircle className="w-4 h-4 shrink-0" />
-                        No approved templates found. Create templates in Meta Business Manager.
+                        <span>
+                          No approved WhatsApp templates yet.{' '}
+                          <Link href="/conversations/templates" className="font-medium text-blue-700 underline-offset-2 hover:underline dark:text-blue-300">Create one in Templates</Link>
+                          {' '}— Meta reviews each one before it can be sent.
+                        </span>
                       </div>
                     ) : (
                       <>
                         <div className="flex gap-3 flex-wrap">
                           <div className="flex-1 min-w-48">
-                            <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">Template</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">Template</label>
                             <div className="relative mt-1.5">
                               <select
                                 value={selectedTemplate}
                                 onChange={(e) => setSelectedTemplate(e.target.value)}
-                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                               >
                                 {templates.map((t) => (
                                   <option key={`${t.name}-${t.language}`} value={t.name}>
@@ -707,30 +723,30 @@ export default function FollowUpsPage() {
                                   </option>
                                 ))}
                               </select>
-                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400 pointer-events-none" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-36">
-                            <label className="text-xs font-medium text-gray-600 uppercase tracking-wider">Send to</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">Send to</label>
                             <div className="relative mt-1.5">
                               <select
                                 value={templateTarget}
                                 onChange={(e) => setTemplateTarget(e.target.value as 'all' | 'eligible')}
-                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white dark:border-slate-700 dark:bg-[#071131]"
                               >
-                                <option value="eligible">Eligible members only</option>
+                                <option value="eligible">Only people ready for a follow-up</option>
                                 <option value="all">All idle members</option>
                               </select>
-                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400 pointer-events-none" />
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between">
                           {icpStatus && (
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-slate-400">
                               Will send to{' '}
-                              <strong className="text-gray-700">
+                              <strong className="text-gray-700 dark:text-slate-200">
                                 {templateTarget === 'eligible'
                                   ? icpStatus.eligible_for_followup
                                   : icpStatus.total_idle}

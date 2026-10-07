@@ -57,7 +57,7 @@ export {
 // ============================================================================
 // HOOKS - PIPELINE
 // ============================================================================
-export { usePipelineData, usePipelineStats } from "./hooks/usePipeline";
+export { usePipelineData, usePipelineStats, useLeadStageTotals } from "./hooks/usePipeline";
 export { usePipelineLeads } from "./hooks/usePipelineLeads";
 
 // ============================================================================

@@ -96,7 +96,7 @@ export default function AcceleratorSection({
       </ol>
 
       {anyReportLink && (
-        <p className="mt-4 flex items-start gap-2 text-[11.5px] text-slate-400 dark:text-[#5f7089]">
+        <p className="mt-4 flex items-start gap-2 text-xs text-slate-500 dark:text-[#8b9ab0]">
           <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
           <span>
             Steps tagged <code>{'{{report_url}}'}</code> render blank until the audit is approved.
@@ -143,7 +143,7 @@ function StatusPill({ status }: { status: AcceleratorSequence['status'] }) {
     completed: { label: 'Completed', cls: 'text-slate-600 border-slate-200 dark:border-[#262831]', dot: '#64748b' },
   }[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${map.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${map.cls}`}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: map.dot }} />
       {map.label}
     </span>
@@ -164,7 +164,7 @@ function StepRow({ step, isLast }: { step: SequenceStep; isLast: boolean }) {
       )}
 
       <span
-        className={`relative z-10 w-[27px] h-[27px] rounded-full grid place-items-center text-[11px] font-semibold shrink-0 border ${
+        className={`relative z-10 w-[27px] h-[27px] rounded-full grid place-items-center text-xs font-semibold shrink-0 border ${
           done
             ? 'bg-white dark:bg-[#000724] border-emerald-300 dark:border-emerald-800 text-emerald-600'
             : current
@@ -192,7 +192,7 @@ function StepRow({ step, isLast }: { step: SequenceStep; isLast: boolean }) {
           )}
 
           {step.uses_report_url && (
-            <p className="mt-1 inline-flex items-center gap-1.5 text-[11.5px] text-slate-400 dark:text-[#5f7089]">
+            <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-[#8b9ab0]">
               <Link2 className="w-3 h-3" />
               <code>{'{{report_url}}'}</code>
             </p>
@@ -200,7 +200,7 @@ function StepRow({ step, isLast }: { step: SequenceStep; isLast: boolean }) {
 
           {/* Attempted, never succeeded - the lead is parked here. */}
           {step.stuck && (
-            <p className="mt-1.5 inline-flex items-start gap-1.5 text-[11.5px] text-amber-700 dark:text-amber-400">
+            <p className="mt-1.5 inline-flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
                 Stuck - {step.stuck_attempts} failed attempt
@@ -214,7 +214,7 @@ function StepRow({ step, isLast }: { step: SequenceStep; isLast: boolean }) {
 
         <div className="text-right shrink-0">
           <StepStatusPill step={step} />
-          <p className="mt-1 text-[11.5px] text-slate-400 dark:text-[#5f7089]">
+          <p className="mt-1 text-xs text-slate-500 dark:text-[#8b9ab0]">
             {step.at ? `${rel(step.at)} ago` : `Day ${step.day}`}
           </p>
         </div>
@@ -230,7 +230,7 @@ function ApprovalPill({ status }: { status: string }) {
       ? 'text-red-700 border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400'
       : 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400';
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>
       <FileText className="w-3 h-3" />
       audit {status}
     </span>
@@ -248,7 +248,7 @@ function StepStatusPill({ step }: { step: SequenceStep }) {
         : 'text-blue-700 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-300' }
       : { label: 'Queued', cls: 'text-slate-500 bg-slate-100 dark:bg-[#141a2e] dark:text-[#7a8ba3]' };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
       {label}
     </span>
   );

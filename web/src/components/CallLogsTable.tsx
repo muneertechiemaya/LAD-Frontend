@@ -2,9 +2,12 @@ import React, { useMemo, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { selectUser } from "@/store/slices/authSlice";
 import { cn } from "@/lib/utils";
+import { LiveDuration, isLiveCallStatus } from "@/components/call-logs/LiveDuration";
 import {
   PhoneIncoming,
   PhoneOutgoing,
+  PhoneForwarded,
+  Loader2,
   StopCircle,
   ChevronDown,
   ChevronRight,
@@ -90,6 +93,18 @@ interface CallLogsTableProps {
   selectAllMode?: 'none' | 'page' | 'all';
   onRowClick: (id: string) => void;
   onEndCall: (id: string) => void;
+  /** Place a follow-up call to the same person after a completed call. */
+  onFollowUpCall?: (id: string) => void;
+  /** Row whose follow-up request is in flight — its button shows a spinner and ignores clicks. */
+  followingUpId?: string | null;
+  /** True while POST /calls/retry is out; both Retry buttons disable. */
+  isRetrying?: boolean;
+  /** Row whose single End Call is in flight. */
+  endingId?: string | null;
+  /** True while End Selected is out. */
+  isEndingSelected?: boolean;
+  /** How many of the selected calls are live (what End Selected would act on). */
+  activeCount?: number;
   batchGroups?: { groups: Record<string, CallLog[]>; noBatchCalls: CallLog[] };
   expandedBatches?: Set<string>;
   onToggleBatch?: (batchId: string) => void;
@@ -130,6 +145,12 @@ export function CallLogsTable({
   selectAllMode = 'none',
   onRowClick,
   onEndCall,
+  onFollowUpCall,
+  followingUpId = null,
+  isRetrying = false,
+  endingId = null,
+  isEndingSelected = false,
+  activeCount,
   batchGroups,
   expandedBatches = new Set(),
   onToggleBatch,
@@ -307,12 +328,26 @@ export function CallLogsTable({
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return "-";
+    // A call that never connected lasted 0:00; "-" read as missing data.
+    if (!seconds) return "0:00";
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
+  // Telephony end reasons in plain words; anything unlisted shows as sent.
+  const CALL_END_REASON: Record<string, string> = {
+    'agent hangup': 'Mr LAD ended the call',
+    'customer hangup': 'Lead hung up',
+    'user hangup': 'Lead hung up',
+    'receiver hangup': 'Lead hung up',
+    'silence timeout': 'Ended after a long silence',
+    'sip carrier timeout': "Couldn't reach the phone network",
+    'no answer': 'No answer',
+    'busy': 'Line busy',
+    'voicemail': 'Went to voicemail',
+    'failed': "Didn't connect",
+  };
   const getStatusReason = (item: CallLog): string | undefined => {
     const raw: any = (item as any)?.metadata;
     if (!raw) return undefined;
@@ -330,7 +365,8 @@ export function CallLogsTable({
     }
 
     if (reason && typeof reason === 'string') {
-      return reason.replace(/_/g, ' ');
+      const plain = reason.replace(/_/g, ' ').trim();
+      return CALL_END_REASON[plain.toLowerCase()] ?? plain.charAt(0).toUpperCase() + plain.slice(1);
     }
 
     return reason;
@@ -479,7 +515,8 @@ export function CallLogsTable({
         const hasLead = leadName !== "-";
         return (
           <div className="group flex items-center gap-2">
-            <span className="text-muted-foreground">{leadName}</span>
+            {/* "-" read as a broken value; say what it is. */}
+            <span className={hasLead ? 'text-muted-foreground' : 'italic text-muted-foreground'}>{hasLead ? leadName : 'No name saved'}</span>
             {hasLead && (
               <button
                 onClick={(e) => {
@@ -538,7 +575,7 @@ export function CallLogsTable({
       id: "response",
       header: "Response",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground capitalize">
+        <span className="text-sm text-muted-foreground">
           {getStatusReason(row.original) || "-"}
         </span>
       ),
@@ -555,7 +592,15 @@ export function CallLogsTable({
       id: 'duration',
       accessorKey: 'duration',
       header: 'Duration',
-      cell: ({ getValue }) => <span className="font-mono text-sm">{formatDuration(getValue() as number)}</span>,
+      // A call still on the line has no stored duration yet; count up live from
+      // when it started instead of showing "-" until it ends.
+      cell: ({ getValue, row }) => {
+        const item = row.original;
+        if (isLiveCallStatus(item.status) && item.startedAt) {
+          return <LiveDuration since={item.startedAt} />;
+        }
+        return <span className="font-mono text-sm">{formatDuration(getValue() as number)}</span>;
+      },
     },
     {
       id: 'tag',
@@ -599,7 +644,7 @@ export function CallLogsTable({
               );
             }}
           >
-            <SelectTrigger className={`w-24 h-7 text-xs ${tagConfig.bgColor} ${tagConfig.textColor} border ${tagConfig.borderColor} focus:ring-0`}>
+            <SelectTrigger className={`w-24 h-7 max-lg:w-auto max-lg:min-w-24 max-lg:h-11 max-lg:gap-2 text-xs ${tagConfig.bgColor} ${tagConfig.textColor} border ${tagConfig.borderColor} focus:ring-0`}>
               <SelectValue placeholder="Tag" />
             </SelectTrigger>
             <SelectContent>
@@ -670,20 +715,37 @@ export function CallLogsTable({
         const item = row.original;
         return (
           <div onClick={(e) => e.stopPropagation()} className="flex gap-2 items-center">
-            {item.status?.toLowerCase().includes("ongoing") && (
+            {["ongoing", "ringing", "in_progress", "calling"].includes(item.status?.toLowerCase() ?? "") && (
               <button
                 onClick={() => onEndCall(item.id)}
-                className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                title="End Call"
+                disabled={endingId !== null}
+                aria-busy={endingId === item.id}
+                className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                title={endingId === item.id ? "Ending call…" : "End Call"}
               >
-                <StopCircle className="w-5 h-5" />
+                {endingId === item.id
+                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  : <StopCircle className="w-5 h-5" />}
+              </button>
+            )}
+            {onFollowUpCall && ["completed", "ended"].includes(item.status?.toLowerCase() ?? "") && (
+              <button
+                onClick={() => onFollowUpCall(item.id)}
+                disabled={followingUpId !== null}
+                aria-busy={followingUpId === item.id}
+                className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                title={followingUpId === item.id ? "Starting follow-up call…" : "Follow-up call (same number, same agent, last call as context)"}
+              >
+                {followingUpId === item.id
+                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  : <PhoneForwarded className="w-5 h-5" />}
               </button>
             )}
           </div>
         );
       },
     },
-  ], [selectedCalls, onSelectCall, onSelectAll, onEndCall, getLeadTag, selectAllMode]);
+  ], [selectedCalls, onSelectCall, onSelectAll, onEndCall, endingId, onFollowUpCall, followingUpId, getLeadTag, selectAllMode]);
 
   // Setup table instance with filtered data
   const table = useReactTable({
@@ -714,6 +776,12 @@ export function CallLogsTable({
     const completedCalls =
       (headerRow as any)?.batch_completed_calls ??
       detailCalls.filter(c => c.status?.toLowerCase() === 'completed' || c.status?.toLowerCase() === 'ended').length;
+    const failedCalls =
+      (headerRow as any)?.batch_failed_calls ??
+      detailCalls.filter(c => c.status?.toLowerCase() === 'failed').length;
+    const declinedCalls =
+      (headerRow as any)?.batch_declined_calls ??
+      detailCalls.filter(c => c.status?.toLowerCase() === 'declined').length;
     const totalCost = detailCalls.reduce((sum, call) => {
       const cost = Number(call.cost || call.call_cost || 0);
       return sum + (isNaN(cost) ? 0 : cost);
@@ -751,6 +819,16 @@ export function CallLogsTable({
                 <span className="text-muted-foreground min-w-[100px]">
                   <span className="font-semibold text-foreground">{completedCalls}</span> completed
                 </span>
+                {declinedCalls > 0 && (
+                  <span className="text-muted-foreground" title="The person declined, was busy or did not answer">
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">{declinedCalls}</span> declined
+                  </span>
+                )}
+                {failedCalls > 0 && (
+                  <span className="text-muted-foreground" title="Carrier or trunk failure on our side">
+                    <span className="font-semibold text-red-600 dark:text-rose-400">{failedCalls}</span> failed
+                  </span>
+                )}
                 <span className="text-muted-foreground">
                   Total: <span className="font-semibold text-foreground">${totalCost.toFixed(2)}</span>
                 </span>
@@ -874,6 +952,13 @@ export function CallLogsTable({
     );
   };
 
+  // Cards replace the table below lg for the plain list (see JSX). The page
+  // always passes batchGroups; with no actual batch groups every call is a
+  // plain row, so cards apply. Real batch groups keep the grouped table
+  // (expand/collapse rows the cards don't replicate).
+  const hasBatchGroups = !!batchGroups && Object.keys(batchGroups.groups || {}).length > 0;
+  const showCallCards = !isLoading && !hasBatchGroups && table.getRowModel().rows.length > 0;
+
   return (
     <div id="call-logs-table" className="bg-white dark:bg-[#000724] rounded-lg border border-[#E2E8F0] dark:border-[#262831] shadow-sm overflow-hidden">
       {/* Search Bar & Filters Area */}
@@ -886,7 +971,7 @@ export function CallLogsTable({
               placeholder="Search Call Logs..."
               value={globalFilter ?? ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-10 h-10 rounded-md border border-[#E2E8F0] dark:border-blue-950/40 bg-transparent dark:bg-slate-800/50 dark:text-white placeholder:text-[#64748B] dark:placeholder:text-slate-300 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="w-full pl-10 h-10 max-lg:h-11 rounded-md border border-[#E2E8F0] dark:border-blue-950/40 bg-transparent dark:bg-slate-800/50 dark:text-white placeholder:text-[#64748B] dark:placeholder:text-slate-300 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
@@ -900,6 +985,7 @@ export function CallLogsTable({
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="ended">Completed</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="declined">Declined</SelectItem>
                 <SelectItem value="calling">Calling</SelectItem>
                 <SelectItem value="ongoing">Ongoing</SelectItem>
                 <SelectItem value="queue">Queue</SelectItem>
@@ -936,9 +1022,11 @@ export function CallLogsTable({
                       e.stopPropagation();
                       onRetrySelected();
                     }}
-                    className="flex-1 px-3 py-2 bg-[#FEF3C6] hover:bg-[#FDE68A] text-amber-700 rounded-lg transition-all duration-300 text-xs font-bold shadow-md active:scale-95"
+                    disabled={isRetrying}
+                    aria-busy={isRetrying}
+                    className="flex-1 px-3 py-2 bg-[#FEF3C6] hover:bg-[#FDE68A] text-amber-700 rounded-lg transition-all duration-300 text-xs font-bold shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-wait"
                   >
-                    Retry ({failedCount})
+                    {isRetrying ? "Retrying…" : `Retry (${failedCount})`}
                   </button>
                 )}
                 {onEndSelected && (
@@ -947,9 +1035,11 @@ export function CallLogsTable({
                       e.stopPropagation();
                       onEndSelected();
                     }}
-                    className="flex-1 px-3 py-2 bg-[#FFE2E2] hover:bg-[#FCDADA] text-red-700 rounded-lg transition-all duration-300 text-xs font-bold shadow-md active:scale-95"
+                    disabled={isEndingSelected || activeCount === 0}
+                    aria-busy={isEndingSelected}
+                    className="flex-1 px-3 py-2 bg-[#FFE2E2] hover:bg-[#FCDADA] text-red-700 rounded-lg transition-all duration-300 text-xs font-bold shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    End ({selectedCalls.size})
+                    {isEndingSelected ? "Ending…" : `End (${activeCount ?? selectedCalls.size})`}
                   </button>
                 )}
               </div>
@@ -994,7 +1084,55 @@ export function CallLogsTable({
           </div>
         )}
       </div>
-      <div className="w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative">
+      {/* Phones and tablets: one card per call. The table below needs 1000px+
+          (12 columns, 1272px at 390px wide). Only the plain list gets cards;
+          loading, batch groups and empty states keep the table. Cards reuse
+          the table's own cell renderers. */}
+      {showCallCards && (
+        <ul className="lg:hidden divide-y divide-[#E2E8F0] dark:divide-[#262831] border-b border-[#E2E8F0] dark:border-[#262831]">
+          {table.getRowModel().rows.map((row) => {
+            const render = (id: string) => {
+              const cell = row.getVisibleCells().find((c) => c.column.id === id);
+              return cell ? flexRender(cell.column.columnDef.cell, cell.getContext()) : null;
+            };
+            const open = () => onRowClick(row.original.id);
+            return (
+              <li key={row.id} className={selectedCalls.has(row.original.id) ? 'bg-primary/5' : 'bg-white dark:bg-[#000724]'}>
+                <div
+                  role="link"
+                  tabIndex={0}
+                  onClick={open}
+                  onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
+                  className="flex flex-col gap-2 px-4 py-3 cursor-pointer active:bg-gray-50 dark:active:bg-[#253456]"
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1 text-sm">{render('lead_name')}</div>
+                    <div
+                      className="-mr-2 -mt-1 shrink-0 [&_button]:min-h-11 [&_button]:min-w-11"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {render('actions')}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {render('status')}
+                    {render('type')}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#64748B] dark:text-slate-300">
+                    <span className="min-w-0">{render('assistant')}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{render('startedAt')}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{render('duration')}</span>
+                  </div>
+                  <div className="empty:hidden">{render('tag')}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className={cn('w-full overflow-auto scrollbar-hide max-h-[calc(100vh-320px)] border-b border-[#E2E8F0] dark:border-[#262831] relative', showCallCards && 'max-lg:hidden')}>
         <div className="min-w-[1000px] w-full">
           <Table containerClassName="overflow-visible" className="border-separate border-spacing-0">
             <TableHeader className="sticky top-0 z-30 bg-[#F8FAFC] dark:bg-[#000724] shadow-xs border-b border-[#E2E8F0] dark:border-[#262831]">
@@ -1270,7 +1408,7 @@ export function CallLogsTable({
                   onPageChange?.(1);
                 }}
               >
-                <SelectTrigger className="w-[70px] h-7 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
+                <SelectTrigger className="w-[70px] h-7 max-lg:h-11 text-xs bg-transparent border-slate-200 dark:border-blue-950/40 text-slate-800 dark:text-white">
                   <SelectValue placeholder={perPage} />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40 min-w-[70px] max-w-[70px] w-[70px] p-0">
@@ -1315,7 +1453,8 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="First page"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -1324,7 +1463,8 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={!hasPreviousPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1333,7 +1473,8 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -1342,7 +1483,8 @@ export function CallLogsTable({
                 size="sm"
                 onClick={() => onPageChange(totalPages)}
                 disabled={!hasNextPage}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 max-lg:h-11 max-lg:w-11 p-0"
+                aria-label="Last page"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>
@@ -1354,9 +1496,9 @@ export function CallLogsTable({
 
       {/* Booking Dialog */}
       <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/40 text-foreground dark:text-white">
+        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#000724] border border-slate-200 dark:border-blue-950/40 text-foreground dark:text-white">
           {/* Added padding and matching sub-borders to the dialog header line */}
-          <DialogHeader className="p-6 border-b border-slate-100 dark:border-blue-950/40">
+          <DialogHeader className="p-6 border-b border-slate-100 dark:border-blue-950/40 dark:bg-[#081331]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shadow-sm flex items-center justify-center w-10 h-10">
                 <CalendarRange className="h-5 w-5" />

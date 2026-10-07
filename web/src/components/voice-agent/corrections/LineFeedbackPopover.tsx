@@ -1,0 +1,195 @@
+'use client';
+
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { type CorrectionInput } from './api';
+
+interface LineFeedbackPopoverProps {
+  /** The agent line that got a 👎. */
+  line: string;
+  anchor: { x: number; y: number };
+  onSave: (input: CorrectionInput) => Promise<void>;
+  onClose: () => void;
+}
+
+/**
+ * Shown after a 👎 on an agent line: "what should it have said?" The suggestion
+ * is optional — a bare dislike is still useful, it tells the agent never to say
+ * that line. Saved as kind='disliked' (prompt-only; never a TTS substitution).
+ */
+export function LineFeedbackPopover({ line, anchor, onSave, onClose }: LineFeedbackPopoverProps) {
+  const [right, setRight] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
+
+  React.useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const onDown = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [onClose]);
+
+  const submit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({ wrong: line.trim(), right: right.trim(), kind: 'disliked' });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Placed against the viewport, and re-placed once the card has been measured.
+  //
+  // Three things were wrong here and they only showed up together, as a card
+  // hanging off the right edge of the screen with its buttons unreachable:
+  //
+  //  1. `position: fixed` was NOT viewport-relative. DialogContent carries
+  //     `translate-x-[-50%] translate-y-[-50%]` (plus a zoom animation), and a
+  //     transformed ancestor becomes the containing block for its fixed
+  //     descendants. So the browser resolved left/top against the dialog's box
+  //     while this math clamped against window.innerWidth. The card is now
+  //     portalled to document.body, which is the only way to opt out of that.
+  //  2. The width was a hard 360px. Below ~376px of viewport there is no
+  //     position that fits, and the clamp's upper bound went below its lower
+  //     bound, so the card ran off the edge instead of shrinking.
+  //  3. The height was a guessed 240px, used to decide whether to flip above
+  //     the anchor. A long Telugu line wraps to three or four lines and the
+  //     card is well past 240, so it flipped the wrong way and overflowed the
+  //     bottom. It is measured now, which also means the flip is correct when
+  //     an error message appears and the card grows.
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
+
+  React.useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const [viewport, setViewport] = React.useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    h: typeof window !== 'undefined' ? window.innerHeight : 800,
+  }));
+
+  React.useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const style: React.CSSProperties = React.useMemo(() => {
+    const GAP = 8;
+    const { w: vw, h: vh } = viewport;
+    const width = Math.min(360, Math.max(240, vw - GAP * 2));
+    // Before the first measurement, assume the card is tall rather than short:
+    // guessing short is what flipped it into the bottom edge.
+    const height = size?.h ?? 320;
+
+    // clamp() rather than min(max()): when the card is taller or wider than the
+    // viewport there is no valid range, and the lower bound has to win so the
+    // top-left corner stays reachable.
+    const clamp = (value: number, max: number) => Math.max(GAP, Math.min(value, max));
+
+    const left = clamp(anchor.x, vw - width - GAP);
+    // Prefer below the anchor; flip above only when below genuinely does not
+    // fit AND above does.
+    const below = anchor.y + 6;
+    const fitsBelow = below + height + GAP <= vh;
+    const above = anchor.y - height - 12;
+    const top = fitsBelow || above < GAP ? clamp(below, vh - height - GAP) : above;
+
+    return {
+      position: 'fixed',
+      left,
+      top,
+      width,
+      maxHeight: `calc(100vh - ${GAP * 2}px)`,
+      overflowY: 'auto',
+      // DialogContent sits at z-[100]. Portalled out of it, anything lower than
+      // that renders behind the modal this is being used from.
+      zIndex: 110,
+    };
+  }, [anchor, size, viewport]);
+
+  // Portalled to document.body so `position: fixed` means the viewport. Rendered
+  // in place it inherits DialogContent's transform as its containing block and
+  // the placement above is computed against the wrong box entirely.
+  // Guarded for SSR: document does not exist during the server render.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      ref={cardRef}
+      style={style}
+      role="dialog"
+      aria-label="What should the agent have said?"
+      className="rounded-xl border border-border bg-popover text-popover-foreground shadow-xl p-3 space-y-3"
+      onMouseUp={(e) => e.stopPropagation()}
+    >
+      <div className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Don&apos;t say this:</span>{' '}
+        <span className="line-through decoration-destructive/70 break-words">{line}</span>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="line-feedback-right" className="text-xs">
+          What should it have said? <span className="text-muted-foreground">(optional)</span>
+        </Label>
+        <Textarea
+          id="line-feedback-right"
+          ref={inputRef}
+          value={right}
+          onChange={(e) => setRight(e.target.value)}
+          rows={3}
+          maxLength={600}
+          placeholder="e.g. ఆదివారం కూడా demo పెడతాం sir, ఏ time convenient గా ఉంటుంది?"
+          className="text-sm"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+        />
+        <p className="text-[11px] text-muted-foreground">Goes into the agent&apos;s prompt as a &quot;never say this&quot; example. ⌘/Ctrl+Enter saves.</p>
+      </div>
+      {error && (
+        <p className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+        <Button type="button" size="sm" onClick={() => void submit()} disabled={saving}>
+          {saving ? 'Saving…' : right.trim() ? 'Teach replacement' : 'Save dislike'}
+        </Button>
+      </div>
+    </div>,
+    document.body,
+  );
+}

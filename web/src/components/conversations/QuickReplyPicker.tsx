@@ -135,7 +135,7 @@ export function QuickReplyPicker({ onSelect, contactName, disabled }: QuickReply
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-9 w-9 max-lg:h-11 max-lg:w-11 flex-shrink-0 text-muted-foreground hover:text-foreground"
           disabled={disabled}
           title="Quick replies"
         >

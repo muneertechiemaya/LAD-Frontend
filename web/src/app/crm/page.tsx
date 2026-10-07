@@ -236,8 +236,8 @@ export default function CrmPage() {
 
   const crumbs: Crumb[] =
     view === 'board'
-      ? [{ label: 'Deals Pipeline' }]
-      : [{ label: 'Deals Pipeline', href: '/crm' }, { label: VIEW_TITLES[view] }];
+      ? [{ label: 'Contacts Funnel' }]
+      : [{ label: 'Contacts Funnel', href: '/crm' }, { label: VIEW_TITLES[view] }];
 
   const handleStatSelect = (key: Exclude<CrmView, 'board'>) => {
     setView((prev) => (prev === key ? 'board' : key));
@@ -282,8 +282,8 @@ export default function CrmPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
-      <TopBar crumbs={crumbs} />
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6">
+      <TopBar crumbs={crumbs} hideOnMobile />
+      <main className="max-w-[1280px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 py-6">
         <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <TrendingUp className="w-7 h-7 text-[#1e293b] dark:text-white" />
@@ -292,16 +292,16 @@ export default function CrmPage() {
                 className="text-2xl sm:text-3xl font-bold text-[#1e293b] dark:text-white"
                 style={{ fontFamily: '"Space Grotesk", system-ui' }}
               >
-                Deals Pipeline
+                Contacts Funnel
               </h1>
               <p className="text-[13px] text-[#6b7280] dark:text-slate-300">
-                Live cross-channel prospects across all your channels
+                Everyone you are talking to, from first contact to paying client
               </p>
             </div>
           </div>
           <Link
             href="/crm/zoho"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 max-lg:h-11 px-3 rounded-full border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
           >
             <span className="text-red-600 font-bold leading-none" aria-hidden>Z</span> Zoho CRM
           </Link>
@@ -349,7 +349,7 @@ export default function CrmPage() {
           renderMain()
         )}
 
-        <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
+        <footer className="pt-6 pb-2 text-xs text-slate-500 dark:text-slate-300 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
               sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was

@@ -29,7 +29,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
       type="button"
       onClick={onClose}
       aria-label="Close"
-      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+      className="max-lg:min-h-11 max-lg:min-w-11 absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors dark:text-slate-400 dark:hover:bg-white/10"
     >
       <X className="w-5 h-5" />
     </button>
@@ -357,12 +357,12 @@ function FailedRecipientsButton({
       type="button"
       onClick={apply}
       disabled={loading}
-      className="mt-2 w-full flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+      className="max-lg:min-h-11 mt-2 w-full flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50 dark:bg-rose-500/10"
     >
-      <span className="text-sm font-medium text-rose-700">
+      <span className="text-sm font-medium text-rose-700 dark:text-rose-300">
         ⚠ Resend to failed only ({count})
       </span>
-      <span className="text-xs text-rose-500">
+      <span className="text-xs text-rose-700 dark:text-rose-300">
         {loading ? 'Selecting…' : 'Preselect →'}
       </span>
     </button>
@@ -372,7 +372,7 @@ function FailedRecipientsButton({
 function highlightBody(body: string): React.ReactNode[] {
   return body.split(/(\{\{[^}]+\}\})/).map((part, i) =>
     /^\{\{[^}]+\}\}$/.test(part)
-      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs">{part}</span>
+      ? <span key={i} className="inline bg-indigo-100 text-indigo-700 px-0.5 rounded font-mono font-bold text-xs dark:text-indigo-300 dark:bg-indigo-500/15">{part}</span>
       : <span key={i}>{part}</span>
   );
 }
@@ -381,12 +381,12 @@ const displayName = (key: string) =>
   key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 const statusColor = (s: string, qualityPending?: boolean) => {
-  if (qualityPending)   return 'bg-amber-100 text-amber-700';
-  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700';
-  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700';
-  if (s === 'REJECTED') return 'bg-red-100 text-red-700';
-  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700';
-  return 'bg-slate-100 text-slate-500';
+  if (qualityPending)   return 'bg-amber-100 text-amber-700 dark:text-amber-300 dark:bg-amber-500/15';
+  if (s === 'APPROVED' || s === 'ACTIVE') return 'bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-500/15';
+  if (s === 'PENDING')  return 'bg-yellow-100 text-yellow-700 dark:text-yellow-300 dark:bg-yellow-500/15';
+  if (s === 'REJECTED') return 'bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-500/15';
+  if (s === 'PAUSED')   return 'bg-orange-100 text-orange-700 dark:text-orange-300 dark:bg-orange-500/15';
+  return 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400';
 };
 
 const statusLabel = (s: string, qualityPending?: boolean, qualityScore?: string) => {
@@ -644,30 +644,30 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
     return (
       <ModalPortal>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col dark:bg-[#071131]" onClick={e => e.stopPropagation()}>
           <CloseButton onClose={onClose} />
-          <h2 className="text-2xl font-bold text-slate-900 mb-1">Send Message</h2>
-          <p className="text-sm text-slate-500 mb-5">Select a Meta-approved template to send</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1 dark:text-white">Send Message</h2>
+          <p className="text-sm text-slate-500 mb-5 dark:text-slate-400">Select a Meta-approved template to send</p>
 
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none dark:text-slate-400" />
             <input
               type="text"
               placeholder="Search templates..."
               value={templateSearch}
               onChange={e => setTemplateSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="max-lg:min-h-11 w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-white/5 dark:border-slate-700"
             />
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mb-5 pr-1">
             {templatesLoading ? (
-              <div className="flex items-center justify-center py-10 text-slate-500 text-sm gap-2">
+              <div className="flex items-center justify-center py-10 text-slate-500 text-sm gap-2 dark:text-slate-400">
                 <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
                 Loading templates from Meta...
               </div>
             ) : filteredTemplates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400 text-sm gap-2">
+              <div className="flex flex-col items-center justify-center py-10 text-slate-500 text-sm gap-2 dark:text-slate-400">
                 <AlertCircle className="w-8 h-8" />
                 <p>{templateSearch ? 'No templates match your search.' : 'No approved templates found.'}</p>
               </div>
@@ -678,35 +678,35 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                   <button
                     key={`${t.name}-${t.language ?? ''}`}
                     onClick={() => setSelectedTemplate(t)}
-                    className={`w-full text-left p-4 border rounded-xl transition ${
+                    className={`max-lg:min-h-11 w-full text-left p-4 border rounded-xl transition ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
-                        : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                        ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:bg-indigo-500/10'
+                        : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      {isSelected && <CheckCircle className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
-                      <span className="font-semibold text-slate-900 text-sm">{displayName(t.name)}</span>
-                      <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(t.status, t.quality_pending)}`}>
+                      {isSelected && <CheckCircle className="w-4 h-4 text-indigo-600 flex-shrink-0 dark:text-indigo-300" />}
+                      <span className="font-semibold text-slate-900 text-sm dark:text-white">{displayName(t.name)}</span>
+                      <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor(t.status, t.quality_pending)}`}>
                         {statusLabel(t.status, t.quality_pending, t.quality_score)}
                       </span>
                     </div>
                     {t.quality_pending && (
-                      <p className="text-[10px] text-amber-600 mt-1 mb-1">
+                      <p className="text-xs text-amber-600 mt-1 mb-1 dark:text-amber-300">
                         ⚠️ Meta is assessing quality - delivery may be limited until approved.
                       </p>
                     )}
-                    <p className="text-xs text-slate-500 font-mono leading-relaxed line-clamp-3">
+                    <p className="text-xs text-slate-500 font-mono leading-relaxed line-clamp-3 dark:text-slate-400">
                       {t.body || '(no body text)'}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       {t.parameter_count > 0 && (
-                        <p className="text-[10px] text-indigo-500">
+                        <p className="text-xs text-indigo-500">
                           {t.parameter_count} param{t.parameter_count > 1 ? 's' : ''}: {t.parameters.map(p => `{{${p}}}`).join(', ')}
                         </p>
                       )}
                       {t.header_type && t.header_type !== 'text' && (
-                        <p className="text-[10px] text-slate-400">Header: {t.header_type}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Header: {t.header_type}</p>
                       )}
                     </div>
                   </button>
@@ -719,16 +719,16 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             <div className="flex gap-3 mb-5">
               <button
                 onClick={() => setSendMode('instant')}
-                className={`flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
-                  sendMode === 'instant' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
+                  sendMode === 'instant' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
                 <Send className="w-4 h-4" />Send Instantly
               </button>
               <button
                 onClick={() => setSendMode('schedule')}
-                className={`flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
-                  sendMode === 'schedule' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                className={`max-lg:min-h-11 flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
+                  sendMode === 'schedule' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
                 }`}
               >
                 <Clock className="w-4 h-4" />Schedule for Later
@@ -768,11 +768,11 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
     return (
       <ModalPortal>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col dark:bg-[#071131]" onClick={e => e.stopPropagation()}>
           <CloseButton onClose={onClose} />
-          <h2 className="text-2xl font-bold text-slate-900 mb-1">Map Parameters</h2>
-          <p className="text-sm text-slate-500 mb-5">
-            Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1 dark:text-white">Map Parameters</h2>
+          <p className="text-sm text-slate-500 mb-5 dark:text-slate-400">
+            Template: <span className="font-semibold text-indigo-600 dark:text-indigo-300">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
 
           {/* Scrollable middle: template body, media header, parameter rows,
@@ -781,21 +781,21 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
 
           {/* Template body with highlighted placeholders */}
-          <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">Template body</p>
-            <p className="text-sm text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">
+          <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl dark:bg-white/5 dark:border-slate-700">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1 dark:text-slate-400">Template body</p>
+            <p className="text-sm text-slate-700 leading-relaxed font-mono whitespace-pre-wrap dark:text-slate-200">
               {selectedTemplate ? highlightBody(selectedTemplate.body) : ''}
             </p>
           </div>
 
           {/* Media URL input for image/document/video header templates */}
           {['image', 'document', 'video'].includes(selectedTemplate?.header_type ?? '') && (
-            <div className="mb-3 p-4 border border-slate-200 rounded-xl bg-white">
-              <p className="text-sm font-medium text-slate-700 mb-2 capitalize">
+            <div className="mb-3 p-4 border border-slate-200 rounded-xl bg-white dark:border-slate-700 dark:bg-[#071131]">
+              <p className="text-sm font-medium text-slate-700 mb-2 capitalize dark:text-slate-200">
                 Header {selectedTemplate?.header_type}
               </p>
               {resolvingMedia ? (
-                <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
+                <div className="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
                   <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
                   Fetching image from Meta…
                 </div>
@@ -805,7 +805,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     <img
                       src={headerMediaUrl}
                       alt="Template header"
-                      className="w-full max-h-40 object-cover rounded-lg border border-slate-200 mb-2"
+                      className="w-full max-h-40 object-cover rounded-lg border border-slate-200 mb-2 dark:border-slate-700"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
@@ -814,9 +814,9 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     placeholder="https://example.com/image.jpg"
                     value={headerMediaUrl}
                     onChange={e => setHeaderMediaUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">
                     {headerMediaUrl
                       ? `✓ ${selectedTemplate?.header_type} ready to attach - edit URL to change`
                       : `Paste a public URL for the ${selectedTemplate?.header_type} to attach to this template`}
@@ -836,15 +836,15 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                 : null;
 
               return (
-                <div key={i} className="p-4 border border-slate-200 rounded-xl bg-white">
+                <div key={i} className="p-4 border border-slate-200 rounded-xl bg-white dark:border-slate-700 dark:bg-[#071131]">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono text-xs font-bold dark:text-indigo-300 dark:bg-indigo-500/15">
                       {`{{${paramNum}}}`}
                     </span>
-                    <span className="text-sm font-medium text-slate-700">Parameter {paramNum}</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Parameter {paramNum}</span>
                     {resolved !== null && (
-                      <span className="ml-auto text-xs text-slate-400">
-                        Preview: <span className="font-semibold text-slate-700">{resolved || '-'}</span>
+                      <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                        Preview: <span className="font-semibold text-slate-700 dark:text-slate-200">{resolved || '-'}</span>
                       </span>
                     )}
                   </div>
@@ -856,7 +856,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                       updated[i] = { ...updated[i], field: e.target.value };
                       setParamMapping(updated);
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-[#071131]"
                   >
                     <optgroup label="Contact Fields">
                       {FIELD_OPTIONS.filter(o => o.group === 'contact').map(opt => (
@@ -911,7 +911,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                         updated[i] = { ...updated[i], customValue: e.target.value };
                         setParamMapping(updated);
                       }}
-                      className="mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="max-lg:min-h-11 mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
                     />
                   )}
                 </div>
@@ -921,8 +921,8 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
 
           {/* Live message preview using first member */}
           {previewMember && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
-              <p className="text-xs font-medium text-green-700 mb-1">
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl dark:bg-green-500/10">
+              <p className="text-xs font-medium text-green-700 mb-1 dark:text-green-300">
                 Preview for <span className="font-bold">{previewMember.name}</span>
               </p>
               <p className="text-xs text-green-900 font-mono whitespace-pre-wrap leading-relaxed">
@@ -934,12 +934,12 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>{/* end scrollable middle */}
 
           <div className="flex gap-3 justify-end pt-4">
-            <button onClick={() => setStep('template')} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1">
+            <button onClick={() => setStep('template')} className="max-lg:min-h-11 px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
             <button
               onClick={() => setStep('members')}
-              className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-1"
+              className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -955,22 +955,22 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
     return (
       <ModalPortal>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto dark:bg-[#071131]" onClick={e => e.stopPropagation()}>
           <CloseButton onClose={onClose} />
-          <h2 className="text-2xl font-bold text-slate-900 mb-1">Select Recipients</h2>
-          <p className="text-sm text-slate-500 mb-5">
-            Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1 dark:text-white">Select Recipients</h2>
+          <p className="text-sm text-slate-500 mb-5 dark:text-slate-400">
+            Template: <span className="font-semibold text-indigo-600 dark:text-indigo-300">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
 
-          <div className="mb-4 pb-4 border-b border-slate-200">
-            <label className="flex items-center p-3 bg-indigo-50 rounded-lg cursor-pointer">
+          <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
+            <label className="flex items-center p-3 bg-indigo-50 rounded-lg cursor-pointer dark:bg-indigo-500/10">
               <input
                 type="checkbox"
                 checked={selectAll}
                 onChange={e => handleSelectAllChange(e.target.checked)}
                 className="w-4 h-4 mr-3 cursor-pointer accent-indigo-600"
               />
-              <span className="font-medium text-slate-900">Send to all {allMembers.length} members</span>
+              <span className="font-medium text-slate-900 dark:text-white">Send to all {allMembers.length} members</span>
             </label>
 
             {/* Quick filters - preselect recipients by prior broadcast outcome */}
@@ -1000,15 +1000,15 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                       className="w-4 h-4 mr-3 cursor-pointer accent-indigo-600 disabled:cursor-not-allowed"
                     />
                     <div className="flex-1">
-                      <p className="font-medium text-slate-900 text-sm">{member.name}</p>
+                      <p className="font-medium text-slate-900 text-sm dark:text-white">{member.name}</p>
                       {hasPhone
-                        ? <p className="text-xs text-slate-400">{phone}</p>
+                        ? <p className="text-xs text-slate-500 dark:text-slate-400">{phone}</p>
                         : <p className="text-xs text-red-400">⚠ No phone number</p>
                       }
                     </div>
                     {/* Show resolved param preview per member */}
                     {paramMapping.length > 0 && hasPhone && (
-                      <p className="text-[10px] text-slate-400 ml-2 max-w-[120px] truncate">
+                      <p className="text-xs text-slate-500 ml-2 max-w-[120px] truncate dark:text-slate-400">
                         {paramMapping.map(m => resolveParam(member, m.field, m.customValue, memberRecData) || '-').join(' · ')}
                       </p>
                     )}
@@ -1018,10 +1018,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 text-sm text-blue-900">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 text-sm text-blue-900 dark:bg-blue-500/10">
             📱 Will send to <strong>{recipientCount}</strong> {recipientCount === 1 ? 'member' : 'members'}
             {noPhoneCount > 0 && (
-              <span className="block mt-1 text-xs text-amber-700">
+              <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
                 ⚠ {noPhoneCount} member{noPhoneCount > 1 ? 's' : ''} skipped - no phone number on file
               </span>
             )}
@@ -1033,14 +1033,14 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                 const hasMediaHeader = ['image', 'document', 'video'].includes(selectedTemplate?.header_type ?? '');
                 setStep((selectedTemplate?.parameter_count ?? 0) > 0 || hasMediaHeader ? 'params' : 'template');
               }}
-              className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1"
+              className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10"
             >
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
             <button
               onClick={() => setStep('confirm')}
               disabled={recipientCount === 0}
-              className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-1"
+              className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -1055,46 +1055,46 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
   return (
     <ModalPortal>
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto dark:bg-[#071131]" onClick={e => e.stopPropagation()}>
         <CloseButton onClose={onClose} />
-        <h2 className="text-2xl font-bold text-slate-900 mb-5">
+        <h2 className="text-2xl font-bold text-slate-900 mb-5 dark:text-white">
           {sendMode === 'instant' ? 'Confirm Send' : 'Schedule Message'}
         </h2>
 
         {sendMode === 'schedule' && (
           <div className="mb-5">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Scheduled Date & Time</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-200">Scheduled Date & Time</label>
             <input
               type="datetime-local"
               value={scheduledTime}
               onChange={e => setScheduledTime(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="max-lg:min-h-11 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700"
             />
           </div>
         )}
 
-        <div className="bg-slate-50 rounded-xl p-4 mb-6 space-y-2 text-sm">
-          <p><span className="text-slate-500">Template:</span> <span className="font-semibold text-slate-900">{displayName(selectedTemplate?.name ?? '')}</span></p>
-          <p><span className="text-slate-500">Mode:</span> <span className="font-semibold text-slate-900">{sendMode === 'instant' ? 'Send Immediately' : 'Scheduled'}</span></p>
-          <p><span className="text-slate-500">Recipients:</span> <span className="font-semibold text-slate-900">{recipientCount} members</span></p>
+        <div className="bg-slate-50 rounded-xl p-4 mb-6 space-y-2 text-sm dark:bg-white/5">
+          <p><span className="text-slate-500 dark:text-slate-400">Template:</span> <span className="font-semibold text-slate-900 dark:text-white">{displayName(selectedTemplate?.name ?? '')}</span></p>
+          <p><span className="text-slate-500 dark:text-slate-400">Mode:</span> <span className="font-semibold text-slate-900 dark:text-white">{sendMode === 'instant' ? 'Send Immediately' : 'Scheduled'}</span></p>
+          <p><span className="text-slate-500 dark:text-slate-400">Recipients:</span> <span className="font-semibold text-slate-900 dark:text-white">{recipientCount} members</span></p>
           {sendMode === 'schedule' && scheduledTime && (
-            <p><span className="text-slate-500">Send At:</span> <span className="font-semibold">{new Date(scheduledTime).toLocaleString()}</span></p>
+            <p><span className="text-slate-500 dark:text-slate-400">Send At:</span> <span className="font-semibold">{new Date(scheduledTime).toLocaleString()}</span></p>
           )}
 
           {/* Parameter mapping summary */}
           {paramMapping.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-200">
-              <p className="text-slate-500 mb-2 text-xs font-medium uppercase tracking-wide">Parameter mapping</p>
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 dark:border-slate-700">
+              <p className="text-slate-500 mb-2 text-xs font-medium uppercase tracking-wide dark:text-slate-400">Parameter mapping</p>
               <div className="space-y-1">
                 {paramMapping.map((m, i) => (
                   <p key={i} className="text-xs flex items-center gap-1.5">
-                    <span className="font-mono text-indigo-600 bg-indigo-50 px-1 rounded">{`{{${i + 1}}}`}</span>
-                    <span className="text-slate-400">→</span>
-                    <span className="font-semibold text-slate-700">
+                    <span className="font-mono text-indigo-600 bg-indigo-50 px-1 rounded dark:bg-indigo-500/10 dark:text-indigo-300">{`{{${i + 1}}}`}</span>
+                    <span className="text-slate-500 dark:text-slate-400">→</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
                       {m.field === 'custom' ? `"${m.customValue}"` : (FIELD_OPTIONS.find(f => f.value === m.field)?.label ?? m.field)}
                     </span>
                     {previewMember && (
-                      <span className="text-slate-400 ml-1">
+                      <span className="text-slate-500 ml-1 dark:text-slate-400">
                         e.g. &quot;{resolveParam(previewMember, m.field, m.customValue, memberRecData)}&quot;
                       </span>
                     )}
@@ -1106,9 +1106,9 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
 
           {/* Message preview */}
           {selectedTemplate?.body && (
-            <div className="mt-3 pt-3 border-t border-slate-200">
-              <p className="text-slate-500 mb-1 text-xs">Message preview ({previewMember?.name ?? 'first member'}):</p>
-              <p className="text-xs text-slate-600 font-mono bg-white p-2 rounded border border-slate-200 whitespace-pre-wrap leading-relaxed">
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 dark:border-slate-700">
+              <p className="text-slate-500 mb-1 text-xs dark:text-slate-400">Message preview ({previewMember?.name ?? 'first member'}):</p>
+              <p className="text-xs text-slate-600 font-mono bg-white p-2 rounded border border-slate-200 whitespace-pre-wrap leading-relaxed dark:text-slate-300 dark:bg-[#071131] dark:border-slate-700">
                 {buildPreviewBody() || selectedTemplate.body}
               </p>
             </div>
@@ -1116,13 +1116,13 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         </div>
 
         <div className="flex gap-3 justify-end">
-          <button onClick={() => setStep('members')} disabled={isScheduling} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1">
+          <button onClick={() => setStep('members')} disabled={isScheduling} className="max-lg:min-h-11 px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1 dark:text-slate-200 dark:bg-white/10">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           <button
             onClick={handleSend}
             disabled={isScheduling || (sendMode === 'schedule' && !scheduledTime)}
-            className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-2"
+            className="max-lg:min-h-11 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center gap-2"
           >
             {isScheduling && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {sendMode === 'instant' ? 'Send Now' : 'Schedule'}

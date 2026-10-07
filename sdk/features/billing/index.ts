@@ -25,6 +25,8 @@
 // API FUNCTIONS
 // ============================================================================
 export {
+  getWalletBalances,
+  createBroadcastCheckout,
   // Primary API (credits-based naming)
   getCreditsBalance,
   getPricing,
@@ -41,7 +43,14 @@ export {
   // Backward compatibility aliases
   getWalletBalance,
   getWalletBalanceLegacy,
+  rechargeWallet,
+  subscribeMonthly,
+  setupAutoRecharge,
+  getRecurring,
+  cancelRecurring,
+  getWalletUsageAnalytics,
 } from './api';
+
 // ============================================================================
 // HOOKS
 // ============================================================================
@@ -59,10 +68,15 @@ export {
   useWalletBalanceWithTransactions,
   useCreditPackages,
   useStripeCheckout,
+  useWalletUsageAnalytics,
   // Backward compatibility aliases
   useWalletBalance,
   useWalletBalanceLegacy,
 } from './hooks';
+// The message-wallet types live beside their API functions, not in ./types —
+// ./types already exports a different `WalletBalance` (the credits wallet).
+export type { WalletKind, TenantWalletBalance, BroadcastCheckoutQuote } from './api';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -87,4 +101,9 @@ export type {
   LegacyWalletBalance,
   LegacyTransaction,
   CreditPackage,
+  RecurringPlan,
+  RecurringStatus,
+  PricingCatalogItem,
+  UsageAggregationGroup,
 } from './types';
+

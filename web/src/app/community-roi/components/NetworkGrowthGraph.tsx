@@ -40,13 +40,13 @@ interface TooltipProps { active?: boolean; payload?: TooltipEntry[]; label?: str
 const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-xs">
-      <p className="font-bold text-slate-700 mb-2">{label?.replace('\n', ' · ')}</p>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-xs dark:bg-[#071131] dark:border-slate-700">
+      <p className="font-bold text-slate-700 mb-2 dark:text-slate-200">{label?.replace('\n', ' · ')}</p>
       {payload.map((entry) => (
         <div key={entry.dataKey} className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-slate-500">{entry.name}:</span>
-          <span className="font-semibold text-slate-800">
+          <span className="text-slate-500 dark:text-slate-400">{entry.name}:</span>
+          <span className="font-semibold text-slate-800 dark:text-slate-100">
             {entry.dataKey === 'tyfcbAed'
               ? `AED ${Number(entry.value).toLocaleString()}`
               : entry.value}
@@ -67,16 +67,16 @@ interface KpiCardProps {
   color: string
 }
 const KpiCard = ({ icon, label, value, growth, color }: KpiCardProps) => (
-  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-3">
+  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-3 dark:bg-[#071131] dark:border-slate-800">
     <div className="flex items-center justify-between">
       <div className={`p-2 rounded-xl ${color}`}>{icon}</div>
-      <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
+      <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold dark:text-emerald-300">
         <ArrowUpRight className="w-3 h-3" /> {growth}
       </span>
     </div>
     <div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      <p className="text-2xl font-bold text-slate-900 mt-0.5">{value}</p>
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 mt-0.5 dark:text-white">{value}</p>
     </div>
   </div>
 )
@@ -174,12 +174,12 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-slate-50 rounded-t-3xl md:rounded-3xl shadow-2xl">
+      <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-slate-50 rounded-t-3xl md:rounded-3xl shadow-2xl dark:bg-white/5">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-8 py-5 flex items-center justify-between rounded-t-3xl">
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-8 py-5 flex items-center justify-between rounded-t-3xl dark:bg-[#071131] dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Network Growth Graph</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Network Growth Graph</h2>
+            <p className="text-sm text-slate-500 mt-0.5 dark:text-slate-400">
               {loading
                 ? 'Loading…'
                 : isLive
@@ -189,19 +189,19 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
           </div>
           <div className="flex items-center gap-3">
             {/* Monthly / Cumulative toggle */}
-            <div className="flex bg-slate-100 rounded-xl p-1 text-xs font-semibold">
+            <div className="flex bg-slate-100 rounded-xl p-1 text-xs font-semibold dark:bg-white/10">
               <button
                 onClick={() => setMode('monthly')}
-                className={`px-4 py-1.5 rounded-lg transition-all ${
-                  mode === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                className={`max-lg:min-h-11 px-4 py-1.5 rounded-lg transition-all ${
+                  mode === 'monthly' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#071131] dark:text-white' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setMode('cumulative')}
-                className={`px-4 py-1.5 rounded-lg transition-all ${
-                  mode === 'cumulative' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                className={`max-lg:min-h-11 px-4 py-1.5 rounded-lg transition-all ${
+                  mode === 'cumulative' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#071131] dark:text-white' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 Cumulative
@@ -209,7 +209,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              className="max-lg:min-h-11 max-lg:min-w-11 p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors dark:hover:bg-white/10 dark:text-slate-400"
             >
               <X className="w-5 h-5" />
             </button>
@@ -218,7 +218,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
 
         <div className="p-8 space-y-8">
           {loading ? (
-            <div className="flex items-center justify-center py-24 gap-3 text-slate-400">
+            <div className="flex items-center justify-center py-24 gap-3 text-slate-500 dark:text-slate-400">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="text-sm">Loading growth data…</span>
             </div>
@@ -227,7 +227,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
               {/* KPI summary row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <KpiCard
-                  icon={<Users className="w-4 h-4 text-blue-600" />}
+                  icon={<Users className="w-4 h-4 text-blue-600 dark:text-blue-300" />}
                   label={`Unique Meetings (${last.weekLabel})`}
                   value={currentMeetings.toString()}
                   growth={meetingGrowth}
@@ -241,7 +241,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                   color="bg-orange-50"
                 />
                 <KpiCard
-                  icon={<Zap className="w-4 h-4 text-violet-600" />}
+                  icon={<Zap className="w-4 h-4 text-violet-600 dark:text-violet-300" />}
                   label="Net Relationship Change"
                   value={`${netUpgrades >= 0 ? '+' : ''}${netUpgrades}`}
                   growth={isLive ? `${totalUpgrades} up · ${totalDowngrades} down` : '-'}
@@ -249,7 +249,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                 />
                 {showTyfcb ? (
                   <KpiCard
-                    icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+                    icon={<DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />}
                     label="Total TYFCB (AED)"
                     value={totalTyfcb >= 1000 ? `${(totalTyfcb / 1000).toFixed(0)}K` : totalTyfcb.toString()}
                     growth={tyfcbGrowth}
@@ -257,7 +257,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                   />
                 ) : (
                   <KpiCard
-                    icon={<Users className="w-4 h-4 text-slate-600" />}
+                    icon={<Users className="w-4 h-4 text-slate-600 dark:text-slate-300" />}
                     label={`Active Members (${last.weekLabel})`}
                     value={last.activeMembers ? last.activeMembers.toString() : '-'}
                     growth={memberGrowth}
@@ -267,17 +267,17 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
               </div>
 
               {/* Main chart */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 dark:bg-[#071131] dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
                       {mode === 'monthly' ? 'Monthly' : 'Cumulative'} Growth Trend
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
                       {isLive ? `${baseData.length} month${baseData.length !== 1 ? 's' : ''} of data` : 'Illustrative - upload meeting reports to see real data'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4 text-[11px] font-semibold text-slate-500">
+                  <div className="flex items-center gap-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
                       Unique Meetings
@@ -401,16 +401,16 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
               </div>
 
               {/* Month-by-month table */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-800">Monthly Breakdown</h3>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden dark:bg-[#071131] dark:border-slate-800">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Monthly Breakdown</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Month</th>
-                        <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Members</th>
+                      <tr className="border-b border-slate-100 dark:border-slate-800">
+                        <th className="text-left px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Month</th>
+                        <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Members</th>
                         <th className="text-right px-4 py-3 text-[10px] font-bold text-blue-400 uppercase tracking-wider">Unique Meetings</th>
                         <th className="text-right px-4 py-3 text-[10px] font-bold text-blue-300 uppercase tracking-wider">Per Member</th>
                         <th className="text-right px-4 py-3 text-[10px] font-bold text-orange-400 uppercase tracking-wider">Unique Referrals</th>
@@ -418,7 +418,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         {showTyfcb && (
                           <th className="text-right px-4 py-3 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">TYFCB (AED)</th>
                         )}
-                        <th className="text-right px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">MoM Meetings</th>
+                        <th className="text-right px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">MoM Meetings</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -435,20 +435,20 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                         const dMeet = prev ? delta(w.uniqueMeetings, prev.uniqueMeetings) : null
                         const dRef  = prev ? delta(w.uniqueReferrals, prev.uniqueReferrals) : null
                         const dMem  = prev ? delta(w.activeMembers, prev.activeMembers) : null
-                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-500' : 'text-slate-300')
+                        const signCls = (n: number) => (n > 0 ? 'text-emerald-500' : n < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-slate-300')
                         const signTxt = (n: number) => `${n > 0 ? '+' : ''}${n}`
                         return (
-                          <tr key={w.month} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-3 font-semibold text-slate-700">
+                          <tr key={w.month} className="hover:bg-slate-50 transition-colors dark:hover:bg-white/5">
+                            <td className="px-6 py-3 font-semibold text-slate-700 dark:text-slate-200">
                               {w.weekLabel}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-600">
+                            <td className="px-4 py-3 text-right font-semibold text-slate-600 dark:text-slate-300">
                               {w.activeMembers || '-'}
                               {dMem !== null && dMem !== 0 && (
                                 <span className={`ml-1 text-[9px] ${signCls(dMem)}`}>{signTxt(dMem)}</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right font-bold text-blue-600">
+                            <td className="px-4 py-3 text-right font-bold text-blue-600 dark:text-blue-300">
                               {w.uniqueMeetings}
                               {dMeet !== null && dMeet !== 0 && (
                                 <span className={`ml-1 text-[9px] ${signCls(dMeet)}`}>{signTxt(dMeet)}</span>
@@ -469,7 +469,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                               ) : (
                                 <span
                                   className={`inline-flex items-center gap-0.5 ${
-                                    w.netUpgrades >= 0 ? 'text-violet-600' : 'text-rose-600'
+                                    w.netUpgrades >= 0 ? 'text-violet-600 dark:text-violet-300' : 'text-rose-700 dark:text-rose-300'
                                   }`}
                                   title={`${w.upgrades} improved, ${w.downgrades} degraded`}
                                 >
@@ -477,14 +477,14 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                                     ? <ArrowUpRight className="w-3 h-3" />
                                     : <ArrowDownRight className="w-3 h-3" />}
                                   {signTxt(w.netUpgrades)}
-                                  <span className="ml-1 font-normal text-[9px] text-slate-400">
+                                  <span className="ml-1 font-normal text-[9px] text-slate-500 dark:text-slate-400">
                                     ({w.upgrades}↑ {w.downgrades}↓)
                                   </span>
                                 </span>
                               )}
                             </td>
                             {showTyfcb && (
-                              <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                              <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-300">
                                 {w.tyfcbAed.toLocaleString()}
                               </td>
                             )}
@@ -492,7 +492,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
                               {momMeetings !== null ? (
                                 <span
                                   className={`inline-flex items-center gap-0.5 font-bold ${
-                                    momMeetings >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                                    momMeetings >= 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'
                                   }`}
                                 >
                                   {momMeetings >= 0

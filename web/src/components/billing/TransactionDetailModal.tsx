@@ -6,9 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpRight, ArrowDownLeft, Copy, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Copy, Check, X } from 'lucide-react';
+import { formatCredits as formatCreditAmount, billingLabel } from '@/lib/credits-format';
 
 interface Transaction {
   id: string;
@@ -33,16 +35,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [copied, setCopied] = React.useState(false);
   if (!transaction) return null;
 
   // Ledger amounts are CREDIT-denominated - format as credits, not USD.
-  const formatCredits = (amount: string | number) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 0,
-    }).format(num) + ' cr';
-  };
+  const formatCredits = (amount: string | number) => formatCreditAmount(amount) + ' credits';
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('en-US', {
@@ -57,26 +54,30 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
   const getStatusColor = (status: string = 'completed') => {
     switch (status) {
+      // Light variants first - the dark-only colours were near-invisible on white.
       case 'completed':
-        return 'bg-emerald-950/20 text-emerald-400 border-emerald-900/40 font-bold';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 font-bold';
       case 'pending':
-        return 'bg-amber-950/20 text-amber-400 border-amber-900/40 font-bold';
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40 font-bold';
       case 'failed':
-        return 'bg-rose-950/20 text-rose-400 border-rose-900/40 font-bold';
+        return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 font-bold';
       default:
-        return 'bg-slate-900/40 text-slate-400 border-slate-800 font-bold';
+        return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800 font-bold';
     }
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white dark:bg-[#000319] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
-        <DialogHeader className="space-y-2 dark:bg-[#000319]">
-          <DialogTitle className="flex items-center gap-3 text-slate-800 dark:text-white font-bold text-lg leading-tight dark:bg-dark-blue">
+      <DialogContent showCloseButton={false} className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-blue-950/40 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-0 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <DialogHeader className="flex w-full flex-row items-center justify-between space-y-0 rounded-t-2xl border-b border-slate-100 px-5 pb-3 pt-5 text-left dark:bg-[#081331] dark:border-blue-950/40 sm:px-6">
+          <DialogTitle className="flex flex-1 items-center justify-start gap-3 text-left text-slate-800 dark:text-white font-bold text-lg leading-tight">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
                       transaction.type === 'credit'
@@ -85,19 +86,20 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   }`}
               >
                 {transaction.type === 'credit' ? (
-                    <ArrowDownLeft className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <ArrowUpRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                    <ArrowUpRight className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <ArrowDownLeft className="h-5 w-5 text-rose-600 dark:text-rose-400" />
                 )}
               </div>
               <span>Transaction Details</span>
             </DialogTitle>
-            {/*<DialogDescription className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider mt-1">*/}
-              {/*{transaction.type === 'credit' ? 'Credit' : 'Debit'} transaction*/}
-            {/*</DialogDescription>*/}
+            <DialogClose className="inline-flex h-11 w-11 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0 cursor-pointer">
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
           </DialogHeader>
 
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 p-5 pt-4 sm:p-6 sm:pt-4">
             {/* Amount Display */}
             <div>
               <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
@@ -111,7 +113,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                         : 'text-rose-600 dark:text-rose-400'
                   }
               >
-                {transaction.type === 'credit' ? '+' : '-'}
+                {transaction.type === 'credit' ? '+' : ''}
                 {formatCredits(transaction.amount)}
               </span>
               </div>
@@ -124,7 +126,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               </label>
               <div className="mt-1.5">
                 <Badge variant="outline" className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider ${getStatusColor(transaction.status)}`}>
-                  {transaction.status}
+                  {transaction.status || 'completed'}
                 </Badge>
               </div>
             </div>
@@ -142,9 +144,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 <button
                     type="button"
                     onClick={() => copyToClipboard(transaction.id)}
-                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900/60 rounded-lg transition-all flex-shrink-0 cursor-pointer text-slate-400 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white border-none"
+                    aria-label={copied ? 'Copied' : 'Copy transaction ID'}
+                    title={copied ? 'Copied' : 'Copy transaction ID'}
+                    className="inline-flex h-11 w-11 items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-900/60 rounded-lg transition-all flex-shrink-0 cursor-pointer text-slate-400 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white border-none"
                 >
-                  <Copy className="h-4 w-4" />
+                  {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -165,24 +169,18 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
             {transaction.reference_type && transaction.reference_id && (
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
-                    Reference Link
+                    Related to
                   </label>
                   {/* FIXED: Matched styling with platform design specifications */}
                   <div className="mt-1 flex items-center justify-between p-3 bg-slate-50/50 dark:bg-[#00051d]/60 rounded-xl border border-slate-100 dark:border-slate-800/60 font-semibold">
                     <div className="text-xs min-w-0 flex-1 pr-2">
-                      <div className="font-bold text-slate-800 dark:text-white uppercase tracking-wide text-[10px] text-blue-500 dark:text-blue-400">
-                        {transaction.reference_type}
+                      <div className="font-bold text-sm text-slate-800 dark:text-white">
+                        {billingLabel(transaction.reference_type)}
                       </div>
                       <div className="text-slate-500 dark:text-slate-400 font-mono text-xs mt-0.5 truncate">
                         {transaction.reference_id}
                       </div>
                     </div>
-                    <button
-                        type="button"
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900/60 rounded-lg transition-all flex-shrink-0 cursor-pointer text-slate-400 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white border-none"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
             )}

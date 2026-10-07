@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIPlayground } from './AIPlayground';
@@ -156,13 +157,15 @@ const ALL_TABS: { id: WaTab; label: string; sublabel: string }[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 function getTabColor(tabId: WaTab): string {
   switch (tabId) {
-    case 'personal':  return '#25D366'; // WhatsApp green
-    case 'waba':      return '#128C7E'; // WhatsApp Business teal
-    case 'instagram': return '#E1306C'; // Instagram pink - pulled from the official gradient mid-stop
-    case 'linkedin':  return '#0077B5'; // LinkedIn blue
-    case 'gmail':     return '#EA4335'; // Gmail red
-    case 'outlook':   return '#0078D4'; // Outlook blue
-    case 'custom':    return '#059669'; // Emerald - matches integration tile
+    // Each is the brand hue darkened just enough for its white label to clear
+    // 4.5:1 (the pure brand greens/red/pink sat at 1.98-4.34:1).
+    case 'personal':  return '#0A7C3E'; // WhatsApp green (5.30:1)
+    case 'waba':      return '#0E7065'; // WhatsApp Business teal (5.96:1)
+    case 'instagram': return '#C13584'; // Instagram magenta (5.11:1)
+    case 'linkedin':  return '#0077B5'; // LinkedIn blue (4.88:1)
+    case 'gmail':     return '#C5221F'; // Gmail red (5.80:1)
+    case 'outlook':   return '#0067B8'; // Outlook blue (5.78:1)
+    case 'custom':    return '#047857'; // Emerald (5.48:1)
   }
 }
 
@@ -178,6 +181,10 @@ export function ConversationsPage() {
   // null = still loading; once resolved, only connected channels are shown
   const [channelStatus, setChannelStatus] = useState<ChannelConnectionStatus | null>(null);
 
+  // `?channel=` deep link (a tapped push notification) picks the tab once the
+  // channel is known to be connected; otherwise the usual default applies.
+  const channelParam = useSearchParams().get('channel');
+
   // Check which channels are connected on mount - all parallel requests
   useEffect(() => {
     getConnectedChannels().then((status) => {
@@ -185,6 +192,12 @@ export function ConversationsPage() {
       setActiveTab(getDefaultTab(status));
     });
   }, []);
+
+  useEffect(() => {
+    if (!channelStatus || !channelParam) return;
+    const wanted = channelParam as WaTab;
+    if (ALL_TABS.some((t) => t.id === wanted) && channelStatus[wanted]) setActiveTab(wanted);
+  }, [channelStatus, channelParam]);
 
   // Broadcast active tab change to sidebar and other components for dynamic theme adjustments
   useEffect(() => {
@@ -217,7 +230,7 @@ export function ConversationsPage() {
       {/* Top bar: WA channel tabs + AI toggle - now always visible */}
       <div
         className={cn(
-          "h-10 flex items-center justify-between px-3 border-b shrink-0 gap-2 transition-colors duration-300",
+          "h-10 max-lg:h-auto max-lg:min-h-12 flex items-center justify-between px-3 border-b shrink-0 gap-2 transition-colors duration-300",
           "bg-card border-border",
           isBlackGrayDarkTheme
             ? "dark:bg-zinc-900 dark:border-zinc-800"
@@ -225,7 +238,7 @@ export function ConversationsPage() {
         )}
       >
         {/* Channel tabs - only connected channels are rendered */}
-        <div className="flex items-center gap-1 overflow-x-auto min-w-0 no-scrollbar">
+        <div className="flex items-center gap-1 overflow-x-auto min-w-0 no-scrollbar scroll-fade-x">
           {/* Loading skeleton while connection status is being resolved */}
           {channelStatus === null && (
             <>
@@ -237,8 +250,13 @@ export function ConversationsPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              // Icon-only below lg, so every connected channel fits on a phone;
+              // the name stays as the accessible label and the hover title.
+              aria-label={label}
+              title={label}
+              aria-pressed={activeTab === id}
               className={cn(
-                'group flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
+                'group flex items-center gap-1.5 px-3 h-7 max-lg:h-11 max-lg:w-11 max-lg:px-0 max-lg:justify-center rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'
@@ -251,13 +269,13 @@ export function ConversationsPage() {
             >
               <ChannelIcon
                 channel={sublabel as any}
-                size={16}
+                size={18}
                 overrideColor={activeTab === id ? '#ffffff' : undefined}
                 // className={cn(
                 //   id === 'linkedin' && activeTab !== id && 'dark:group-hover:[&_svg]:!text-white'
                 // )}
               />
-              {label}
+              <span className="max-lg:sr-only">{label}</span>
             </button>
           ))}
         </div>
@@ -268,7 +286,7 @@ export function ConversationsPage() {
             variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
             size="sm"
             className={cn(
-              'gap-1.5 text-xs h-7 shrink-0',
+              'gap-1.5 text-xs h-7 shrink-0 max-lg:size-11 max-lg:p-0',
               isPlaygroundOpen && 'text-primary',
               isBlackGrayDarkTheme
                 ? 'dark:hover:bg-black dark:hover:text-white'
@@ -278,7 +296,8 @@ export function ConversationsPage() {
             title="Open AI Playground to test your system prompt"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            Test AI
+            {/* Icon-only below lg: the channel tabs need this row on a phone. */}
+            <span className="max-lg:sr-only">Test AI</span>
           </Button>
 
           {/* AI Learnings - what the agent has been taught from thumbs-down
@@ -288,12 +307,12 @@ export function ConversationsPage() {
           <Button
             variant={isLearningsOpen ? "secondary" : "ghost"}
             size="sm"
-            className={`gap-1.5 text-xs h-7 shrink-0 ${isLearningsOpen ? "text-primary" : ""}`}
+            className={`gap-1.5 text-xs h-7 shrink-0 max-lg:size-11 max-lg:p-0 ${isLearningsOpen ? "text-primary" : ""}`}
             onClick={() => setIsLearningsOpen((v) => !v)}
             title="View and manage what the AI has learned from feedback"
           >
             <GraduationCap className="h-3.5 w-3.5" />
-            AI Learnings
+            <span className="max-lg:sr-only">AI Learnings</span>
           </Button>
 
           <AILearningsPanel

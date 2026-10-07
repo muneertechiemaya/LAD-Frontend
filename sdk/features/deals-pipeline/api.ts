@@ -292,6 +292,8 @@ export async function getPipelineData(page: number = 1, limit: number = 20): Pro
 export async function getPipelineLeads(params: {
   stage?: string;
   status?: string;
+  /** Server-side search (name, email, company, phone); page and total reflect it. */
+  search?: string;
   page: number;
   limit: number;
 }): Promise<PaginatedLeads> {
@@ -299,12 +301,27 @@ export async function getPipelineLeads(params: {
 
   if (params.stage) query.append("stage", params.stage);
   if (params.status) query.append("status", params.status);
+  const search = params.search?.trim();
+  if (search) query.append("search", search);
   query.append("page", String(params.page));
   query.append("limit", String(params.limit));
 
   const url = `/api/deals-pipeline/leads?${query.toString()}`;
   const response = await apiGet<PaginatedLeads>(url);
-  return response.data;
+  const data = response.data;
+  // Same row shape as getPipelineData (name from first/last, lower-case stage
+  // key), so the list view can render these rows directly.
+  if (data && Array.isArray((data as any).leads)) {
+    (data as any).leads = (data as any).leads.map((rawLead: any) => {
+      const fullName = `${rawLead.first_name || rawLead.firstName || ""} ${rawLead.last_name || rawLead.lastName || ""}`.trim();
+      return {
+        ...rawLead,
+        name: rawLead.name || fullName || undefined,
+        stage: typeof rawLead.stage === "string" ? rawLead.stage.toLowerCase() : rawLead.stage,
+      } as Lead;
+    });
+  }
+  return data;
 }
 
 /**
@@ -335,6 +352,28 @@ export async function getPipelineStats(filters?: LeadFilters): Promise<PipelineS
     value_by_stage: data.value_by_stage ?? data.valueByStage ?? {},
     ...data
   } as PipelineStats;
+}
+
+/**
+ * True lead count per stage across the whole pipeline, keyed by lower-case
+ * stage key. The board itself only loads a page of leads, so its column
+ * counts are page counts; /pipeline/stats sends no per-stage totals. This
+ * endpoint is a plain GROUP BY (no filters, no AI enrichment), so it is cheap.
+ */
+export async function getLeadStageTotals(): Promise<Record<string, number>> {
+  const response = await apiGet<any>("/api/deals-pipeline/leads/stats");
+  const rows: Array<{ stage?: string | null; count?: string | number }> = Array.isArray(response.data)
+    ? response.data
+    : Array.isArray(response.data?.data)
+      ? response.data.data
+      : [];
+  const totals: Record<string, number> = {};
+  for (const row of rows) {
+    if (row?.stage == null) continue;
+    const key = String(row.stage).toLowerCase();
+    totals[key] = (totals[key] ?? 0) + (Number(row.count) || 0);
+  }
+  return totals;
 }
 
 /**

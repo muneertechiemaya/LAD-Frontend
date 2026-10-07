@@ -12,8 +12,10 @@
  *   accepted → connected, follow-up pending → chat disabled
  *   active   → automated follow-up sent     → chat enabled
  */
+import { useHideBottomNav } from '@/lib/bottom-nav';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone, Sparkles, Paperclip, UserPlus, PanelRightOpen, PanelRightClose, AlertCircle, Plus, ChevronRight } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -463,6 +465,8 @@ export function LinkedInConversationView({
 }) {
   const [conversations, setConversations] = useState<LinkedInConversation[]>([]);
   const [selectedId, setSelectedId]       = useState<string | null>(null);
+  // The open thread's composer sits where the mobile bottom nav floats.
+  useHideBottomNav(!!selectedId);
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -699,6 +703,19 @@ export function LinkedInConversationView({
       setLoadingMsgs(false);
     }
   }, []);
+
+  // `?conversation=<id>` deep link (a tapped push notification): open that
+  // thread once it is in the list. Each id is applied once, so the user can
+  // still navigate away; a new notification tap brings a new id.
+  const deepLinkId = useSearchParams().get('conversation');
+  const appliedDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!deepLinkId || appliedDeepLink.current === deepLinkId) return;
+    if (conversations.some((c) => c.id === deepLinkId)) {
+      appliedDeepLink.current = deepLinkId;
+      setSelectedId(deepLinkId);
+    }
+  }, [deepLinkId, conversations]);
 
   useEffect(() => {
     // Drop any staged attachment when switching threads so it can't ride into

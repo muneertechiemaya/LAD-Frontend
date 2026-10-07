@@ -216,18 +216,18 @@ export default function ScheduleMeetingModal({
     filtered: Member[]
   }) => (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{label}</label>
+      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">{label}</label>
       <div className="relative">
         {value ? (
-          <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-[#071131] border border-blue-200 dark:border-blue-950/40 rounded-xl">
             <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
               {initials(value.name)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-800 truncate">{value.name}</p>
-              {value.company_name && <p className="text-xs text-slate-500 truncate">{value.company_name}</p>}
+              <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{value.name}</p>
+              {value.company_name && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{value.company_name}</p>}
             </div>
-            <button onClick={() => { setId(''); setSearch('') }} className="text-slate-400 hover:text-red-500">
+            <button onClick={() => { setId(''); setSearch('') }} className="max-lg:min-h-11 text-slate-500 hover:text-red-500 dark:text-slate-400">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -238,36 +238,36 @@ export default function ScheduleMeetingModal({
               value={search}
               onChange={e => { setSearch(e.target.value); setShowDropdown(true) }}
               onFocus={() => setShowDropdown(true)}
-              className="pl-9"
+              className="pl-9 dark:bg-slate-800/50 dark:border-slate-700/80 dark:text-white"
             />
-            <Users className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <Users className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 dark:text-slate-400" />
           </div>
         )}
 
         {showDropdown && !value && (
-          <div className="absolute z-50 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+          <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/40 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
             {loadingMembers ? (
-              <div className="p-3 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
+              <div className="p-3 text-center text-sm text-slate-500 flex items-center justify-center gap-2 dark:text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading...
               </div>
             ) : filtered.length === 0 ? (
-              <div className="p-3 text-center text-sm text-slate-400">No members found</div>
+              <div className="p-3 text-center text-sm text-slate-500 dark:text-slate-400">No members found</div>
             ) : (
               filtered.map(m => (
                 <button
                   key={m.id}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 transition-colors"
+                  className="max-lg:min-h-11 w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   onClick={() => { setId(m.id); setSearch(''); setShowDropdown(false) }}
                 >
-                  <div className="w-7 h-7 bg-slate-200 text-slate-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                  <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                     {initials(m.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{m.name}</p>
-                    {m.company_name && <p className="text-xs text-slate-400 truncate">{m.company_name}</p>}
+                    <p className="text-sm font-medium text-slate-800 dark:text-white truncate">{m.name}</p>
+                    {m.company_name && <p className="text-xs text-slate-500 truncate dark:text-slate-400">{m.company_name}</p>}
                   </div>
                   {m.designation && (
-                    <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{m.designation}</Badge>
+                    <Badge variant="secondary" className="text-xs ml-auto shrink-0 dark:bg-slate-800 dark:text-slate-300">{m.designation}</Badge>
                   )}
                 </button>
               ))
@@ -284,20 +284,20 @@ export default function ScheduleMeetingModal({
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+      <div className="relative bg-white dark:bg-[#000724] border border-slate-100 dark:border-blue-950/40 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-blue-950/40 dark:bg-[#081331]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-xl">
-              <CalendarDays className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
+              <CalendarDays className="w-5 h-5 text-blue-600 dark:text-sky-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Schedule 1-2-1</h2>
-              <p className="text-xs text-slate-400">Conflicts are checked automatically</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Schedule 1-2-1</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Conflicts are checked automatically</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
+          <button onClick={onClose} className="max-lg:min-h-11 max-lg:min-w-11 p-2 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </button>
         </div>
 
@@ -325,9 +325,9 @@ export default function ScheduleMeetingModal({
               />
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-100" />
-              <span className="text-xs text-slate-400 font-semibold">×</span>
-              <div className="flex-1 h-px bg-slate-100" />
+              <div className="flex-1 h-px bg-slate-100 dark:bg-white/10" />
+              <span className="text-xs text-slate-500 font-semibold dark:text-slate-400">×</span>
+              <div className="flex-1 h-px bg-slate-100 dark:bg-white/10" />
             </div>
             <div data-dropdown>
               <MemberSelector
@@ -346,7 +346,7 @@ export default function ScheduleMeetingModal({
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Date</label>
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">Date</label>
               <div className="relative">
                 <Input
                   type="date"
@@ -355,11 +355,11 @@ export default function ScheduleMeetingModal({
                   className="pl-9"
                   min={format(new Date(), 'yyyy-MM-dd')}
                 />
-                <CalendarDays className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <CalendarDays className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 dark:text-slate-400" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Start Time</label>
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">Start Time</label>
               <div className="relative">
                 <Input
                   type="time"
@@ -367,24 +367,24 @@ export default function ScheduleMeetingModal({
                   onChange={e => setStartTime(e.target.value)}
                   className="pl-9"
                 />
-                <Clock className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <Clock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 dark:text-slate-400" />
               </div>
             </div>
           </div>
 
           {/* Duration */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Duration</label>
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">Duration</label>
             <div className="flex gap-2 flex-wrap">
               {DURATIONS.map(d => (
                 <button
                   key={d}
                   onClick={() => setDuration(d)}
-                  className={`
+                  className={`max-lg:min-h-11 
                     px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
                     ${duration === d
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 dark:bg-[#071131] dark:text-slate-300 dark:border-slate-700'}
                   `}
                 >
                   {d}min
@@ -392,7 +392,7 @@ export default function ScheduleMeetingModal({
               ))}
             </div>
             {startTime && (
-              <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+              <p className="text-xs text-slate-500 flex items-center gap-1 mt-1 dark:text-slate-400">
                 <Clock className="w-3 h-3" />
                 {startTime} - {endTime}
               </p>
@@ -401,17 +401,17 @@ export default function ScheduleMeetingModal({
 
           {/* Meeting type */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Meeting Type</label>
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">Meeting Type</label>
             <div className="flex gap-2">
               {MEETING_TYPES.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
                   onClick={() => setMeetingType(value as any)}
-                  className={`
+                  className={`max-lg:min-h-11 
                     flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all
                     ${meetingType === value
-                      ? 'bg-blue-50 border-blue-300 text-blue-700'
-                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 dark:bg-[#071131] dark:border-slate-700 dark:text-slate-400'}
                   `}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -424,7 +424,7 @@ export default function ScheduleMeetingModal({
           {/* Location (only for non-phone) */}
           {meetingType !== 'phone' && (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide dark:text-slate-300">
                 {meetingType === 'virtual' ? 'Meeting Link' : 'Venue / Location'}
               </label>
               <div className="relative">
@@ -435,9 +435,9 @@ export default function ScheduleMeetingModal({
                   className="pl-9"
                 />
                 {meetingType === 'virtual' ? (
-                  <Video className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <Video className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 dark:text-slate-400" />
                 ) : (
-                  <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 dark:text-slate-400" />
                 )}
               </div>
             </div>
@@ -445,37 +445,37 @@ export default function ScheduleMeetingModal({
 
           {/* Agenda notes */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5 dark:text-slate-300">
               <FileText className="w-3 h-3" /> Agenda / Notes
-              <span className="text-slate-400 font-normal normal-case tracking-normal">(optional)</span>
+              <span className="text-slate-500 font-normal normal-case tracking-normal dark:text-slate-400">(optional)</span>
             </label>
             <textarea
               placeholder="What topics will you discuss? Goals for this 1-2-1..."
               value={agendaNotes}
               onChange={e => setAgendaNotes(e.target.value)}
               rows={3}
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="max-lg:min-h-11 w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 dark:border-slate-700 dark:text-slate-200"
             />
           </div>
 
           {/* Conflict status */}
           {(checkingConflicts || conflicts.length > 0) && (
-            <div className={`rounded-xl p-4 border ${conflicts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-100'}`}>
+            <div className={`rounded-xl p-4 border ${conflicts.length > 0 ? 'bg-red-50 border-red-200 dark:bg-red-500/10' : 'bg-blue-50 border-blue-100 dark:bg-blue-500/10'}`}>
               {checkingConflicts ? (
-                <div className="flex items-center gap-2 text-blue-600">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm font-medium">Checking for conflicts...</span>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-red-600">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="text-sm font-semibold">
                       {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
                     </span>
                   </div>
                   {conflicts.map((c, i) => (
-                    <p key={i} className="text-xs text-red-600 pl-6">{c.message}</p>
+                    <p key={i} className="text-xs text-red-700 pl-6 dark:text-red-300">{c.message}</p>
                   ))}
                 </div>
               )}
@@ -484,9 +484,9 @@ export default function ScheduleMeetingModal({
 
           {/* Clear state */}
           {memberAId && memberBId && !checkingConflicts && conflicts.length === 0 && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3">
-              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-              <span className="text-sm text-green-700 font-medium">No conflicts - ready to schedule</span>
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3 dark:bg-green-500/10">
+              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 dark:text-green-300" />
+              <span className="text-sm text-green-700 font-medium dark:text-green-300">No conflicts - ready to schedule</span>
             </div>
           )}
         </div>
