@@ -141,6 +141,12 @@ export interface TenantWalletBalance {
   /** No wallet row yet — a zero balance, not an error. */
   uninitialised?: boolean;
   /**
+   * Messages balance only: whether WhatsApp messages are actually being charged
+   * to it (per-message billing is on). False means broadcasts are still on the
+   * old flat AI-credit charge and this balance is not being spent yet.
+   */
+  inUse?: boolean;
+  /**
    * The balance could not be read. NOT the same as zero: a reader that shows
    * 0.00 for this is stating "you have no funds" about a number it never saw.
    * When set, `balance` is null.
