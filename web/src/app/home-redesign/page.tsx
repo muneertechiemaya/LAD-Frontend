@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import HomeRedesign from "./HomeRedesign";
 import "./home-redesign.css";
 
@@ -15,16 +15,18 @@ import "./home-redesign.css";
  * not change the rest of the app's typography.
  */
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+// Self-hosted (fonts/, latin, variable weight; OFL): next/font/google fetches from Google at build time,
+// and Cloud Build intermittently got a font URL with no file extension, failing the whole build.
+const jakarta = localFont({
+  src: "./fonts/plus-jakarta-sans-latin.woff2",
+  weight: "200 800",
   variable: "--font-jakarta",
   display: "swap",
 });
 
-const grotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const grotesk = localFont({
+  src: "./fonts/space-grotesk-latin.woff2",
+  weight: "300 700",
   variable: "--font-grotesk",
   display: "swap",
 });
