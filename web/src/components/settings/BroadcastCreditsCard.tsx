@@ -156,6 +156,7 @@ export const BroadcastCreditsCard: React.FC = () => {
   }, [load]);
 
   const unit = balance?.currency || currency;
+  const inUse = Boolean(balance?.inUse);
 
   const submit = async () => {
     const value = Number(amount);
@@ -241,23 +242,46 @@ export const BroadcastCreditsCard: React.FC = () => {
           ) : error && !balance ? (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : (
-            <p className="text-3xl font-bold text-[#1E293B] dark:text-white tabular-nums">
+            <p className={`text-3xl font-bold tabular-nums ${available(balance) < 0
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-[#1E293B] dark:text-white'}`}>
               {available(balance).toFixed(2)} {unit}
             </p>
           )}
         </div>
 
-        {/* The thing a tenant would otherwise assume wrongly. Until the debit
-            ships, broadcasts still draw the AI credit wallet — showing a
-            balance without saying so would be the misleading part. */}
-        <div className="flex gap-2 p-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-            <strong>Not yet in use.</strong> Broadcasts are still charged to your AI credits
-            at the old flat rate. This balance starts being spent when per-message
-            billing is switched on — nothing you add here is lost in the meantime.
-          </p>
-        </div>
+        {!loading && !(error && !balance) && (inUse ? (
+          available(balance) <= 0 ? (
+            /* Live and empty: the send-time gate is refusing broadcasts right
+               now. The one thing to say is how to start them again. */
+            <div role="alert" className="flex gap-2 p-3 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/20">
+              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-800 dark:text-red-300 leading-relaxed">
+                <strong>Broadcasts are paused.</strong> Add funds to send WhatsApp
+                broadcasts again.
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-2 text-xs text-[#64748B] dark:text-gray-400">
+              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+              <p className="leading-relaxed">
+                Each delivered WhatsApp message is charged from this balance. Broadcasts
+                stop when it runs out.
+              </p>
+            </div>
+          )
+        ) : (
+          /* Not live yet: broadcasts still draw the AI credit wallet. Showing a
+             balance without saying so would be the misleading part. */
+          <div className="flex gap-2 p-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              <strong>Not yet in use.</strong> Broadcasts are still charged to your AI credits
+              at the old flat rate. This balance starts being spent when per-message
+              billing is switched on — nothing you add here is lost in the meantime.
+            </p>
+          </div>
+        ))}
 
         <div className="flex gap-2 text-xs text-[#64748B] dark:text-gray-400">
           <Info className="h-4 w-4 shrink-0 mt-0.5" />
